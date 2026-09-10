@@ -28,6 +28,7 @@ export function installChromeFake() {
   const local: Stored = {};
   const session: Stored = {};
   const alarms = new Map<string, chrome.alarms.Alarm>();
+  const tabUpdates: Array<{ tabId: number; properties: chrome.tabs.UpdateProperties }> = [];
   const cookieStore = new Map<string, chrome.cookies.Cookie>();
   const cookieKey = (cookie: Pick<chrome.cookies.Cookie, "storeId" | "domain" | "path" | "name">) =>
     `${cookie.storeId}\0${cookie.domain}\0${cookie.path}\0${cookie.name}`;
@@ -91,11 +92,18 @@ export function installChromeFake() {
       onInstalled: event(),
       onStartup: event(),
       onMessage: event(),
+      sendMessage: async () => ({ kind: "idle" }),
+    },
+    tabs: {
+      update: async (tabId: number, properties: chrome.tabs.UpdateProperties) => {
+        tabUpdates.push({ tabId, properties });
+        return { id: tabId, ...properties } as chrome.tabs.Tab;
+      },
     },
   } as unknown as typeof chrome;
   Object.assign(globalThis, { chrome: fake });
   return {
-    fake, local, session, alarms, cookieStore,
+    fake, local, session, alarms, cookieStore, tabUpdates,
     getCookie: (name: string, path = "/", storeId = "0") =>
       [...cookieStore.values()].find((cookie) =>
         cookie.name === name && cookie.path === path && cookie.storeId === storeId

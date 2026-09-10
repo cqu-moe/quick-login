@@ -1,6 +1,8 @@
 import { loginInteractive } from "./auth";
 import { enterManualMode, resumeAutomaticMode, setEnabled, sync } from "./sync";
-import { readLocalState } from "./storage";
+import { readLocalState, updateLocalState } from "./storage";
+import { markManualRequired } from "./sync";
+import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
 
 export type BackgroundMessage =
   | { type: "SYNC" }
@@ -9,6 +11,75 @@ export type BackgroundMessage =
   | { type: "ENTER_MANUAL" }
   | { type: "RESUME" }
   | { type: "GET_UI_STATE" };
+
+const loginFormFlights = new Map<string, Promise<LoginRecoveryResult>>();
+
+function validSsoSender(sender: chrome.runtime.MessageSender): sender is chrome.runtime.MessageSender & {
+  tab: chrome.tabs.Tab & { id: number };
+  url: string;
+} {
+  if (sender.id !== chrome.runtime.id || !sender.tab || sender.tab.id === undefined || !sender.url) return false;
+  const url = new URL(sender.url);
+  return url.protocol === "https:" && url.hostname === "sso.cqu.edu.cn" &&
+    (url.pathname === "/login" || url.pathname === "/authserver/login");
+}
+
+async function processContentMessage(
+  message: ContentMessage,
+  sender: chrome.runtime.MessageSender
+): Promise<LoginRecoveryResult> {
+  if (!validSsoSender(sender)) throw new Error("FORBIDDEN");
+  if (message.type === "ENTER_MANUAL") {
+    await enterManualMode();
+    return { kind: "manual_required", message: "已切换手动登录。" };
+  }
+  if (message.type === "RETRY_AUTOMATIC") {
+    await resumeAutomaticMode();
+  } else if (message.type === "LOGIN_FORM_VISIBLE") {
+    const before = await readLocalState();
+    if (before.recovery?.phase === "navigated" &&
+        before.recovery.navigatedTabId === sender.tab.id) {
+      await markManualRequired();
+      return {
+        kind: "manual_required",
+        message: "快捷登录未成功，请在学校页面手动登录。",
+      };
+    }
+    await sync("login_form");
+  }
+  const after = await readLocalState();
+  if (after.recovery?.phase === "finished" && after.localWriteState === "ready") {
+    await updateLocalState((state) => ({
+      ...state,
+      recovery: state.recovery ? {
+        ...state.recovery,
+        phase: "navigated",
+        navigatedTabId: sender.tab.id,
+      } : null,
+    }));
+    await chrome.tabs.update(sender.tab.id, { url: sender.url });
+    return { kind: "navigating" };
+  }
+  if (after.recovery?.phase === "manual_required" || after.manualOverride) {
+    return { kind: "manual_required", message: "请继续在学校页面手动登录。" };
+  }
+  return { kind: "idle" };
+}
+
+export function handleContentMessage(
+  message: ContentMessage,
+  sender: chrome.runtime.MessageSender
+): Promise<LoginRecoveryResult> {
+  if (message.type !== "LOGIN_FORM_VISIBLE" || !validSsoSender(sender)) {
+    return processContentMessage(message, sender);
+  }
+  const key = `${sender.tab.id}:${sender.documentId ?? sender.url}`;
+  const existing = loginFormFlights.get(key);
+  if (existing) return existing;
+  const flight = processContentMessage(message, sender);
+  loginFormFlights.set(key, flight);
+  return flight;
+}
 
 export async function handleMessage(message: BackgroundMessage) {
   switch (message.type) {

@@ -1,6 +1,7 @@
 import { configureTrustedStorage, readLocalState } from "./storage";
 import { SYNC_ALARM, SYNC_PERIOD_MINUTES } from "../shared/config";
-import { handleMessage, type BackgroundMessage } from "./messages";
+import { handleContentMessage, handleMessage, type BackgroundMessage } from "./messages";
+import type { ContentMessage } from "../shared/messages";
 import { sync } from "./sync";
 import { applyEnvelope, recoverInterruptedWrite } from "./cookie-store";
 import { setEnvelopeWriter } from "./sync";
@@ -28,8 +29,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     void sync("alarm");
   }
 });
-chrome.runtime.onMessage.addListener((message: BackgroundMessage, sender) => {
+chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessage, sender) => {
   if (sender.id !== chrome.runtime.id) return false;
-  return handleMessage(message);
+  if (sender.tab) return handleContentMessage(message as ContentMessage, sender);
+  return handleMessage(message as BackgroundMessage);
 });
 void start();

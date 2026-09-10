@@ -11,5 +11,12 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://sso.cqu.edu.cn/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "incognito": "not_allowed"
 }
