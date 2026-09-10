@@ -1,8 +1,15 @@
 import { loginInteractive } from "./auth";
-import { enterManualMode, resumeAutomaticMode, setEnabled, sync } from "./sync";
+import {
+  enterManualMode,
+  resumeAutomaticMode,
+  setEnabled,
+  switchToManagedOnce,
+  sync,
+} from "./sync";
 import { readLocalState, updateLocalState } from "./storage";
 import { markManualRequired } from "./sync";
 import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
+import { config } from "../shared/config";
 
 export type BackgroundMessage =
   | { type: "SYNC" }
@@ -10,6 +17,8 @@ export type BackgroundMessage =
   | { type: "SET_ENABLED"; enabled: boolean }
   | { type: "ENTER_MANUAL" }
   | { type: "RESUME" }
+  | { type: "SWITCH_TO_MANAGED" }
+  | { type: "OPEN_SETTINGS" }
   | { type: "GET_UI_STATE" };
 
 const loginFormFlights = new Map<string, Promise<LoginRecoveryResult>>();
@@ -87,6 +96,14 @@ export async function handleMessage(message: BackgroundMessage) {
     case "SET_ENABLED": await setEnabled(message.enabled); return { ok: true };
     case "ENTER_MANUAL": await enterManualMode(); return { ok: true };
     case "RESUME": await resumeAutomaticMode(); return { ok: true };
+    case "SWITCH_TO_MANAGED": await switchToManagedOnce(); return { ok: true };
+    case "OPEN_SETTINGS": {
+      const state = await readLocalState();
+      const url = new URL("/settings", config.authOrigin);
+      if (state.deviceId) url.searchParams.set("quickloginDevice", state.deviceId);
+      await chrome.tabs.create({ url: url.toString() });
+      return { ok: true };
+    }
     case "SYNC": await sync("network"); return { ok: true };
     case "GET_UI_STATE": {
       const state = await readLocalState();

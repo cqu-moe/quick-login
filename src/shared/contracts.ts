@@ -77,7 +77,7 @@ export interface LocalState {
   managed: ManagedCookie[];
   recovery: RecoveryRound | null;
   status: DeviceStatus | null;
-  localWriteState: "idle" | "writing" | "ready" | "error";
+  localWriteState: "idle" | "writing" | "ready" | "foreign_session" | "error";
   lastError: ErrorCode | null;
   pendingOperation: "disable" | null;
 }

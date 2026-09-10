@@ -99,6 +99,9 @@ export function installChromeFake() {
         tabUpdates.push({ tabId, properties });
         return { id: tabId, ...properties } as chrome.tabs.Tab;
       },
+      create: async (properties: chrome.tabs.CreateProperties) => ({
+        id: 8, ...properties,
+      }) as chrome.tabs.Tab,
     },
   } as unknown as typeof chrome;
   Object.assign(globalThis, { chrome: fake });

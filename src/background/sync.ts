@@ -16,6 +16,7 @@ let writer: EnvelopeWriter = async () => {
   throw new SyncError("COOKIE_WRITE_TRANSIENT");
 };
 let syncFlight: Promise<void> | null = null;
+let allowForeignOnce = false;
 
 export function setEnvelopeWriter(next: EnvelopeWriter): void {
   writer = next;
@@ -98,7 +99,8 @@ async function runSync(reason: SyncReason): Promise<void> {
   }
   if (local.manualOverride) return;
   if (remote.state !== "ready") return;
-  if (local.appliedVersion === remote.sessionVersion && reason !== "login_form") return;
+  if (local.appliedVersion === remote.sessionVersion &&
+      reason !== "login_form" && reason !== "user_retry") return;
 
   const round: RecoveryRound = local.recovery?.generation === remote.generation
     ? local.recovery
@@ -124,7 +126,10 @@ async function runSync(reason: SyncReason): Promise<void> {
       localWriteState: "writing",
     }));
     const result = await retryBounded(
-      () => writer(envelope, { localGeneration: generationFence, allowForeignOnce: false }),
+      () => writer(envelope, {
+        localGeneration: generationFence,
+        allowForeignOnce: allowForeignOnce && reason === "user_retry",
+      }),
       rememberWait
     );
     if (result === "applied") {
@@ -135,7 +140,7 @@ async function runSync(reason: SyncReason): Promise<void> {
         recovery: state.recovery ? { ...state.recovery, phase: "finished", nextAttemptAt: null } : null,
       }));
     } else if (result === "foreign_session") {
-      await updateLocalState((state) => ({ ...state, localWriteState: "idle" }));
+      await updateLocalState((state) => ({ ...state, localWriteState: "foreign_session" }));
     }
   } catch (error) {
     const code = error instanceof SyncError &&
@@ -197,6 +202,15 @@ export async function resumeAutomaticMode(): Promise<void> {
     lastError: null,
   }));
   await sync("user_retry");
+}
+
+export async function switchToManagedOnce(): Promise<void> {
+  allowForeignOnce = true;
+  try {
+    await sync("user_retry");
+  } finally {
+    allowForeignOnce = false;
+  }
 }
 
 export async function markManualRequired(): Promise<void> {

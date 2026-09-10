@@ -32,6 +32,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessage, sender) => {
   if (sender.id !== chrome.runtime.id) return false;
   if (sender.tab) return handleContentMessage(message as ContentMessage, sender);
+  const senderUrl = sender.url ? new URL(sender.url) : null;
+  if (!senderUrl || senderUrl.protocol !== "chrome-extension:" ||
+      senderUrl.hostname !== chrome.runtime.id || senderUrl.pathname !== "/popup.html") {
+    return false;
+  }
   return handleMessage(message as BackgroundMessage);
 });
 void start();
