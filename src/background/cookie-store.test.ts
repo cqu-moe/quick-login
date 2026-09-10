@@ -15,12 +15,12 @@ const envelope: CookieEnvelope = {
     {
       name: "SOURCEID_TGC", value: "synthetic-test-session",
       domain: "sso.cqu.edu.cn", path: "/", secure: true, httpOnly: true,
-      sameSite: "Lax", expires: -1, session: true,
+      sameSite: "Lax", expires: -1,
     },
     {
       name: "SESSION", value: "synthetic-persistent",
       domain: ".sso.cqu.edu.cn", path: "/login", secure: true, httpOnly: true,
-      sameSite: "None", expires: 1_900_000_000, session: false,
+      sameSite: "None", expires: 1_900_000_000,
     },
   ],
 };

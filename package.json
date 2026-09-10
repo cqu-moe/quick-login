@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "vite build"
+    "build": "vite build",
+    "check:package": "node scripts/check-package.mjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.2.9",

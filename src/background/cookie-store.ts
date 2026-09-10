@@ -69,7 +69,7 @@ function setDetails(cookie: ExportedCookie, storeId: string): chrome.cookies.Set
       cookie.sameSite === "Lax" ? "lax" : "no_restriction",
     storeId,
     ...(cookie.domain.startsWith(".") ? { domain: cookie.domain } : {}),
-    ...(!cookie.session ? { expirationDate: cookie.expires } : {}),
+    ...(cookie.expires !== -1 ? { expirationDate: cookie.expires } : {}),
   };
 }
 
@@ -162,7 +162,7 @@ export async function applyEnvelope(
         secure: cookie.secure,
         httpOnly: cookie.httpOnly,
         sameSite: target.sameSite ?? "unspecified",
-        session: cookie.session,
+        session: cookie.expires === -1,
         expirationDate: target.expirationDate,
       };
       const entry = {

@@ -35,7 +35,6 @@ export interface ExportedCookie {
   httpOnly: boolean;
   sameSite: "Strict" | "Lax" | "None";
   expires: number;
-  session: boolean;
 }
 
 export interface CookieEnvelope {

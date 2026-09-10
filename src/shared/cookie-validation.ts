@@ -10,24 +10,27 @@ export class CookieValidationError extends Error {
 }
 
 function validCookie(cookie: ExportedCookie): boolean {
-  return typeof cookie.name === "string" && cookie.name.length > 0 &&
+  const keys = Object.keys(cookie).sort().join(",");
+  return keys === "domain,expires,httpOnly,name,path,sameSite,secure,value" &&
+    typeof cookie.name === "string" && cookie.name.length > 0 &&
     typeof cookie.value === "string" &&
     ALLOWED_DOMAINS.has(cookie.domain) &&
     typeof cookie.path === "string" && cookie.path.startsWith("/") &&
     typeof cookie.secure === "boolean" && typeof cookie.httpOnly === "boolean" &&
     ["Strict", "Lax", "None"].includes(cookie.sameSite) &&
-    typeof cookie.session === "boolean" && Number.isFinite(cookie.expires) &&
-    (cookie.session ? cookie.expires === -1 : cookie.expires > 0) &&
+    Number.isFinite(cookie.expires) && (cookie.expires === -1 || cookie.expires > 0) &&
     !(cookie.sameSite === "None" && !cookie.secure);
 }
 
 export function validateCookieEnvelope(value: CookieEnvelope): CookieEnvelope {
-  if (!value || value.protocolVersion !== 1 || !value.deviceId ||
+  if (!value || Object.keys(value).sort().join(",") !==
+      "cookies,createdAt,deviceId,generation,protocolVersion,sessionVersion" ||
+      value.protocolVersion !== 1 || !value.deviceId ||
       !Number.isSafeInteger(value.generation) || value.generation < 0 ||
       !Number.isSafeInteger(value.sessionVersion) || value.sessionVersion < 0 ||
       !Number.isSafeInteger(value.createdAt) || !Array.isArray(value.cookies) ||
       value.cookies.length === 0 || value.cookies.length > 64 ||
-      JSON.stringify(value).length > MAX_ENVELOPE_BYTES ||
+      new TextEncoder().encode(JSON.stringify(value)).length > MAX_ENVELOPE_BYTES ||
       value.cookies.some((cookie) => !validCookie(cookie)) ||
       !value.cookies.some((cookie) => cookie.name === "SOURCEID_TGC" && cookie.value.length > 0)) {
     throw new CookieValidationError("INVALID_COOKIE_ENVELOPE");

@@ -11,7 +11,7 @@ function envelope(domain: string, value = "synthetic-test-session") {
     createdAt: 1_700_000_000_000,
     cookies: [{
       name: "SOURCEID_TGC", value, domain, path: "/", secure: true,
-      httpOnly: true, sameSite: "Lax", expires: -1, session: true,
+      httpOnly: true, sameSite: "Lax", expires: -1,
     }],
   } as CookieEnvelope;
 }
