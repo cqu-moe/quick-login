@@ -177,7 +177,6 @@ export async function clearDeviceAuthorization(): Promise<void> {
     deviceId: null,
     serverGeneration: null,
     enabledIntent: false,
-    status: null,
     recovery: null,
   }));
 }
