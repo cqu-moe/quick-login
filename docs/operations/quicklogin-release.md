@@ -48,3 +48,7 @@
 - 正式 OAuth client 登记：`NOT RUN`（正式扩展 ID/clientId 未提供）
 - Auth 部署与 mode 切换：`NOT RUN`
 - Chrome Web Store 发布：`NOT RUN`
+
+## 本地候选包
+
+2026-09-11 本地构建生成 `releases/cqu-quicklogin-0.1.0.zip`，只包含 `dist/`，SHA-256 为 `e230e6ecfe6f36823ec5d29704603a0d391b8c865c7bfcbfe5bff0834cff575b`。该文件未上传；正式 ID/clientId 尚未登记，因此只能用于本地复核。

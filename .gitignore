@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+releases/*.zip
 .env
 .env.*
 .DS_Store
