@@ -1,6 +1,6 @@
 import type { LocalState } from "../shared/contracts";
 
-const STATE_KEY = "quicklogin.state";
+export const LOCAL_STATE_KEY = "quicklogin.state";
 
 export const initialLocalState = (): LocalState => ({
   schemaVersion: 1,
@@ -39,8 +39,8 @@ function migrate(value: unknown): LocalState {
 }
 
 export async function readLocalState(): Promise<LocalState> {
-  const stored = await chrome.storage.local.get(STATE_KEY);
-  return migrate(stored[STATE_KEY]);
+  const stored = await chrome.storage.local.get(LOCAL_STATE_KEY);
+  return migrate(stored[LOCAL_STATE_KEY]);
 }
 
 export function updateLocalState(
@@ -50,7 +50,22 @@ export function updateLocalState(
     const current = await readLocalState();
     const next = reducer(structuredClone(current));
     if (next.schemaVersion !== 1) throw new Error("INVALID_LOCAL_SCHEMA");
-    await chrome.storage.local.set({ [STATE_KEY]: next });
+    await chrome.storage.local.set({ [LOCAL_STATE_KEY]: next });
+    return next;
+  });
+  queue = task.then(() => undefined, () => undefined);
+  return task;
+}
+
+export function updateLocalStateWith(
+  items: Record<string, unknown>,
+  reducer: (state: LocalState) => LocalState
+): Promise<LocalState> {
+  const task = queue.then(async () => {
+    const current = await readLocalState();
+    const next = reducer(structuredClone(current));
+    if (next.schemaVersion !== 1) throw new Error("INVALID_LOCAL_SCHEMA");
+    await chrome.storage.local.set({ ...items, [LOCAL_STATE_KEY]: next });
     return next;
   });
   queue = task.then(() => undefined, () => undefined);

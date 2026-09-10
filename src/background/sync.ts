@@ -4,6 +4,7 @@ import * as api from "./api";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
 import { responseError, retryBounded, SyncError } from "./retry";
+import { clearOwnedCookies } from "./cookie-store";
 
 export type SyncReason = "alarm" | "startup" | "network" | "enable" | "login_form" | "user_retry";
 export type EnvelopeWriter = (
@@ -76,6 +77,7 @@ async function runSync(reason: SyncReason): Promise<void> {
           status: state.status ? { ...state.status, state: "revoked", enabled: false } : null,
           lastError: "DEVICE_REVOKED",
         }));
+        await clearOwnedCookies();
         await clearDeviceAuthorization();
         return;
       }
@@ -90,7 +92,11 @@ async function runSync(reason: SyncReason): Promise<void> {
     serverGeneration: remote.generation,
     lastError: null,
   }));
-  if (!remote.masterEnabled || !remote.enabled || local.manualOverride) return;
+  if (!remote.masterEnabled || !remote.enabled) {
+    await clearOwnedCookies();
+    return;
+  }
+  if (local.manualOverride) return;
   if (remote.state !== "ready") return;
   if (local.appliedVersion === remote.sessionVersion && reason !== "login_form") return;
 
@@ -154,6 +160,7 @@ export async function setEnabled(enabled: boolean): Promise<void> {
       pendingOperation: "disable",
       recovery: null,
     }));
+    await clearOwnedCookies();
     try {
       const status = await api.setDeviceEnabled(false);
       await updateLocalState((state) => ({ ...state, status, pendingOperation: null }));

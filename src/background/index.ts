@@ -2,6 +2,10 @@ import { configureTrustedStorage, readLocalState } from "./storage";
 import { SYNC_ALARM, SYNC_PERIOD_MINUTES } from "../shared/config";
 import { handleMessage, type BackgroundMessage } from "./messages";
 import { sync } from "./sync";
+import { applyEnvelope, recoverInterruptedWrite } from "./cookie-store";
+import { setEnvelopeWriter } from "./sync";
+
+setEnvelopeWriter(applyEnvelope);
 
 export async function ensureSyncAlarm(): Promise<void> {
   const existing = await chrome.alarms.get(SYNC_ALARM);
@@ -13,6 +17,7 @@ export async function ensureSyncAlarm(): Promise<void> {
 async function start(): Promise<void> {
   await configureTrustedStorage();
   await readLocalState();
+  await recoverInterruptedWrite();
   await ensureSyncAlarm();
 }
 
