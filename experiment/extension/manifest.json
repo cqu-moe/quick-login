@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "CQU SSO 迁移实验",
+  "version": "0.0.1",
+  "description": "仅用于验证：从本地文件导入学校 SSO Cookie，不读取密码或网站内容。",
+  "permissions": ["cookies"],
+  "host_permissions": ["https://sso.cqu.edu.cn/*"],
+  "action": {"default_popup": "import.html"},
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'"}
+}

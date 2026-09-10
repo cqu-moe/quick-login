@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+.DS_Store
+.wrangler/
+data/
+experiment/**/__pycache__/
+experiment/**/*.pyc
+experiment/**/endpoint.json
+experiment/**/result.json
+experiment/**/.dev.vars
+*.pem
+*.key

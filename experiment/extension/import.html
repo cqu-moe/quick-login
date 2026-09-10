@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>SSO 迁移实验</title>
+<style>body{font:15px/1.65 system-ui;width:430px;padding:20px;color:#222}button,input{font:inherit;margin:8px 0}button{padding:6px 14px}pre{white-space:pre-wrap;word-break:break-word}a{display:block;margin-top:12px}</style>
+<h2>SSO 迁移实验</h2>
+<p>请在独立的 Chrome 测试资料中使用。只导入 SSO 域 Cookie；不导入 localStorage、业务系统 Cookie 或密码。</p>
+<p>若已有登录凭据 SOURCEID_TGC，会停止导入。缺少该凭据时，允许覆盖同名的残留 SSO Cookie。写入成功仍需验证实际登录。</p>
+<label>选择本次实验导出的 Cookie 文件 <input id="file" type="file" accept="application/json,.json"></label>
+<button id="import" disabled>导入 SSO Cookie</button>
+<pre id="status" role="status">等待选择文件。</pre>
+<button id="inspect">检查当前 Cookie（不修改）</button>
+<pre id="diagnostics" role="status">选择文件后可以比较浏览器中的 Cookie；只显示是否一致，不显示值。</pre>
+<a href="https://my.cqu.edu.cn/" target="_blank" rel="noreferrer">打开学校门户，验证登录</a>
+<script type="module" src="import.js"></script>
+</html>

@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>CQU SSO 迁移实验</title>
+<style>body{font:16px/1.7 system-ui;max-width:700px;margin:48px auto;padding:0 24px;color:#222}label{display:block;margin:12px 0}input,select,button{font:inherit;padding:7px}input{display:block;width:90%}button{margin:8px 8px 8px 0}pre{white-space:pre-wrap;background:#f5f5f5;padding:16px;font-size:13px}p{color:#555}</style>
+<h1>SSO 会话迁移实验</h1>
+<p>本页面只在你的电脑上运行。学校账号、密码经 SSH 加密连接交给原登录服务器上的临时进程，用于登录 sso.cqu.edu.cn。不会修改线上 Auth 绑定或启动已停的服务。密码只作内存处理；浏览器可能会自行询问是否保存，请勿保存。</p>
+<p>本轮使用原服务器验证跨网络迁移，不代表 Cloudflare 出口已通过。最多创建两个会话，用于检查新登录是否挤掉旧登录。</p>
+<label>学校账号<input id="student" autocomplete="off" inputmode="numeric"></label>
+<label>学校密码<input id="password" type="password" autocomplete="off"></label>
+<label>验证方式<select id="method"><option value="sms">短信验证码</option><option value="mail">邮件验证码</option></select></label>
+<button id="login">提交到学校，创建测试会话</button>
+<label>收到验证码后填写<input id="code" autocomplete="one-time-code" inputmode="numeric" maxlength="6"></label>
+<button id="submit-code" disabled>提交验证码</button>
+<p id="message" role="status"></p>
+<button id="export-a" disabled>导出会话 A 的 SSO Cookie</button><button id="export-b" disabled>导出会话 B 的 SSO Cookie</button>
+<button id="probe" disabled>检查服务器测试会话是否有效</button>
+<p>导出文件包含登录凭据，只用于导入实验扩展，请勿分享或上传。导出会过滤业务 Cookie 和 localStorage。探测通过只证明 SSO 仍可出票，不能代替业务页面登录验收。</p>
+<pre id="status">连接测试进程中……</pre>
+<script src="/input.js"></script></html>

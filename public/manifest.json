@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "CQU 快捷登录",
+  "version": "0.1.0",
+  "permissions": ["cookies", "storage", "alarms", "identity"],
+  "host_permissions": [
+    "https://auth.cqu.moe/*",
+    "https://sso.cqu.edu.cn/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "incognito": "not_allowed"
+}
