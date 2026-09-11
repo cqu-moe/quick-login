@@ -14,10 +14,6 @@ import {
 
 const SSO_URL = "https://sso.cqu.edu.cn";
 
-function normalizedDomain(domain: string): string {
-  return domain.startsWith(".") ? domain : domain.replace(/^\./, "");
-}
-
 async function digestCookie(cookie: Pick<chrome.cookies.Cookie,
   "name" | "value" | "domain" | "path" | "secure" | "httpOnly" | "sameSite" | "session" | "expirationDate">): Promise<string> {
   const encoded = new TextEncoder().encode(JSON.stringify({
@@ -48,7 +44,6 @@ async function normalStoreId(): Promise<string> {
 async function getExact(entry: Pick<ManagedCookie, "name" | "domain" | "path" | "storeId">) {
   const candidates = await chrome.cookies.getAll({
     name: entry.name,
-    domain: normalizedDomain(entry.domain),
     storeId: entry.storeId,
   });
   return candidates.find((cookie) =>
@@ -112,7 +107,10 @@ async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | nul
 export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
   const state = await readLocalState();
   const storeId = await normalStoreId();
-  const cookies = await chrome.cookies.getAll({ name: "SOURCEID_TGC", domain: "sso.cqu.edu.cn", storeId });
+  const cookies = (await chrome.cookies.getAll({ name: "SOURCEID_TGC", storeId }))
+    .filter((cookie) =>
+      cookie.domain === "sso.cqu.edu.cn" || cookie.domain === ".sso.cqu.edu.cn"
+    );
   if (cookies.length === 0) return "missing";
   for (const cookie of cookies) {
     const managed = state.managed.find((entry) =>

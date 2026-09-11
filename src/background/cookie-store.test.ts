@@ -78,4 +78,18 @@ describe("managed SSO cookies", () => {
       .resolves.toBe("foreign_session");
     expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("foreign");
   });
+
+  it("finds a host-only cookie without relying on Chrome's domain query filter", async () => {
+    const getAll = chrome.cookies.getAll.bind(chrome.cookies);
+    vi.spyOn(chrome.cookies, "getAll").mockImplementation(async (details) => {
+      if (details.domain) return [];
+      return getAll(details);
+    });
+
+    await expect(applyEnvelope(envelope, {
+      localGeneration: 1,
+      allowForeignOnce: false,
+    })).resolves.toBe("applied");
+    expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-test-session");
+  });
 });
