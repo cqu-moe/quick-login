@@ -107,7 +107,41 @@ export async function authorizedFetch(path: string, init: RequestInit = {}): Pro
   return response;
 }
 
+function deviceMetadata() {
+  return {
+    deviceName: `${navigator.platform || "Chrome"} Chrome`,
+    browserFamily: "chrome" as const,
+    browserVersion: navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)*)/)?.[1] ?? "unknown",
+  };
+}
+
+async function registerSavedAuthorization(): Promise<boolean> {
+  if (!await readTokens()) return false;
+  const response = await authorizedFetch("/api/cqu/quicklogin/devices", {
+    method: "POST",
+    body: JSON.stringify(deviceMetadata()),
+  });
+  if (!response.ok) {
+    const body = await response.clone().json().catch(() => null) as ApiError | null;
+    if (response.status === 401 || body?.error.code === "DEVICE_REVOKED") {
+      await chrome.storage.local.remove(TOKENS_KEY);
+      return false;
+    }
+    throw new Error(`DEVICE_REGISTRATION_FAILED:${body?.error.code ?? response.status}`);
+  }
+  const status = await response.json() as DeviceStatus;
+  await updateLocalState((local) => ({
+    ...local,
+    deviceId: status.deviceId,
+    serverGeneration: status.generation,
+    status,
+    lastError: null,
+  }));
+  return true;
+}
+
 export async function loginInteractive(): Promise<void> {
+  if (await registerSavedAuthorization()) return;
   const state = randomBase64Url();
   const verifier = randomBase64Url();
   const redirectUri = chrome.identity.getRedirectURL();
@@ -150,24 +184,9 @@ export async function loginInteractive(): Promise<void> {
     redirect_uri: stored.redirectUri,
     resource: config.authOrigin,
   }));
-
-  const response = await authorizedFetch("/api/cqu/quicklogin/devices", {
-    method: "POST",
-    body: JSON.stringify({
-      deviceName: `${navigator.platform || "Chrome"} Chrome`,
-      browserFamily: "chrome",
-      browserVersion: navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)*)/)?.[1] ?? "unknown",
-    }),
-  });
-  if (!response.ok) throw new Error("DEVICE_REGISTRATION_FAILED");
-  const status = await response.json() as DeviceStatus;
-  await updateLocalState((local) => ({
-    ...local,
-    deviceId: status.deviceId,
-    serverGeneration: status.generation,
-    status,
-    lastError: null,
-  }));
+  if (!await registerSavedAuthorization()) {
+    throw new Error("DEVICE_REGISTRATION_FAILED");
+  }
 }
 
 export async function clearDeviceAuthorization(): Promise<void> {

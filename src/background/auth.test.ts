@@ -66,4 +66,39 @@ describe("device authorization", () => {
     expect((await authorizedFetch("/probe")).status).toBe(200);
     expect(apiCalls).toBe(2);
   });
+
+  it("retries device registration with the saved grant before starting another OAuth flow", async () => {
+    await chrome.storage.local.set({
+      "quicklogin.tokens": {
+        accessToken: "saved-access",
+        refreshToken: "saved-refresh",
+        expiresAt: Date.now() + 300_000,
+      },
+    });
+    const launch = vi.spyOn(chrome.identity, "launchWebAuthFlow");
+    vi.mocked(fetch).mockResolvedValue(Response.json({
+      protocolVersion: 1,
+      deviceId: "device-from-saved-grant",
+      generation: 1,
+      masterEnabled: true,
+      enabled: false,
+      deviceLimit: 5,
+      used: 0,
+      disabledReason: null,
+      state: "disabled",
+      sessionVersion: 0,
+      appliedVersion: null,
+      loginAt: null,
+      lastKeepAliveAt: null,
+      lastSeenAt: null,
+    }));
+
+    await loginInteractive();
+
+    expect(launch).not.toHaveBeenCalled();
+    await expect(chrome.storage.local.get("quicklogin.state")).resolves
+      .toMatchObject({
+        "quicklogin.state": { deviceId: "device-from-saved-grant" },
+      });
+  });
 });
