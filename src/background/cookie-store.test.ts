@@ -92,4 +92,58 @@ describe("managed SSO cookies", () => {
     })).resolves.toBe("applied");
     expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-test-session");
   });
+
+  it("reads host-only cookies through the exact SSO URL", async () => {
+    const getAll = chrome.cookies.getAll.bind(chrome.cookies);
+    vi.spyOn(chrome.cookies, "getAll").mockImplementation(async (details) => {
+      const cookies = await getAll(details);
+      if (details.name && !details.url) {
+        return cookies.filter((cookie) => !cookie.hostOnly);
+      }
+      return cookies;
+    });
+
+    await expect(applyEnvelope(envelope, {
+      localGeneration: 1,
+      allowForeignOnce: false,
+    })).resolves.toBe("applied");
+    expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-test-session");
+  });
+
+  it("falls back to single-cookie lookup when Chrome omits a host-only cookie from getAll", async () => {
+    const getAll = chrome.cookies.getAll.bind(chrome.cookies);
+    vi.spyOn(chrome.cookies, "getAll").mockImplementation(async (details) =>
+      (await getAll(details)).filter((cookie) => !cookie.hostOnly)
+    );
+
+    await expect(applyEnvelope(envelope, {
+      localGeneration: 1,
+      allowForeignOnce: false,
+    })).resolves.toBe("applied");
+    expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-test-session");
+    expect(await inspectLocalTgc()).toBe("managed");
+  });
+
+  it("accepts Chrome-normalized attributes after verifying the returned cookie", async () => {
+    const originalSet = chrome.cookies.set.bind(chrome.cookies);
+    vi.spyOn(chrome.cookies, "set").mockImplementation((details) =>
+      originalSet({
+        ...details,
+        expirationDate: details.expirationDate === undefined
+          ? undefined
+          : Math.floor(details.expirationDate),
+      })
+    );
+    const normalized = {
+      ...envelope,
+      cookies: envelope.cookies.map((cookie) =>
+        cookie.name === "SESSION" ? { ...cookie, expires: 1_900_000_000.75 } : cookie
+      ),
+    };
+
+    await expect(applyEnvelope(normalized, {
+      localGeneration: 1,
+      allowForeignOnce: false,
+    })).resolves.toBe("applied");
+  });
 });

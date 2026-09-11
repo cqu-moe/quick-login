@@ -43,13 +43,24 @@ async function normalStoreId(): Promise<string> {
 
 async function getExact(entry: Pick<ManagedCookie, "name" | "domain" | "path" | "storeId">) {
   const candidates = await chrome.cookies.getAll({
+    url: cookieUrl(entry.path),
     name: entry.name,
     storeId: entry.storeId,
   });
-  return candidates.find((cookie) =>
+  const exact = candidates.find((cookie) =>
     cookie.name === entry.name && cookie.domain === entry.domain &&
     cookie.path === entry.path && cookie.storeId === entry.storeId
   ) ?? null;
+  if (exact) return exact;
+  const single = await chrome.cookies.get({
+    url: cookieUrl(entry.path),
+    name: entry.name,
+    storeId: entry.storeId,
+  });
+  return single && single.name === entry.name && single.domain === entry.domain &&
+    single.path === entry.path && single.storeId === entry.storeId
+    ? single
+    : null;
 }
 
 function setDetails(cookie: ExportedCookie, storeId: string): chrome.cookies.SetDetails {
@@ -66,6 +77,24 @@ function setDetails(cookie: ExportedCookie, storeId: string): chrome.cookies.Set
     ...(cookie.domain.startsWith(".") ? { domain: cookie.domain } : {}),
     ...(cookie.expires !== -1 ? { expirationDate: cookie.expires } : {}),
   };
+}
+
+function returnedCookieMatches(
+  written: chrome.cookies.Cookie,
+  source: ExportedCookie,
+  storeId: string
+): boolean {
+  const sameSite = source.sameSite === "Strict" ? "strict" :
+    source.sameSite === "Lax" ? "lax" : "no_restriction";
+  const expectedSession = source.expires === -1;
+  return written.name === source.name && written.value === source.value &&
+    written.domain === source.domain && written.path === source.path &&
+    written.storeId === storeId && written.secure === source.secure &&
+    written.httpOnly === source.httpOnly && written.sameSite === sameSite &&
+    written.session === expectedSession &&
+    (expectedSession ||
+      (typeof written.expirationDate === "number" &&
+       Math.abs(written.expirationDate - source.expires) < 1));
 }
 
 async function remove(entry: Pick<ManagedCookie, "name" | "path" | "storeId">) {
@@ -107,10 +136,26 @@ async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | nul
 export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
   const state = await readLocalState();
   const storeId = await normalStoreId();
-  const cookies = (await chrome.cookies.getAll({ name: "SOURCEID_TGC", storeId }))
+  const urls = [`${SSO_URL}/login`, `${SSO_URL}/authserver/login`];
+  const [lists, singles] = await Promise.all([
+    Promise.all(urls.map((url) =>
+      chrome.cookies.getAll({ url, name: "SOURCEID_TGC", storeId })
+    )),
+    Promise.all(urls.map((url) =>
+      chrome.cookies.get({ url, name: "SOURCEID_TGC", storeId })
+    )),
+  ]);
+  const presentSingles = singles.filter(
+    (cookie): cookie is chrome.cookies.Cookie => cookie !== null && cookie !== undefined
+  );
+  const cookies = [...new Map([...lists.flat(), ...presentSingles]
     .filter((cookie) =>
       cookie.domain === "sso.cqu.edu.cn" || cookie.domain === ".sso.cqu.edu.cn"
-    );
+    )
+    .map((cookie) => [
+      `${cookie.storeId}\0${cookie.domain}\0${cookie.path}\0${cookie.name}`,
+      cookie,
+    ])).values()];
   if (cookies.length === 0) return "missing";
   for (const cookie of cookies) {
     const managed = state.managed.find((entry) =>
@@ -184,6 +229,12 @@ export async function applyEnvelope(
         throw new SyncError("COOKIE_WRITE_TRANSIENT");
       }
       if (!written) throw new SyncError("COOKIE_PERMISSION_DENIED");
+      if (!returnedCookieMatches(written, cookie, storeId)) {
+        throw new SyncError("COOKIE_WRITE_TRANSIENT");
+      }
+      const writtenDigest = await digestCookie(written);
+      entry.digest = writtenDigest;
+      entry.expectedDigest = writtenDigest;
       entry.completed = true;
       await writeJournal(journal, snapshots);
       const current = await readLocalState();

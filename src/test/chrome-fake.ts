@@ -53,6 +53,20 @@ export function installChromeFake() {
     },
     cookies: {
       getAllCookieStores: async () => [{ id: "0", tabIds: [1], incognito: false }],
+      get: async (details: chrome.cookies.CookieDetails) => {
+        const url = new URL(details.url);
+        const storeId = details.storeId ?? "0";
+        return [...cookieStore.values()]
+          .filter((cookie) =>
+            cookie.name === details.name && cookie.storeId === storeId &&
+            (cookie.hostOnly
+              ? cookie.domain === url.hostname
+              : url.hostname === cookie.domain.replace(/^\./, "") ||
+                url.hostname.endsWith(cookie.domain)) &&
+            url.pathname.startsWith(cookie.path)
+          )
+          .sort((left, right) => right.path.length - left.path.length)[0];
+      },
       getAll: async (details: chrome.cookies.GetAllDetails) => [...cookieStore.values()].filter((cookie) =>
         (!details.name || cookie.name === details.name) &&
         (!details.storeId || cookie.storeId === details.storeId) &&
