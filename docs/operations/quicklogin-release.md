@@ -51,4 +51,4 @@
 
 ## 本地候选包
 
-2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.0-canary.zip`，只包含 `dist/`，SHA-256 为 `2e0178d1774d24de7216e4123b5b015f6abaaa87ebbf52c443be0beb5e41ffe2`。该文件未上传到商店；它固定使用 canary 扩展 ID。
+2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.0-canary.zip`，只包含 `dist/`，对应扩展提交 `a133ff7`，SHA-256 为 `4c93b789d78076d0478089e0e479accb6c0ddbe4df47c38dd01863b8534142b1`。该文件未上传到商店；它固定使用 canary 扩展 ID。

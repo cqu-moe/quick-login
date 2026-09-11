@@ -46,7 +46,7 @@ EXT：
 
 ```text
 npm run typecheck       PASS
-npm test                PASS — 12 files, 37 tests
+npm test                PASS — 13 files, 40 tests
 npm run build           PASS — background/content/popup/manifest
 npm run check:package   PASS — 6 files, 3 manifest references
 ```
@@ -67,7 +67,8 @@ npm run build:frontend  PASS — 206 modules
 
 - 文件：`releases/cqu-quicklogin-0.1.0-canary.zip`
 - 内容：仅 `dist/` 的 7 个 zip 条目（6 个文件和 `assets/` 目录）
-- SHA-256：`2e0178d1774d24de7216e4123b5b015f6abaaa87ebbf52c443be0beb5e41ffe2`
+- 对应扩展提交：`a133ff7`
+- SHA-256：`4c93b789d78076d0478089e0e479accb6c0ddbe4df47c38dd01863b8534142b1`
 - 上传：未执行
 
 ## 设计条款覆盖
