@@ -46,9 +46,9 @@
 
 - canary 额度映射：`PASS`（唯一旧 QuickLogin 用户，显式额度 5，保留旧 master=true；preview 无缺失/冲突）
 - canary OAuth client 登记：`PASS`（固定 public clientId、PKCE、精确回调与 Origin 已读回）
-- Auth 部署与 mode 切换：`PASS`（Worker 版本 `29659164-0593-4513-a188-aa0d8c3e0bd5`，mode=on）
+- Auth 部署与 mode 切换：`PASS`（Worker 版本 `db84afcb-aea1-40ed-9ab1-c85f809f613c`，mode=on）
 - Chrome Web Store 发布：`NOT RUN`
 
 ## 本地候选包
 
-2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.0-canary.zip`，只包含 `dist/`，SHA-256 为 `786bc57fabeb0462710457e6a1a1faa2e19db46ea2b8b3164874dca3e8b6a384`。该文件未上传到商店；它固定使用 canary 扩展 ID。
+2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.0-canary.zip`，只包含 `dist/`，SHA-256 为 `049ba823053759ce39341f0bd3c37c998ab7183f96ffdcb668f33290026f1cb3`。该文件未上传到商店；它固定使用 canary 扩展 ID。

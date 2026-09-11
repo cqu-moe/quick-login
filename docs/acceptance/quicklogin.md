@@ -48,3 +48,5 @@
 - Chrome Web Store：NOT RUN。
 
 生产探针：workers.dev health 返回 200；无令牌设备注册返回 401、精确反射 canary Origin、`Cache-Control: no-store`，证明 mode 已开启且授权闸仍生效。自定义域的命令行 health 请求被现有 WAF challenge 返回 403；已登录真实浏览器中的设置页和 API 正常返回 200。
+
+真实 Chrome 故障闭环：初次授权后 token endpoint 为 200，但设备注册连续 401；Service Worker 请求头确认 Bearer、scope、`ql_grant` 与扩展 Origin 都存在。根因是 Worker 验签通过公开 Auth 域自取 JWKS，受到 WAF challenge。部署 Auth `60e7c8f` 后，扩展 `b5ca451` 复用已保存 grant 注册成功，未重复授权；Auth 列表显示在线设备 `1 / 5`。云端学校会话仍处于“正在准备”，因此 A01/A02 尚不能标记完整 PASS。

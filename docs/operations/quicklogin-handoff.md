@@ -44,7 +44,7 @@ EXT：
 
 ```text
 npm run typecheck       PASS
-npm test                PASS — 11 files, 29 tests
+npm test                PASS — 11 files, 30 tests
 npm run build           PASS — background/content/popup/manifest
 npm run check:package   PASS — 6 files, 3 manifest references
 ```
@@ -55,7 +55,7 @@ Auth：
 npm run typecheck       PASS
 npm run typecheck:do    PASS
 npm test                PASS — 54 files, 478 tests
-npm run test:do         PASS — 12 files, 121 tests (exit 0)
+npm run test:do         PASS — 12 files, 122 tests (exit 0)
 npm run build:frontend  PASS — 206 modules
 ```
 
@@ -65,7 +65,7 @@ npm run build:frontend  PASS — 206 modules
 
 - 文件：`releases/cqu-quicklogin-0.1.0-canary.zip`
 - 内容：仅 `dist/` 的 7 个 zip 条目（6 个文件和 `assets/` 目录）
-- SHA-256：`786bc57fabeb0462710457e6a1a1faa2e19db46ea2b8b3164874dca3e8b6a384`
+- SHA-256：`049ba823053759ce39341f0bd3c37c998ab7183f96ffdcb668f33290026f1cb3`
 - 上传：未执行
 
 ## 设计条款覆盖
@@ -86,7 +86,10 @@ npm run build:frontend  PASS — 206 modules
 - 生产 D1 迁移 `0009_quicklogin_devices.sql`：已应用。
 - 唯一旧 QuickLogin 用户：preview-hash 初始化为 master=true、额度 5，读回 used=0。
 - canary OAuth client：`cqu-quicklogin-chrome`，扩展 ID `igfidegfgfoofnoncpmbcokbffjmmook`，固定回调/Origin/PKCE 配置已读回。
-- Auth Worker：版本 `29659164-0593-4513-a188-aa0d8c3e0bd5`，`QUICKLOGIN_DEVICE_MODE=on`。
+- Auth Worker：版本 `db84afcb-aea1-40ed-9ab1-c85f809f613c`，`QUICKLOGIN_DEVICE_MODE=on`。
+- WAF/JWKS 修复：Auth `60e7c8f`；保存 grant 重试注册：EXT `b5ca451`。
+- 真实 Chrome 已验证 token 兑换 200、修复前设备注册 401；修复部署并重新加载后复用同一保存 grant 注册成功，未再次弹授权页。
+- Auth 权威列表读回 `used=1 / deviceLimit=5`，目标设备在线、子开关已启用。
 - 生产设置页和 session-only API：真实浏览器读回 200，显示“已启用 0 / 5 台”。
 
 ## 仍未通过的发布门禁
