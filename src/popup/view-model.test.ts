@@ -14,18 +14,25 @@ const input: PopupInput = {
 
 describe("popup state table", () => {
   it.each([
-    [{ ...input, authorized: false, status: null }, "连接 Auth"],
-    [{ ...input, status: { ...status, masterEnabled: false } }, "请先在 Auth 开启快捷登录"],
-    [{ ...input, status: { ...status, state: "preparing" as const } }, "正在准备"],
-    [{ ...input, localWriteState: "ready" as const }, "快捷登录已准备"],
-    [{ ...input, manualOverride: true }, "已切换手动登录"],
-    [{ ...input, status: { ...status, state: "revoked" as const } }, "此设备已退出快捷登录"],
+    [{ ...input, authorized: false, status: null }, "未连接 Auth"],
+    [{ ...input, status: { ...status, masterEnabled: false } }, "尚未开启"],
+    [{ ...input, status: { ...status, state: "preparing" as const } }, "正在同步"],
+    [{ ...input, localWriteState: "ready" as const }, "已就绪"],
+    [{ ...input, manualOverride: true }, "手动登录中"],
+    [{ ...input, status: { ...status, state: "revoked" as const } }, "已退出"],
     [{ ...input, localWriteState: "foreign_session" as const }, "已有学校登录"],
   ] satisfies Array<[PopupInput, string]>)("maps state to %s", (value, heading) => {
     expect(derivePopupView(value).heading).toBe(heading);
   });
 
   it("does not claim completion while the cloud is ready but local write is not", () => {
-    expect(derivePopupView(input).heading).toBe("正在同步到浏览器");
+    expect(derivePopupView(input).heading).toBe("正在同步");
+  });
+
+  it("keeps the ready state free of descriptions and device-management actions", () => {
+    const view = derivePopupView({ ...input, localWriteState: "ready" });
+
+    expect(view.description).toBe("");
+    expect(view.actions).toEqual([]);
   });
 });
