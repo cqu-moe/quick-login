@@ -65,10 +65,10 @@ npm run build:frontend  PASS — 206 modules
 
 ## 发布包
 
-- 文件：`releases/cqu-quicklogin-0.1.0-canary.zip`
+- 文件：`releases/cqu-quicklogin-0.1.1-canary.zip`
 - 内容：仅 `dist/` 的 7 个 zip 条目（6 个文件和 `assets/` 目录）
-- 对应扩展提交：`a133ff7`
-- SHA-256：`4c93b789d78076d0478089e0e479accb6c0ddbe4df47c38dd01863b8534142b1`
+- 对应扩展提交：`d41dbd3`
+- SHA-256：`4b25337b045b4f09d1b2cc507978cc68ba5dc31f686b57a2338a7b92a6383f7a`
 - 上传：未执行
 
 ## 设计条款覆盖
