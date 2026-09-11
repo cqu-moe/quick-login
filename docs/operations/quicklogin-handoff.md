@@ -20,7 +20,7 @@ Auth 工作树：`/Users/uu/Developer/cqu-moe/auth/.worktrees/quicklogin-impleme
 | 08 | `d0638bd` |
 | 09 | `cd65938` |
 | 15 | `f56164d` |
-| 16 | `9a9f555` |
+| 16 | `9a9f555`；canary 配置 `0f0064e`、受控设置 `a2d6473`、mode on `4e25cd8` |
 | 17 | `442125e` |
 
 扩展仓库：`/Users/uu/Developer/cqu-moe/quicklogin`
@@ -36,7 +36,7 @@ Auth 工作树：`/Users/uu/Developer/cqu-moe/auth/.worktrees/quicklogin-impleme
 | 14 | `613cb98` |
 | 16 | `1db9532` |
 | 17 | `c11378a` |
-| 18 | 本文所在提交 |
+| 18 | `420cb61`；canary 固定 ID `24403fd`；部署后记录见本文后续提交 |
 
 ## 本地验证
 
@@ -63,9 +63,9 @@ npm run build:frontend  PASS — 206 modules
 
 ## 发布包
 
-- 文件：`releases/cqu-quicklogin-0.1.0.zip`
+- 文件：`releases/cqu-quicklogin-0.1.0-canary.zip`
 - 内容：仅 `dist/` 的 7 个 zip 条目（6 个文件和 `assets/` 目录）
-- SHA-256：`e230e6ecfe6f36823ec5d29704603a0d391b8c865c7bfcbfe5bff0834cff575b`
+- SHA-256：`786bc57fabeb0462710457e6a1a1faa2e19db46ea2b8b3164874dca3e8b6a384`
 - 上传：未执行
 
 ## 设计条款覆盖
@@ -81,12 +81,18 @@ npm run build:frontend  PASS — 206 modules
 | 指定 UI skills 与退出提示 | 13、14、15 | 代码复查 PASS；真实截图/键盘浏览器验收 NOT RUN |
 | 升级、协议和明确迁移 | 10、16–18 | package/fixture PASS；生产迁移 NOT RUN |
 
-## 未通过的发布门禁
+## Canary 部署状态
 
-- 生产额度映射：未提供、未获管理员确认，`NOT RUN`。
-- 正式扩展 ID / public clientId：未提供；Better Auth 正式客户端未登记，`NOT RUN`。
+- 生产 D1 迁移 `0009_quicklogin_devices.sql`：已应用。
+- 唯一旧 QuickLogin 用户：preview-hash 初始化为 master=true、额度 5，读回 used=0。
+- canary OAuth client：`cqu-quicklogin-chrome`，扩展 ID `igfidegfgfoofnoncpmbcokbffjmmook`，固定回调/Origin/PKCE 配置已读回。
+- Auth Worker：版本 `29659164-0593-4513-a188-aa0d8c3e0bd5`，`QUICKLOGIN_DEVICE_MODE=on`。
+- 生产设置页和 session-only API：真实浏览器读回 200，显示“已启用 0 / 5 台”。
+
+## 仍未通过的发布门禁
+
 - 真实普通 Chrome 加载、学校业务页面登录、跨 tab、外来会话和重启升级：`NOT RUN`。
 - 1 小时保活、7 小时重登、离线 7 天的真实时长观察：`NOT RUN`。
-- Auth 部署、`QUICKLOGIN_DEVICE_MODE=on`、Chrome Web Store 上传/发布：均未执行。
+- Chrome Web Store 上传/发布：未执行。
 
-当前 Wrangler 模板明确为 `QUICKLOGIN_DEVICE_MODE=off`。本地实现完成，但尚未发布。后续必须按 [发布门禁](quicklogin-release.md) 顺序执行，不能因为自动化全绿而跳过映射确认、正式客户端读回或真实学校页面验收。
+Canary 后端已发布，但商店和真实学校页面验收仍未完成。后续不能因为 API/设置页读回成功而跳过实际 Chrome、Cookie 所有权和学校业务页面验收。

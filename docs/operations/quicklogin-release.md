@@ -44,11 +44,11 @@
 
 ## 当前门禁状态
 
-- 生产额度映射：`NOT RUN`（未提供管理员确认的真实映射）
-- 正式 OAuth client 登记：`NOT RUN`（正式扩展 ID/clientId 未提供）
-- Auth 部署与 mode 切换：`NOT RUN`
+- canary 额度映射：`PASS`（唯一旧 QuickLogin 用户，显式额度 5，保留旧 master=true；preview 无缺失/冲突）
+- canary OAuth client 登记：`PASS`（固定 public clientId、PKCE、精确回调与 Origin 已读回）
+- Auth 部署与 mode 切换：`PASS`（Worker 版本 `29659164-0593-4513-a188-aa0d8c3e0bd5`，mode=on）
 - Chrome Web Store 发布：`NOT RUN`
 
 ## 本地候选包
 
-2026-09-11 本地构建生成 `releases/cqu-quicklogin-0.1.0.zip`，只包含 `dist/`，SHA-256 为 `e230e6ecfe6f36823ec5d29704603a0d391b8c865c7bfcbfe5bff0834cff575b`。该文件未上传；正式 ID/clientId 尚未登记，因此只能用于本地复核。
+2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.0-canary.zip`，只包含 `dist/`，SHA-256 为 `786bc57fabeb0462710457e6a1a1faa2e19db46ea2b8b3164874dca3e8b6a384`。该文件未上传到商店；它固定使用 canary 扩展 ID。

@@ -2,7 +2,7 @@
 
 记录日期：2026-09-11（Asia/Shanghai）
 
-范围：本地代码、自动化测试与构建。未在真实 Chrome 中加载扩展，未使用真实学校账号，未部署。
+范围：本地代码、自动化测试、构建与生产 canary 配置。尚未在用户 Chrome 中加载扩展，也未完成学校业务页面验收。
 
 ## 自动化证据
 
@@ -42,6 +42,9 @@
 
 ## 发布边界
 
-- 生产额度映射：NOT RUN，未获管理员确认。
-- 正式 OAuth client 登记：NOT RUN，正式扩展 ID/clientId 未提供。
-- 部署、mode on、Chrome Web Store：NOT RUN，且不在本计划授权范围。
+- canary 额度映射：PASS，唯一旧 QuickLogin 用户显式映射为 5 台，preview 无缺失或冲突。
+- canary OAuth client：PASS，固定 ID、PKCE、回调、scope、Origin 和 official metadata 已生产读回。
+- Auth 部署和 mode on：PASS，生产设置页读回 `masterEnabled=true / deviceLimit=5 / used=0`。
+- Chrome Web Store：NOT RUN。
+
+生产探针：workers.dev health 返回 200；无令牌设备注册返回 401、精确反射 canary Origin、`Cache-Control: no-store`，证明 mode 已开启且授权闸仍生效。自定义域的命令行 health 请求被现有 WAF challenge 返回 403；已登录真实浏览器中的设置页和 API 正常返回 200。

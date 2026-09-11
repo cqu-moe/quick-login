@@ -26,7 +26,7 @@ npm run check:package
 - scope 为 `openid offline_access cqu:quicklogin:device`；
 - CORS Origin 为精确的 `chrome-extension://<extension-id>`。
 
-正式扩展 ID/clientId 尚未提供或登记，因此当前 release zip 是本地验收包，不是已获发布批准的商店包。
+当前 canary 使用固定扩展 ID `igfidegfgfoofnoncpmbcokbffjmmook` 和 public clientId `cqu-quicklogin-chrome`，均已在 Auth 生产环境读回。Chrome Web Store 正式 ID 仍需发布前另行核对。
 
 ## 开关和所有权
 
