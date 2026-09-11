@@ -1,6 +1,7 @@
 import { loginInteractive } from "./auth";
 import {
   enterManualMode,
+  retryAutomaticNow,
   resumeAutomaticMode,
   setEnabled,
   switchToManagedOnce,
@@ -104,7 +105,7 @@ export async function handleMessage(message: BackgroundMessage) {
       await chrome.tabs.create({ url: url.toString() });
       return { ok: true };
     }
-    case "SYNC": await sync("network"); return { ok: true };
+    case "SYNC": await retryAutomaticNow(); return { ok: true };
     case "GET_UI_STATE": {
       const state = await readLocalState();
       return {

@@ -1,5 +1,5 @@
 import type { CookieEnvelope, ErrorCode, LocalState, RecoveryRound } from "../shared/contracts";
-import { SYNC_ALARM } from "../shared/config";
+import { PREPARING_SYNC_DELAY_MS, SYNC_ALARM } from "../shared/config";
 import * as api from "./api";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
@@ -98,7 +98,14 @@ async function runSync(reason: SyncReason): Promise<void> {
     return;
   }
   if (local.manualOverride) return;
+  if (remote.state === "preparing" || remote.state === "refreshing") {
+    chrome.alarms.create(`${SYNC_ALARM}-retry`, {
+      when: Date.now() + PREPARING_SYNC_DELAY_MS,
+    });
+    return;
+  }
   if (remote.state !== "ready") return;
+  await chrome.alarms.clear(`${SYNC_ALARM}-retry`);
   if (local.appliedVersion === remote.sessionVersion &&
       reason !== "login_form" && reason !== "user_retry") return;
 
@@ -201,6 +208,15 @@ export async function resumeAutomaticMode(): Promise<void> {
     recovery: null,
     lastError: null,
   }));
+  await sync("user_retry");
+}
+
+export async function retryAutomaticNow(): Promise<void> {
+  const state = await updateLocalState((current) => current.manualOverride
+    ? current
+    : { ...current, recovery: null, lastError: null }
+  );
+  if (state.manualOverride) return;
   await sync("user_retry");
 }
 

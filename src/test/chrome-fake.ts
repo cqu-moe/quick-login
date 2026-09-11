@@ -39,7 +39,7 @@ export function installChromeFake() {
       create: (name: string, info: chrome.alarms.AlarmCreateInfo) => {
         alarms.set(name, {
           name,
-          scheduledTime: Date.now(),
+          scheduledTime: info.when ?? Date.now() + (info.delayInMinutes ?? 0) * 60_000,
           periodInMinutes: info.periodInMinutes,
           persistAcrossSessions: true,
         });

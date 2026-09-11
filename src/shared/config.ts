@@ -7,3 +7,4 @@ export const config = {
 export const DEVICE_SCOPE = "cqu:quicklogin:device";
 export const SYNC_ALARM = "quicklogin-sync";
 export const SYNC_PERIOD_MINUTES = 5;
+export const PREPARING_SYNC_DELAY_MS = 30_000;

@@ -7,7 +7,7 @@
 - `cookies`：仅同步和核对 `sso.cqu.edu.cn` / `.sso.cqu.edu.cn` 的 SSO Cookie；不读取学校业务域 Cookie。
 - `identity`：发起 Auth 的 OAuth authorization-code + PKCE 流程，固定使用 Chromium 扩展回调。
 - `storage`：在 trusted contexts 保存设备 ID、OAuth token、generation、Cookie 摘要和中断恢复日志；内容脚本不能读取 token。
-- `alarms`：每 5 分钟触发状态/版本检查，并为受限重试保留 Worker 重启后的唤醒点。
+- `alarms`：正常可用时每 5 分钟检查；`preparing` / `refreshing` 时每 30 秒检查，并为受限重试保留 Worker 重启后的唤醒点。
 
 Host permissions 只能是 `https://auth.cqu.moe/*` 和 `https://sso.cqu.edu.cn/*`。不得加入 `<all_urls>`、学校业务域、远程脚本或远程可执行更新器。
 

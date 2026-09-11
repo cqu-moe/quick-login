@@ -3,6 +3,8 @@ import { installChromeFake } from "../test/chrome-fake";
 import { initialLocalState } from "./storage";
 import * as api from "./api";
 import { setEnvelopeWriter, sync } from "./sync";
+import { handleMessage } from "./messages";
+import { SYNC_ALARM } from "../shared/config";
 
 const remote = {
   protocolVersion: 1 as const,
@@ -75,5 +77,46 @@ describe("background synchronization", () => {
     });
     await running;
     expect(apply).not.toHaveBeenCalled();
+  });
+
+  it("clears a persisted retry wait when the user clicks retry", async () => {
+    const apply = vi.fn().mockResolvedValue("applied" as const);
+    setEnvelopeWriter(apply);
+    const current = (await chrome.storage.local.get("quicklogin.state"))["quicklogin.state"] as ReturnType<typeof initialLocalState>;
+    await chrome.storage.local.set({
+      "quicklogin.state": {
+        ...current,
+        localWriteState: "error",
+        recovery: {
+          id: "round-a",
+          generation: 4,
+          sessionVersion: 7,
+          phase: "downloading",
+          downloadRetries: 2,
+          writeRetries: 0,
+          nextAttemptAt: Date.now() + 60_000,
+          navigatedTabId: null,
+        },
+      },
+    });
+
+    await handleMessage({ type: "SYNC" });
+
+    expect(api.status).toHaveBeenCalledTimes(1);
+    expect(apply).toHaveBeenCalledTimes(1);
+    const after = (await chrome.storage.local.get("quicklogin.state"))["quicklogin.state"] as ReturnType<typeof initialLocalState>;
+    expect(after.recovery?.nextAttemptAt).toBeNull();
+  });
+
+  it("schedules a 30-second status check while the cloud session is preparing", async () => {
+    vi.mocked(api.status).mockResolvedValue({ ...remote, state: "preparing" });
+    const startedAt = Date.now();
+
+    await sync("enable");
+
+    expect(api.exportCookies).not.toHaveBeenCalled();
+    const alarm = await chrome.alarms.get(`${SYNC_ALARM}-retry`);
+    expect(alarm?.scheduledTime).toBeGreaterThanOrEqual(startedAt + 30_000);
+    expect(alarm?.scheduledTime).toBeLessThan(startedAt + 31_000);
   });
 });

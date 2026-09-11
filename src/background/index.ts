@@ -20,6 +20,7 @@ async function start(): Promise<void> {
   await readLocalState();
   await recoverInterruptedWrite();
   await ensureSyncAlarm();
+  await sync("startup");
 }
 
 chrome.runtime.onInstalled.addListener(() => { void start(); });

@@ -46,7 +46,7 @@ EXT：
 
 ```text
 npm run typecheck       PASS
-npm test                PASS — 11 files, 34 tests
+npm test                PASS — 12 files, 37 tests
 npm run build           PASS — background/content/popup/manifest
 npm run check:package   PASS — 6 files, 3 manifest references
 ```
