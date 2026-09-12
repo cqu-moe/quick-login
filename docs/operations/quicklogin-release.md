@@ -51,4 +51,9 @@
 
 ## 本地候选包
 
+2026-09-13 API v1 构建为 `releases/cqu-quicklogin-0.1.3-v1.zip`，只包含
+`dist/`，对应扩展提交 `39377c0`，SHA-256 为
+`683449397ce213858bd01576a0ca91c422b4d2769e08aa9bb21c92dccd30417a`。
+它固定使用 `/api/v1` OAuth/device 路径和稳定 issuer audience；未上传商店。
+
 2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.2-canary.zip`，只包含 `dist/`，对应扩展提交 `09e0158`，SHA-256 为 `498d2c45ee7b24b5f4cf37042aa9ed3e4bc4a1cca896df7489180d620e44fa1f`。该文件未上传到商店；它固定使用 canary 扩展 ID。

@@ -65,6 +65,11 @@ npm run build:frontend  PASS — 206 modules
 
 ## 发布包
 
+- API v1 本地包：`releases/cqu-quicklogin-0.1.3-v1.zip`
+- API v1 版本提交：`39377c0`
+- API v1 SHA-256：`683449397ce213858bd01576a0ca91c422b4d2769e08aa9bb21c92dccd30417a`
+- API v1 验证：14 files / 46 tests、typecheck、build、package、ZIP integrity 与旧路径静态扫描通过；未上传商店
+
 - 文件：`releases/cqu-quicklogin-0.1.2-canary.zip`
 - 内容：仅 `dist/` 的 7 个 zip 条目（6 个文件和 `assets/` 目录）
 - 对应扩展提交：`09e0158`
