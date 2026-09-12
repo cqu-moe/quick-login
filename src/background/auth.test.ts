@@ -125,6 +125,10 @@ describe("device authorization", () => {
   });
 
   it("retries device registration with the saved grant before starting another OAuth flow", async () => {
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("macOS");
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 Chrome/140.0.0.0 Safari/537.36"
+    );
     await chrome.storage.local.set({
       "quicklogin.tokens": {
         accessToken: "saved-access",
@@ -145,6 +149,11 @@ describe("device authorization", () => {
     expect(String(vi.mocked(fetch).mock.calls[0]![0]))
       .toBe("https://auth.cqu.moe/api/v1/cqu/quicklogin/devices");
     expect(vi.mocked(fetch).mock.calls[0]![1]?.method).toBe("POST");
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]![1]?.body))).toEqual({
+      deviceName: "macOS Chrome",
+      browserFamily: "chrome",
+      browserVersion: "140.0.0.0",
+    });
     await expect(chrome.storage.local.get("quicklogin.state")).resolves
       .toMatchObject({
         "quicklogin.state": { deviceId: "device-from-saved-grant" },
