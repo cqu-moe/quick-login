@@ -1,4 +1,4 @@
-import { config, DEVICE_SCOPE } from "../shared/config";
+import { API_PATHS, AUTH_ISSUER, config, DEVICE_SCOPE } from "../shared/config";
 import type { ApiError, DeviceStatus } from "../shared/contracts";
 import { updateLocalState } from "./storage";
 
@@ -53,7 +53,7 @@ async function saveTokens(body: Record<string, unknown>): Promise<Tokens> {
 }
 
 async function tokenRequest(params: URLSearchParams): Promise<Tokens> {
-  const response = await fetch(`${config.authOrigin}/api/auth/oauth2/token`, {
+  const response = await fetch(`${config.authOrigin}${API_PATHS.oauthToken}`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: params,
@@ -74,7 +74,7 @@ async function refreshTokens(force = false): Promise<Tokens> {
       grant_type: "refresh_token",
       client_id: config.clientId,
       refresh_token: current.refreshToken,
-      resource: config.authOrigin,
+      resource: AUTH_ISSUER,
     }));
   })();
   try {
@@ -117,7 +117,7 @@ function deviceMetadata() {
 
 async function registerSavedAuthorization(): Promise<boolean> {
   if (!await readTokens()) return false;
-  const response = await authorizedFetch("/api/cqu/quicklogin/devices", {
+  const response = await authorizedFetch(API_PATHS.quickloginDevices, {
     method: "POST",
     body: JSON.stringify(deviceMetadata()),
   });
@@ -148,7 +148,7 @@ export async function loginInteractive(): Promise<void> {
   const pending: PendingPkce = { state, verifier, redirectUri, createdAt: Date.now() };
   await chrome.storage.local.set({ [PENDING_KEY]: pending });
 
-  const authorize = new URL(`${config.authOrigin}/api/auth/oauth2/authorize`);
+  const authorize = new URL(`${config.authOrigin}${API_PATHS.oauthAuthorize}`);
   authorize.search = new URLSearchParams({
     client_id: config.clientId,
     redirect_uri: redirectUri,
@@ -158,7 +158,7 @@ export async function loginInteractive(): Promise<void> {
     code_challenge: await challenge(verifier),
     code_challenge_method: "S256",
     prompt: "consent",
-    resource: config.authOrigin,
+    resource: AUTH_ISSUER,
   }).toString();
 
   const callback = await chrome.identity.launchWebAuthFlow({
@@ -182,7 +182,7 @@ export async function loginInteractive(): Promise<void> {
     code,
     code_verifier: stored.verifier,
     redirect_uri: stored.redirectUri,
-    resource: config.authOrigin,
+    resource: AUTH_ISSUER,
   }));
   if (!await registerSavedAuthorization()) {
     throw new Error("DEVICE_REGISTRATION_FAILED");

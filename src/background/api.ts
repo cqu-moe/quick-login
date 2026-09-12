@@ -1,4 +1,5 @@
 import type { CookieEnvelope, DeviceStatus } from "../shared/contracts";
+import { API_PATHS } from "../shared/config";
 import { authorizedFetch } from "./auth";
 import { readLocalState } from "./storage";
 
@@ -18,7 +19,7 @@ export function register(metadata: {
   browserFamily: "chrome";
   browserVersion: string;
 }): Promise<DeviceStatus> {
-  return authorizedFetch("/api/cqu/quicklogin/devices", {
+  return authorizedFetch(API_PATHS.quickloginDevices, {
     method: "POST",
     body: JSON.stringify(metadata),
   }).then(json<DeviceStatus>);
@@ -31,7 +32,7 @@ export async function status(input: {
   browserVersion: string;
 }): Promise<DeviceStatus> {
   const id = await deviceId();
-  return authorizedFetch(`/api/cqu/quicklogin/devices/${encodeURIComponent(id)}/status`, {
+  return authorizedFetch(`${API_PATHS.quickloginDevices}/${encodeURIComponent(id)}/status`, {
     method: "POST",
     body: JSON.stringify(input),
   }).then(json<DeviceStatus>);
@@ -39,7 +40,7 @@ export async function status(input: {
 
 export async function setDeviceEnabled(enabled: boolean): Promise<DeviceStatus> {
   const id = await deviceId();
-  return authorizedFetch(`/api/cqu/quicklogin/devices/${encodeURIComponent(id)}`, {
+  return authorizedFetch(`${API_PATHS.quickloginDevices}/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify({ enabled }),
   }).then(json<DeviceStatus>);
@@ -47,7 +48,7 @@ export async function setDeviceEnabled(enabled: boolean): Promise<DeviceStatus> 
 
 export async function refresh(generation: number): Promise<DeviceStatus> {
   const id = await deviceId();
-  return authorizedFetch(`/api/cqu/quicklogin/devices/${encodeURIComponent(id)}/refresh`, {
+  return authorizedFetch(`${API_PATHS.quickloginDevices}/${encodeURIComponent(id)}/refresh`, {
     method: "POST",
     body: JSON.stringify({ protocolVersion: 1, generation }),
   }).then(json<DeviceStatus>);
@@ -58,7 +59,7 @@ export async function exportCookies(
   sessionVersion: number
 ): Promise<CookieEnvelope> {
   const id = await deviceId();
-  return authorizedFetch(`/api/cqu/quicklogin/devices/${encodeURIComponent(id)}/export`, {
+  return authorizedFetch(`${API_PATHS.quickloginDevices}/${encodeURIComponent(id)}/export`, {
     method: "POST",
     body: JSON.stringify({ protocolVersion: 1, generation, sessionVersion }),
   }).then(json<CookieEnvelope>);
