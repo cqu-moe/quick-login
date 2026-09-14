@@ -2,6 +2,18 @@
 
 记录日期：2026-09-11（Asia/Shanghai）
 
+## 2026-09-15 generation reconciliation 回归
+
+- 修复前生产信号：设备 status 返回 HTTP 409
+  `STALE_GENERATION`，网站设备列表中两个启用设备均 offline；主 CQU session active。
+- 触发原因：验收期间网站总开关执行 off/on，服务端设备 generation 增加 2，0.1.3
+  客户端本地观察值未更新。
+- 协议 v2 自动化：总开关 off/on 后，旧 observedGeneration 的 heartbeat 返回当前
+  generation、更新在线元数据、拒绝旧 appliedVersion；精确 refresh/export fence 保留。
+- 本地结果：Auth Node 741、DO 217；EXT 47、typecheck/build/package 全部通过。
+- 生产后端：Worker `bdbb2023-62a7-439b-861a-22f0863a73d5` 接管 100%。
+- Chrome 0.1.4 status 200、Cookie 应用和真实学校页面：`NOT RUN`，等待用户更新扩展。
+
 范围：本地代码、自动化测试、构建、生产 canary 配置，以及 Ego Lite Chromium 152 的真实授权、Cookie 写入和学校业务落地。Google Chrome 最终构建复测、长期观察与商店发布仍不在本次已通过范围内。
 
 ## 自动化证据

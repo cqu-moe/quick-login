@@ -2,6 +2,27 @@
 
 交接时间：2026-09-11（Asia/Shanghai）
 
+## 2026-09-15 协议 v2 更新
+
+- 根因：网站总开关关闭再开启会令每个启用设备的 generation 前进两次；0.1.3 的
+  status 心跳把本地 generation 当作必须相等的写栅栏，409 `STALE_GENERATION` 后又不
+  获取服务器当前值，形成永久重试循环。
+- 新协议：status 请求字段为 `observedGeneration`。服务端始终返回当前
+  `DeviceStatus`；观察值过期时仍更新 lastSeen/IP/browserVersion，但保留服务器已有
+  appliedVersion。只有观察值等于当前 generation 时才接受客户端 appliedVersion。
+- refresh/export 仍使用精确 generation/sessionVersion fence；OAuth grant、设备 ID、
+  Cookie 所有权和验证码租约均未放宽。
+- Auth：`b5ebf82`；生产 Worker
+  `bdbb2023-62a7-439b-861a-22f0863a73d5`，100% 流量。
+- EXT：`974d703`，版本 0.1.4，协议版本 2。
+- 安装包：`releases/cqu-quicklogin-0.1.4-canary.zip`；SHA-256
+  `68946df7d2c230b8c1f233aa900bc5e277f4205224c9402fc3c33e96e4fcb94c`；只含 7 个
+  dist ZIP 条目，完整性检查通过，未上传商店。
+- 自动化：Auth 85 files / 741 tests、DO 22 files / 217 tests；EXT 14 files /
+  47 tests、typecheck、build、package check 通过。
+- 待真实验收：在 Chrome 加载 0.1.4 后，status 应由 409 变 200，服务器返回当前
+  generation，插件写回 Cookie 后 Auth 设备列表应恢复 online。该步骤不能用本地测试替代。
+
 ## 仓库与提交
 
 Auth 工作树：`/Users/uu/Developer/cqu-moe/auth/.worktrees/quicklogin-implementation`

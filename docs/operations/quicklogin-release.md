@@ -51,6 +51,16 @@
 
 ## 本地候选包
 
+2026-09-15 generation reconciliation 协议 v2 构建为
+`releases/cqu-quicklogin-0.1.4-canary.zip`，只包含 `dist/`，对应扩展提交
+`974d703`，SHA-256 为
+`68946df7d2c230b8c1f233aa900bc5e277f4205224c9402fc3c33e96e4fcb94c`。
+配套 Auth 提交为 `b5ebf82`，生产 Worker
+`bdbb2023-62a7-439b-861a-22f0863a73d5` 已接管 100%。status 心跳改用
+`observedGeneration`：旧观察值仍返回当前状态并更新在线信息，但不会接受旧
+`appliedVersion`。refresh/export 继续要求当前 generation。协议 v1 不兼容，使用前必须
+更新到扩展 0.1.4；未上传 Chrome Web Store。
+
 2026-09-13 API v1 构建为 `releases/cqu-quicklogin-0.1.3-v1.zip`，只包含
 `dist/`，对应扩展提交 `39377c0`，SHA-256 为
 `683449397ce213858bd01576a0ca91c422b4d2769e08aa9bb21c92dccd30417a`。
