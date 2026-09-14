@@ -5,7 +5,7 @@ import { authorizedFetch, loginInteractive } from "./auth";
 const stableResource = "https://auth.cqu.moe/api/auth";
 
 const deviceStatus = {
-  protocolVersion: 1,
+  protocolVersion: 2,
   deviceId: "device-from-grant",
   generation: 1,
   masterEnabled: true,

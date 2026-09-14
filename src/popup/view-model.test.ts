@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { derivePopupView, type PopupInput } from "./view-model";
 
 const status = {
-  protocolVersion: 1 as const, deviceId: "device-a", generation: 4,
+  protocolVersion: 2 as const, deviceId: "device-a", generation: 4,
   masterEnabled: true, enabled: true, deviceLimit: 5, used: 1,
   disabledReason: null, state: "ready" as const, sessionVersion: 7,
   appliedVersion: null, loginAt: 1, lastKeepAliveAt: 2, lastSeenAt: 3,

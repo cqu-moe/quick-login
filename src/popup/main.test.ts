@@ -5,7 +5,7 @@ import type { PopupInput } from "./view-model";
 const readyInput: PopupInput = {
   authorized: true,
   status: {
-    protocolVersion: 1,
+    protocolVersion: 2,
     deviceId: "device-a",
     generation: 4,
     masterEnabled: true,

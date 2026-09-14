@@ -1,5 +1,5 @@
 import type { CookieEnvelope, DeviceStatus } from "../shared/contracts";
-import { API_PATHS } from "../shared/config";
+import { API_PATHS, config } from "../shared/config";
 import { authorizedFetch } from "./auth";
 import { readLocalState } from "./storage";
 
@@ -26,8 +26,8 @@ export function register(metadata: {
 }
 
 export async function status(input: {
-  protocolVersion: 1;
-  generation: number;
+  protocolVersion: 2;
+  observedGeneration: number;
   appliedVersion: number | null;
   browserVersion: string;
 }): Promise<DeviceStatus> {
@@ -50,7 +50,7 @@ export async function refresh(generation: number): Promise<DeviceStatus> {
   const id = await deviceId();
   return authorizedFetch(`${API_PATHS.quickloginDevices}/${encodeURIComponent(id)}/refresh`, {
     method: "POST",
-    body: JSON.stringify({ protocolVersion: 1, generation }),
+    body: JSON.stringify({ protocolVersion: config.protocolVersion, generation }),
   }).then(json<DeviceStatus>);
 }
 
@@ -61,6 +61,10 @@ export async function exportCookies(
   const id = await deviceId();
   return authorizedFetch(`${API_PATHS.quickloginDevices}/${encodeURIComponent(id)}/export`, {
     method: "POST",
-    body: JSON.stringify({ protocolVersion: 1, generation, sessionVersion }),
+    body: JSON.stringify({
+      protocolVersion: config.protocolVersion,
+      generation,
+      sessionVersion,
+    }),
   }).then(json<CookieEnvelope>);
 }

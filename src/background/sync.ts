@@ -1,5 +1,5 @@
 import type { CookieEnvelope, ErrorCode, LocalState, RecoveryRound } from "../shared/contracts";
-import { PREPARING_SYNC_DELAY_MS, SYNC_ALARM } from "../shared/config";
+import { config, PREPARING_SYNC_DELAY_MS, SYNC_ALARM } from "../shared/config";
 import * as api from "./api";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
@@ -62,8 +62,8 @@ async function runSync(reason: SyncReason): Promise<void> {
   let remote;
   try {
     remote = await api.status({
-      protocolVersion: 1,
-      generation: local.serverGeneration ?? 0,
+      protocolVersion: config.protocolVersion,
+      observedGeneration: local.serverGeneration ?? 0,
       appliedVersion: local.appliedVersion,
       browserVersion: browserVersion(),
     });

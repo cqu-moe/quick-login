@@ -44,10 +44,10 @@ describe("QuickLogin API requests", () => {
     expect(request.init.body).toBe(JSON.stringify(metadata));
   });
 
-  it("posts device status to the v1 status path with the complete heartbeat", async () => {
+  it("posts device status using the v2 observed-generation contract", async () => {
     const heartbeat = {
-      protocolVersion: 1 as const,
-      generation: 7,
+      protocolVersion: 2 as const,
+      observedGeneration: 7,
       appliedVersion: 5,
       browserVersion: "140.0.0.0",
     };
@@ -75,7 +75,7 @@ describe("QuickLogin API requests", () => {
     const request = capturedRequest();
     expect(request.url).toBe(`${encodedDeviceUrl}/refresh`);
     expect(request.init.method).toBe("POST");
-    expect(request.init.body).toBe(JSON.stringify({ protocolVersion: 1, generation: 7 }));
+    expect(request.init.body).toBe(JSON.stringify({ protocolVersion: 2, generation: 7 }));
   });
 
   it("exports cookies at the v1 export path with generation and version protection", async () => {
@@ -85,7 +85,7 @@ describe("QuickLogin API requests", () => {
     expect(request.url).toBe(`${encodedDeviceUrl}/export`);
     expect(request.init.method).toBe("POST");
     expect(request.init.body).toBe(JSON.stringify({
-      protocolVersion: 1,
+      protocolVersion: 2,
       generation: 7,
       sessionVersion: 11,
     }));

@@ -4,7 +4,7 @@ import type { CookieEnvelope } from "./contracts";
 
 function envelope(domain: string, value = "synthetic-test-session") {
   return {
-    protocolVersion: 1,
+  protocolVersion: 2,
     deviceId: "device-a",
     generation: 4,
     sessionVersion: 7,

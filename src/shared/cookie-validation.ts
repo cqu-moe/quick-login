@@ -25,7 +25,7 @@ function validCookie(cookie: ExportedCookie): boolean {
 export function validateCookieEnvelope(value: CookieEnvelope): CookieEnvelope {
   if (!value || Object.keys(value).sort().join(",") !==
       "cookies,createdAt,deviceId,generation,protocolVersion,sessionVersion" ||
-      value.protocolVersion !== 1 || !value.deviceId ||
+      value.protocolVersion !== 2 || !value.deviceId ||
       !Number.isSafeInteger(value.generation) || value.generation < 0 ||
       !Number.isSafeInteger(value.sessionVersion) || value.sessionVersion < 0 ||
       !Number.isSafeInteger(value.createdAt) || !Array.isArray(value.cookies) ||

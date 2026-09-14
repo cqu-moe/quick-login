@@ -10,7 +10,7 @@ export type CloudState =
   | "needs_reauth" | "temporary_unavailable" | "revoked";
 
 export interface DeviceStatus {
-  protocolVersion: 1;
+  protocolVersion: 2;
   deviceId: string;
   generation: number;
   masterEnabled: boolean;
@@ -38,7 +38,7 @@ export interface ExportedCookie {
 }
 
 export interface CookieEnvelope {
-  protocolVersion: 1;
+  protocolVersion: 2;
   deviceId: string;
   generation: number;
   sessionVersion: number;

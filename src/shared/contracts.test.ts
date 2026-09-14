@@ -7,11 +7,11 @@ import type { CookieEnvelope, DeviceStatus } from "./contracts";
 
 async function fixture() {
   return JSON.parse(await readFile(
-    resolve(process.cwd(), "tests/fixtures/protocol-v1.json"), "utf8"
+    resolve(process.cwd(), "tests/fixtures/protocol-v2.json"), "utf8"
   )) as { status: DeviceStatus; envelope: CookieEnvelope; error: unknown };
 }
 
-describe("protocol v1 fixture", () => {
+describe("protocol v2 fixture", () => {
   it("accepts the shared valid status, envelope and error", async () => {
     const value = await fixture();
     expect(validateDeviceStatus(value.status).generation).toBe(4);
@@ -21,7 +21,7 @@ describe("protocol v1 fixture", () => {
 
   it("rejects version drift, parent domains, empty TGC and wrong field types", async () => {
     const value = await fixture();
-    expect(() => validateDeviceStatus({ ...value.status, protocolVersion: 2 })).toThrow();
+    expect(() => validateDeviceStatus({ ...value.status, protocolVersion: 1 })).toThrow();
     expect(() => validateDeviceStatus({ ...value.status, used: "2" })).toThrow();
     expect(() => validateCookieEnvelope({
       ...value.envelope,

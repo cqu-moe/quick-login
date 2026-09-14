@@ -1,7 +1,7 @@
 export const config = {
   authOrigin: "https://auth.cqu.moe",
   clientId: "cqu-quicklogin-chrome",
-  protocolVersion: 1 as const,
+  protocolVersion: 2 as const,
 };
 
 export const AUTH_ISSUER = "https://auth.cqu.moe/api/auth";

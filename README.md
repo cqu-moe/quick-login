@@ -2,7 +2,7 @@
 
 Chrome MV3 扩展，为每个安装实例维护独立的重庆大学统一认证会话。Auth 负责设备授权、额度、云端学校会话和撤销；扩展后台按版本同步限定于 `sso.cqu.edu.cn` 的 Cookie，不读取或保存学校密码。
 
-当前协议版本为 `1`。本仓库是正式扩展源码；`experiment/` 仅保留早期验证材料，不能作为 Chrome 加载目录。
+当前协议版本为 `2`。status 心跳携带 `observedGeneration`，服务端始终返回当前设备 generation；只有观察值仍为当前版本时才接受 `appliedVersion`，避免总开关、额度或绑定状态变化后形成无法自愈的 409 循环。本仓库是正式扩展源码；`experiment/` 仅保留早期验证材料，不能作为 Chrome 加载目录。
 
 ## 本地构建
 

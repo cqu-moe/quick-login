@@ -29,7 +29,7 @@ export function validateDeviceStatus(value: unknown): DeviceStatus {
   const status = value as Record<string, unknown>;
   if (JSON.stringify(value).length > 64 * 1024 ||
       Object.keys(status).sort().join(",") !== STATUS_KEYS ||
-      status.protocolVersion !== 1 || typeof status.deviceId !== "string" || !status.deviceId ||
+      status.protocolVersion !== 2 || typeof status.deviceId !== "string" || !status.deviceId ||
       !safeInteger(status.generation) || typeof status.masterEnabled !== "boolean" ||
       typeof status.enabled !== "boolean" || !safeInteger(status.deviceLimit) ||
       !safeInteger(status.used) ||

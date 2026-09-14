@@ -7,7 +7,7 @@ import { handleMessage } from "./messages";
 import { SYNC_ALARM } from "../shared/config";
 
 const remote = {
-  protocolVersion: 1 as const,
+  protocolVersion: 2 as const,
   deviceId: "device-a",
   generation: 4,
   masterEnabled: true,
@@ -35,7 +35,7 @@ beforeEach(async () => {
   });
   vi.spyOn(api, "status").mockResolvedValue(remote);
   vi.spyOn(api, "exportCookies").mockResolvedValue({
-    protocolVersion: 1,
+    protocolVersion: 2,
     deviceId: "device-a",
     generation: 4,
     sessionVersion: 7,
@@ -45,6 +45,19 @@ beforeEach(async () => {
 });
 
 describe("background synchronization", () => {
+  it("reports the last observed generation through protocol v2", async () => {
+    setEnvelopeWriter(vi.fn().mockResolvedValue("applied" as const));
+
+    await sync("alarm");
+
+    expect(api.status).toHaveBeenCalledWith({
+      protocolVersion: 2,
+      observedGeneration: 4,
+      appliedVersion: null,
+      browserVersion: expect.any(String),
+    });
+  });
+
   it("coalesces concurrent alarm and login-form requests", async () => {
     const apply = vi.fn().mockResolvedValue("applied" as const);
     setEnvelopeWriter(apply);
@@ -68,7 +81,7 @@ describe("background synchronization", () => {
       "quicklogin.state": { ...current, localGeneration: current.localGeneration + 1 },
     });
     release({
-      protocolVersion: 1,
+      protocolVersion: 2,
       deviceId: "device-a",
       generation: 4,
       sessionVersion: 7,

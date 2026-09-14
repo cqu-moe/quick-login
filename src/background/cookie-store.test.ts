@@ -6,7 +6,7 @@ import type { CookieEnvelope } from "../shared/contracts";
 
 let fake: ReturnType<typeof installChromeFake>;
 const envelope: CookieEnvelope = {
-  protocolVersion: 1,
+  protocolVersion: 2,
   deviceId: "device-a",
   generation: 4,
   sessionVersion: 7,
