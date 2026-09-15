@@ -39,7 +39,6 @@ main {
   min-height: 260px;
   padding: 20px 26px 42px;
   text-align: center;
-  animation: status-in 180ms cubic-bezier(.19, 1, .22, 1);
 }
 .status-icon {
   position: relative;
@@ -176,7 +175,3 @@ button:active { transform: scale(.97); }
   button, .status, .status-icon, .switch-track span { animation: none; transition: none; }
 }
 @keyframes spin { to { transform: rotate(1turn); } }
-@keyframes status-in {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}

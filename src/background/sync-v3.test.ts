@@ -1,7 +1,8 @@
+import { derivePresentation } from "../shared/protocol-v3.generated";
 import { applyEnvelope } from "./cookie-store";
 import { beforeEach, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
-import { snapshot, envelope, receipt } from "../test/protocol-fixtures";
+import { snapshot, readySnapshot, envelope, receipt } from "../test/protocol-fixtures";
 import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } from "./storage";
 import { setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
 import * as api from "./api-v3";
@@ -205,4 +206,37 @@ it("resumes a confirmed pending switch after the background module restarts", as
   const writer=vi.fn().mockResolvedValue("foreign_session");freshSync.setEnvelopeWriter(writer);
   await freshSync.sync("startup");
   expect(writer).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({allowForeignOnce:true}));
+});
+
+
+it.each([false,true])("does not turn an acknowledged receipt into pending during background verification (pending=%s)", async pending => {
+  setEnvelopeWriter(applyEnvelope);
+  await sync("startup");
+  await updateLocalState(s=>({...s,snapshot:readySnapshot(),pendingAck:pending,receipt:receipt(),localWriteState:"ready"}));
+  let release!: () => void;
+  let entered!: () => void;
+  const began=new Promise<void>(resolve=>{entered=resolve;});
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  vi.mocked(api.reconcile).mockImplementationOnce(async()=>{entered();await gate;return {snapshot:readySnapshot(),receiptAck:null};});
+  const work=sync("popup");
+  await began;
+  const during=await readLocalState();
+  release();await work;
+  expect(during.pendingAck).toBe(pending);
+  expect(derivePresentation(during.snapshot, {cookieState:"applied",receipt:during.receipt,pendingAck:during.pendingAck}).statusCode)
+    .toBe(pending ? "pending_ack" : "ready");
+});
+
+it("re-exports when the server rejects a previously acknowledged receipt", async () => {
+  setEnvelopeWriter(applyEnvelope);
+  await sync("startup");
+  await updateLocalState(s=>({...s,snapshot:readySnapshot(),pendingAck:false}));
+  vi.mocked(api.exportSession).mockClear();
+  vi.mocked(api.reconcile).mockImplementationOnce(async()=>{
+    const local=await readLocalState();
+    return {snapshot:readySnapshot(),receiptAck:{snapshot:readySnapshot(),accepted:false,receivedAt:Date.now(),reasonCode:"INVALID_REQUEST",
+      exportId:local.receipt!.exportId,acceptedTuple:null,reportEpoch:local.reportEpoch,clientReportSeq:local.clientReportSeq}};
+  });
+  await sync("popup");
+  expect(api.exportSession).toHaveBeenCalledOnce();
 });

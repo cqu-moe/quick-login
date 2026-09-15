@@ -126,7 +126,7 @@ async function runSync(reason: SyncReason): Promise<void> {
       local = await updateLocalState((state) => {
         if (state.localGeneration !== fence) return state;
         return currentCookiesVerified && state.receipt
-          ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() },pendingAck:true }
+          ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() } }
           : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle" };
       });
     }
@@ -134,10 +134,15 @@ async function runSync(reason: SyncReason): Promise<void> {
     if ((await readLocalState()).localGeneration !== fence) return;
     local = await adopt(result.snapshot,fence);
     if (local.snapshot !== null && local.snapshot.snapshotId !== result.snapshot.snapshotId) return;
-    if (result.receiptAck?.accepted && local.receipt && result.receiptAck.exportId === local.receipt.exportId &&
-        result.receiptAck.reportEpoch === local.reportEpoch && result.receiptAck.clientReportSeq === local.clientReportSeq &&
-        sameTuple(result.receiptAck.acceptedTuple,local.receipt)) {
-      local = await updateLocalState((state) => ({ ...state,pendingAck:false }));
+    const ack = result.receiptAck;
+    if (ack && local.receipt && ack.exportId === local.receipt.exportId &&
+        ack.reportEpoch === local.reportEpoch && ack.clientReportSeq === local.clientReportSeq) {
+      if (ack.accepted && !sameTuple(ack.acceptedTuple,local.receipt)) throw new api.ApiFailure("CONTRACT_INVALID");
+      local = await updateLocalState((state) => {
+        if (state.localGeneration !== local.localGeneration || state.receipt?.exportId !== ack.exportId) return state;
+        return ack.accepted ? { ...state,pendingAck:false }
+          : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle" };
+      });
     }
     let remote = local.snapshot;
     if (!remote) return;
