@@ -145,7 +145,8 @@ async function runSync(reason: SyncReason): Promise<void> {
     const waiting = remote.cloud.retryAt !== null && Date.now() < remote.cloud.retryAt;
     if ((userRecovery && remote.capabilities.canRetry && !waiting) ||
         (!remote.capabilities.canExport && remote.capabilities.canEnsure && !waiting &&
-         ["absent","expired","blocked"].includes(remote.cloud.state))) {
+         (["absent","expired","blocked"].includes(remote.cloud.state) ||
+          (remote.cloud.state === "queued" && remote.cloud.operationId === null)))) {
       if (!local.recovery || local.recovery.generation !== remote.versions.generation) {
         const versions = remote.versions;
         local = await updateLocalState((state) => ({ ...state,recovery:{ id:crypto.randomUUID(),

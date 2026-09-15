@@ -115,3 +115,18 @@ it("explicit retry observes current state despite an older persisted network wai
   await sync("user_retry");
   expect(api.reconcile).toHaveBeenCalledOnce();
 });
+
+it.each([
+  { operationId: null, retryAt: null, canEnsure: true, starts: true },
+  { operationId: 'existing-task', retryAt: null, canEnsure: true, starts: false },
+  { operationId: null, retryAt: Date.now() + 600_000, canEnsure: true, starts: false },
+  { operationId: null, retryAt: null, canEnsure: false, starts: false },
+])('recovers queued state only when no task owns the authorized attempt: $starts', async ({operationId,retryAt,canEnsure,starts}) => {
+  const remote = snapshot();
+  remote.cloud = { ...remote.cloud, state: 'queued', operationId, retryAt, usableUntil: null };
+  remote.capabilities = { ...remote.capabilities, canExport: false, canEnsure };
+  vi.mocked(api.reconcile).mockResolvedValue({snapshot:remote,receiptAck:null});
+  await sync('alarm');
+  if (starts) expect(api.operate).toHaveBeenCalledWith('ensure_session',expect.anything(),expect.any(String));
+  else expect(api.operate).not.toHaveBeenCalled();
+});
