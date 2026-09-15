@@ -1,8 +1,9 @@
+import { applyEnvelope } from "./cookie-store";
 import { beforeEach, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
 import { snapshot, envelope, receipt } from "../test/protocol-fixtures";
 import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } from "./storage";
-import { setEnvelopeWriter, sync } from "./sync";
+import { setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
 import * as api from "./api-v3";
 import type { DeviceSnapshot, OperationResponse } from "../shared/protocol-v3.generated";
 
@@ -129,4 +130,79 @@ it.each([
   await sync('alarm');
   if (starts) expect(api.operate).toHaveBeenCalledWith('ensure_session',expect.anything(),expect.any(String));
   else expect(api.operate).not.toHaveBeenCalled();
+});
+
+
+it("keeps a confirmed switch when reconciliation advances only the cloud session", async () => {
+  await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
+  const remote=snapshot(); remote.versions.sessionVersion+=1;
+  vi.mocked(api.reconcile).mockResolvedValue({snapshot:remote,receiptAck:null});
+  vi.mocked(api.exportSession).mockResolvedValue({...envelope(),sessionVersion:remote.versions.sessionVersion});
+  const writer=vi.fn().mockResolvedValue("applied");setEnvelopeWriter(writer);
+  await switchToManagedOnce();
+  expect(writer).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({allowForeignOnce:true}));
+});
+
+it("keeps the switch through cloud preparation until the next alarm can apply cookies", async () => {
+  await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
+  const preparing=snapshot();preparing.cloud.state="logging_in";preparing.capabilities.canExport=false;
+  vi.mocked(api.reconcile).mockResolvedValueOnce({snapshot:preparing,receiptAck:null});
+  const writer=vi.fn().mockResolvedValue("applied");setEnvelopeWriter(writer);
+  await switchToManagedOnce();
+  expect(api.operate).not.toHaveBeenCalled();
+  await sync("alarm");
+  expect(writer).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({allowForeignOnce:true}));
+});
+
+
+it.each(["disable", "manual", "reauthorize", "binding", "expire"])("cancels pending switch after %s", async kind => {
+  await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
+  const preparing=snapshot();preparing.cloud.state="logging_in";preparing.capabilities.canExport=false;
+  vi.mocked(api.reconcile).mockResolvedValueOnce({snapshot:preparing,receiptAck:null});
+  await switchToManagedOnce();
+  await updateLocalState(s=>({...s,
+    enabledIntent:kind==="disable"?false:s.enabledIntent,
+    manualOverride:kind==="manual"?true:s.manualOverride,
+    authGeneration:s.authGeneration+(kind==="reauthorize"?1:0),
+    managedSwitch:kind==="expire"&&s.managedSwitch?{...s.managedSwitch,expiresAt:0}:s.managedSwitch,
+  }));
+  if(kind==="binding") {const remote=snapshot();remote.versions.bindingEpoch=4;vi.mocked(api.reconcile).mockResolvedValue({snapshot:remote,receiptAck:null});}
+  const writer=vi.fn().mockResolvedValue("foreign_session");setEnvelopeWriter(writer);
+  await sync("alarm");
+  expect(writer.mock.calls.every(([,options])=>!options.allowForeignOnce)).toBe(true);
+  expect((await readLocalState()).managedSwitch).toBeNull();
+});
+
+it("consumes replacement consent once through the actual cookie writer", async () => {
+  await chrome.cookies.set({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC",value:"synthetic-foreign",path:"/",storeId:"0"});
+  await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
+  setEnvelopeWriter(async (value,options) => {
+    const result=await applyEnvelope(value,options);
+    expect((await readLocalState()).managedSwitch).toBeNull();
+    return result;
+  });
+  await switchToManagedOnce();
+  expect(await readLocalState()).toMatchObject({localWriteState:"ready",managedSwitch:null,pendingAck:false});
+  await chrome.cookies.set({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC",value:"synthetic-new-manual",path:"/",storeId:"0"});
+  await sync("alarm");
+  expect((await chrome.cookies.get({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC",storeId:"0"}))?.value).toBe("synthetic-new-manual");
+  expect((await readLocalState()).localWriteState).toBe("foreign_session");
+});
+
+
+it("resumes a confirmed pending switch after the background module restarts", async () => {
+  await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
+  const preparing=snapshot();preparing.cloud.state="logging_in";preparing.capabilities.canExport=false;
+  vi.mocked(api.reconcile).mockResolvedValueOnce({snapshot:preparing,receiptAck:null});
+  await switchToManagedOnce();
+  expect((await readLocalState()).managedSwitch).not.toBeNull();
+  vi.resetModules();
+  const freshApi=await import("./api-v3");
+  const freshSync=await import("./sync");
+  vi.spyOn(freshApi,"capabilities").mockResolvedValue({protocolVersion:3,supportedProtocolVersions:[3],minExtensionVersion:"0.2.0",serverBuild:"test",features:{reconcile:true,operations:true,receipts:true,overview:true}});
+  vi.spyOn(freshApi,"reconcile").mockResolvedValue({snapshot:snapshot(),receiptAck:null});
+  vi.spyOn(freshApi,"exportSession").mockResolvedValue(envelope());
+  const writer=vi.fn().mockResolvedValue("foreign_session");freshSync.setEnvelopeWriter(writer);
+  await freshSync.sync("startup");
+  expect(writer).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({allowForeignOnce:true}));
 });

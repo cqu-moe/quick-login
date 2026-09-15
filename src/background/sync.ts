@@ -12,7 +12,14 @@ export type EnvelopeWriter = (envelope: ExportEnvelope,
 let writer: EnvelopeWriter = async () => { throw new api.ApiFailure("LOCAL_WRITE_FAILED"); };
 let syncFlight: Promise<void> | null = null;
 const pendingReasons = new Set<SyncReason>();
-let replacementGeneration: number | null = null;
+function hasManagedSwitch(local: LocalState): boolean {
+  const intent = local.managedSwitch, versions = local.snapshot?.versions;
+  return !!intent && !!versions && intent.expiresAt > Date.now() &&
+    intent.deviceId === local.deviceId && intent.authGeneration === local.authGeneration &&
+    intent.localGeneration === local.localGeneration && local.enabledIntent && !local.manualOverride &&
+    intent.generation === versions.generation && intent.bindingEpoch === versions.bindingEpoch &&
+    intent.credentialRevision === versions.credentialRevision;
+}
 
 export function setEnvelopeWriter(next: EnvelopeWriter): void { writer = next; }
 
@@ -61,7 +68,13 @@ async function adopt(snapshot: DeviceSnapshot, fence: number): Promise<LocalStat
     const invalidated = current.serverGeneration !== snapshot.versions.generation ||
       (old !== null && !sameTuple(tupleForSnapshot(old), tuple));
     const validReceipt = tuple !== null && sameTuple(current.receipt, tuple);
-    return { ...current, snapshot, serverGeneration:snapshot.versions.generation,
+    const managedSwitch = hasManagedSwitch(current) && current.managedSwitch &&
+      current.managedSwitch.generation === snapshot.versions.generation &&
+      current.managedSwitch.bindingEpoch === snapshot.versions.bindingEpoch &&
+      current.managedSwitch.credentialRevision === snapshot.versions.credentialRevision &&
+      snapshot.authorization.state === "authorized" && snapshot.authorization.policy === "enabled"
+      ? { ...current.managedSwitch, localGeneration: current.localGeneration + (invalidated ? 1 : 0) } : null;
+    return { ...current, managedSwitch, snapshot, serverGeneration:snapshot.versions.generation,
       localGeneration: current.localGeneration + (invalidated ? 1 : 0),
       authorization:snapshot.authorization.state, observation:snapshot.observation,
       lastConfirmedAt:Date.now(), networkFailures:0, nextAttemptAt:null, localError:null,
@@ -93,6 +106,10 @@ async function runSync(reason: SyncReason): Promise<void> {
   let local = await readLocalState();
   if (!local.deviceId || local.authorization === "revoked") return;
   if (reason === "alarm" && local.nextAttemptAt !== null && Date.now() < local.nextAttemptAt) return;
+  if (local.managedSwitch && !hasManagedSwitch(local)) {
+    local = await updateLocalState(state => state.managedSwitch?.id === local.managedSwitch?.id
+      ? { ...state, managedSwitch: null, localWriteState: state.localWriteState === "idle" ? "foreign_session" : state.localWriteState } : state);
+  }
   const fence = local.localGeneration;
   try {
     if (reason === "startup" || local.protocolSupport !== "supported" || !local.snapshot) {
@@ -139,9 +156,9 @@ async function runSync(reason: SyncReason): Promise<void> {
       return;
     }
     if (local.manualOverride || remote.observation !== "fresh" || remote.freshUntil <= Date.now()) return;
-    if (local.localWriteState === "foreign_session" && replacementGeneration !== local.localGeneration) return;
-    const userRecovery = (reason === "login_form" && currentCookiesVerified) ||
-      (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen"));
+    if (local.localWriteState === "foreign_session" && !hasManagedSwitch(local)) return;
+    const userRecovery = !hasManagedSwitch(local) && ((reason === "login_form" && currentCookiesVerified) ||
+      (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen")));
     const waiting = remote.cloud.retryAt !== null && Date.now() < remote.cloud.retryAt;
     if ((userRecovery && remote.capabilities.canRetry && !waiting) ||
         (!remote.capabilities.canExport && remote.capabilities.canEnsure && !waiting &&
@@ -176,18 +193,18 @@ async function runSync(reason: SyncReason): Promise<void> {
     if ((await readLocalState()).localGeneration !== generationFence) return;
     await updateLocalState((state) => ({ ...state,localWriteState:"writing" }));
     const applied = await writer(envelope,{ localGeneration:generationFence,
-      allowForeignOnce:replacementGeneration === generationFence && reason === "user_retry" });
+      allowForeignOnce:hasManagedSwitch(await readLocalState()) });
     if (applied === "cancelled") {
       await updateLocalState((state) => state.localWriteState === "writing" ? { ...state,localWriteState:"idle" } : state);
       return;
     }
     if (applied === "foreign_session") {
-      await updateLocalState((state) => ({ ...state,localWriteState:"foreign_session",receipt:null,pendingAck:false }));
+      await updateLocalState((state) => ({ ...state,managedSwitch:null,localWriteState:"foreign_session",receipt:null,pendingAck:false }));
       return;
     }
     local = await updateLocalState((state) => {
       if (state.localGeneration !== generationFence || !state.enabledIntent || state.manualOverride) return state;
-      return { ...state,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
+      return { ...state,managedSwitch:null,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
         bindingEpoch:envelope.bindingEpoch,credentialRevision:envelope.credentialRevision,
         sessionVersion:envelope.sessionVersion,exportId:envelope.exportId,result:"applied",verifiedAt:Date.now() },
         pendingAck:true,appliedVersion:envelope.sessionVersion,localWriteState:"ready",schoolAccess:"unverified",
@@ -222,7 +239,7 @@ export async function setEnabled(enabled: boolean,expectedConnectIntentId?:strin
     if (expectedConnectIntentId !== undefined && state.connectIntentId !== expectedConnectIntentId) return state;
     accepted=true;
     return { ...state,enabledIntent:enabled,
-    connectIntentId:null,
+    connectIntentId:null,managedSwitch:null,
     localGeneration:state.localGeneration+1,pendingCommand:{ id:crypto.randomUUID(),enabled },
     pendingOperation:enabled ? null : "disable",receipt:null,pendingAck:false,recovery:null,
     localWriteState:"idle",localError:null };
@@ -233,7 +250,7 @@ export async function setEnabled(enabled: boolean,expectedConnectIntentId?:strin
 }
 export async function enterManualMode(): Promise<void> {
   await updateLocalState((state) => ({ ...state,manualOverride:true,localGeneration:state.localGeneration+1,
-    connectIntentId:null,
+    connectIntentId:null,managedSwitch:null,
     receipt:null,pendingAck:false,recovery:state.recovery ? { ...state.recovery,phase:"manual_required" } : null }));
   void sync("popup");
 }
@@ -246,8 +263,16 @@ export async function retryAutomaticNow(): Promise<void> {
   if (!state.manualOverride) await sync("user_retry");
 }
 export async function switchToManagedOnce(): Promise<void> {
-  replacementGeneration=(await readLocalState()).localGeneration;
-  try { await sync("user_retry"); } finally { replacementGeneration=null; }
+  await updateLocalState(state => {
+    const versions = state.snapshot?.versions;
+    if (!state.deviceId || !versions || versions.bindingEpoch === null || versions.credentialRevision === null ||
+        !state.enabledIntent || state.manualOverride || state.authorization !== "authorized") return state;
+    return { ...state, managedSwitch: { id:crypto.randomUUID(), deviceId:state.deviceId,
+      authGeneration:state.authGeneration, localGeneration:state.localGeneration, generation:versions.generation,
+      bindingEpoch:versions.bindingEpoch, credentialRevision:versions.credentialRevision, expiresAt:Date.now()+15*60_000 },
+      localError:null, nextAttemptAt:null, localWriteState:"idle" };
+  });
+  await sync("user_retry");
 }
 export async function markManualRequired(): Promise<void> {
   await updateLocalState((state) => ({ ...state,schoolAccess:"login_form_seen",

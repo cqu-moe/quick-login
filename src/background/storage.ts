@@ -8,6 +8,7 @@ export const initialLocalState = (): LocalState => ({
   schemaVersion: 2,
   authGeneration: 0,
   connectIntentId: null,
+  managedSwitch: null,
   installationId: crypto.randomUUID(),
   registrationId: crypto.randomUUID(),
   reportEpoch: crypto.randomUUID(),

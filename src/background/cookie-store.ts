@@ -197,6 +197,7 @@ export async function applyEnvelope(
     return "foreign_session";
   }
 
+  const switchIntentId = options.allowForeignOnce ? state.managedSwitch?.id : undefined;
   const storeId = await normalStoreId();
   const journal: CookieJournal = {
     id: crypto.randomUUID(),
@@ -291,7 +292,9 @@ export async function applyEnvelope(
     await updateLocalStateWith({ [JOURNAL_KEY]: journal }, (current) => {
       if (current.localGeneration !== options.localGeneration || !current.enabledIntent || current.manualOverride ||
           current.serverGeneration !== envelope.generation) throw new SyncError("COOKIE_WRITE_TRANSIENT");
-      return { ...current, managed,appliedVersion:cleanupConflict ? null : envelope.sessionVersion,
+      return { ...current, managed,
+        managedSwitch: switchIntentId !== undefined && current.managedSwitch?.id === switchIntentId ? null : current.managedSwitch,
+        appliedVersion:cleanupConflict ? null : envelope.sessionVersion,
         localWriteState:cleanupConflict ? "foreign_session" : "ready",
         localError:cleanupConflict ? "LOCAL_COOKIE_CONFLICT" : null };
     });

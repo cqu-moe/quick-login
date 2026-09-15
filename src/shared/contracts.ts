@@ -72,6 +72,10 @@ export interface LocalState {
   schemaVersion: 2;
   authGeneration: number;
   connectIntentId: string | null;
+  managedSwitch?: {
+    id: string; deviceId: string; authGeneration: number; localGeneration: number;
+    generation: number; bindingEpoch: number; credentialRevision: number; expiresAt: number;
+  } | null;
   installationId: string;
   registrationId: string;
   reportEpoch: string;
