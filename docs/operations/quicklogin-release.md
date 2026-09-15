@@ -1,3 +1,24 @@
+# QuickLogin 0.2.3 Cookie 导出与任务恢复修复（2026-09-15）
+
+- 插件源码：`683081ad9b38b43219d024916b9a4f193f040efc`。
+- Auth 源码：`cb4389300e261996551ffac79450c2f66277af5d`。
+- [生产 CI](https://github.com/cqu-moe/auth/actions/runs/34976675384)：成功。
+- Worker：`22014c4d-c283-4f5f-b12d-557ec2d4ee74`，100% 流量。Container 68 / `22014c4d`，5 healthy、0 failed，无活动 rollout 或 health.errors。
+- 安装包：`releases/cqu-quicklogin-0.2.3-canary.zip`，23022 字节，8 个 dist 文件。
+- SHA-256：`046cfbb810f7379a366f5a6b882374f46230f7758eba1bb00227e909af021770`。
+- 契约指纹：`0263d6f205e113cdc2da8661f2fdf8c7e5b52b5a41045b90633d8d5989625a38`，协议仍为 3。
+- ZIP CRC、manifest 0.2.3 和源码标识已核验。旧包均保留；未上传或发布 Chrome Web Store。
+
+容器现在导出完整会话 Cookie；Auth 对登录结果处理异常及时结束任务，并恢复符合条件但缺失的调度。插件补齐 queued 且无 operationId 时的 ensure_session 请求；已有任务、未来冷却时间或 canEnsure=false 均不会触发。已安装的 0.2.1 使用同一 Cookie 服务修复，但无任务恢复需要更新至 0.2.3。无需卸载或新建设备。
+
+本地验证：Auth 850 单元测试、284 DO 测试、两套类型检查；Container 368 测试及 13 subtests；插件 69 测试、typecheck、build、check:package 全部通过。生产者与消费者共享 Cookie fixture，独立复核无阻塞发现。
+
+实际读回：22:01，Ego 原设备在新容器上完成登录，cloud=ready、Cookie=applied、ACK 成功；未更换设备身份。用户 Chrome 仍为 0.2.1、queued 且无任务，需更新 0.2.3 并重载后验证客户端恢复分支。尚未证明两台设备均通过实际学校业务页面验收。
+
+详细证据见 [准备登录故障记录](quicklogin-023-preparing-incident.md)。
+
+## 历史发布记录
+
 # QuickLogin 0.2.1 发布与验收（2026-09-15）
 
 ## 已交付

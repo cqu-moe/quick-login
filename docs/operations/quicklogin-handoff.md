@@ -1,3 +1,13 @@
+# QuickLogin 0.2.3 交接
+
+当前修复：Auth `cb4389300e261996551ffac79450c2f66277af5d`，EXT `683081ad9b38b43219d024916b9a4f193f040efc`。包为 `releases/cqu-quicklogin-0.2.3-canary.zip`，SHA-256 `046cfbb810f7379a366f5a6b882374f46230f7758eba1bb00227e909af021770`。
+
+Worker `22014c4d-c283-4f5f-b12d-557ec2d4ee74`（100%）与 Container 68（5 healthy）已上线。Ego 原设备 cloud ready / Cookie applied / ACK 已成功；Chrome 0.2.1 仍需更新至 0.2.3 并重载，无任务恢复尚待该设备读回。详见 [发布记录](quicklogin-release.md)。本次已复现 Cookie 导出缺字段、结果处理异常未结算任务和无任务设备缺失调度。证据与修复范围见 [故障记录](quicklogin-023-preparing-incident.md)。
+
+用户 Chrome 未操作。0.2.1 使用同一 Cookie 后端修复，但无任务恢复需要 0.2.3；更新包时覆盖原加载目录并重载，保留现有设备身份。
+
+## 历史交接
+
 # QuickLogin 0.2.1 最终交接
 
 源代码已合入并推送两个 main；Auth 已完成生产部署；最终安装包为 `releases/cqu-quicklogin-0.2.1-canary.zip`。确切提交、Worker/Container、SHA-256 和验证结果统一见 [发布记录](quicklogin-release.md)。
