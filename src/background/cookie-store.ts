@@ -2,6 +2,7 @@ import type { CookieEnvelope, ExportedCookie, ManagedCookie } from "../shared/co
 import { validateCookieEnvelope } from "../shared/cookie-validation";
 import { readLocalState, updateLocalState, updateLocalStateWith } from "./storage";
 import { SyncError } from "./retry";
+import { parseExportEnvelope, sameTuple, tupleForSnapshot, type ExportEnvelope } from "../shared/protocol-v3.generated";
 import {
   clearJournal,
   JOURNAL_KEY,
@@ -97,12 +98,21 @@ function returnedCookieMatches(
        Math.abs(written.expirationDate - source.expires) < 1));
 }
 
-async function remove(entry: Pick<ManagedCookie, "name" | "path" | "storeId">) {
-  return chrome.cookies.remove({
+async function remove(entry: Pick<ManagedCookie, "name" | "domain" | "path" | "storeId">): Promise<boolean> {
+  const candidates = await chrome.cookies.getAll({
+    url: cookieUrl(entry.path), name: entry.name, storeId: entry.storeId,
+  });
+  const matching = candidates.filter((cookie) =>
+    (cookie.domain === "sso.cqu.edu.cn" || cookie.domain === ".sso.cqu.edu.cn") &&
+    (entry.path === cookie.path || entry.path.startsWith(cookie.path.endsWith("/") ? cookie.path : `${cookie.path}/`))
+  );
+  if (matching.some((cookie) => cookie.domain !== entry.domain || cookie.path !== entry.path)) return false;
+  await chrome.cookies.remove({
     url: cookieUrl(entry.path),
     name: entry.name,
     storeId: entry.storeId,
   });
+  return await getExact(entry) === null;
 }
 
 async function restore(cookie: chrome.cookies.Cookie): Promise<void> {
@@ -121,16 +131,17 @@ async function restore(cookie: chrome.cookies.Cookie): Promise<void> {
   if (!restored) throw new SyncError("COOKIE_PERMISSION_DENIED");
 }
 
-async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | null): Promise<void> {
+async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | null): Promise<boolean> {
+  let complete=true;
   for (const entry of [...journal.entries].reverse()) {
-    if (!entry.completed) continue;
     const current = await getExact(entry);
     if (!current || await digestCookie(current) !== entry.expectedDigest) continue;
+    if (entry.previousDigest === entry.expectedDigest) continue;
     const previous = snapshots?.[snapshotId(entry)];
-    if (previous === undefined) continue;
-    if (previous === null) await remove(entry);
+    if (previous == null) { if (!await remove(entry)) complete=false; }
     else await restore(previous);
   }
+  return complete;
 }
 
 export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
@@ -168,14 +179,20 @@ export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreig
 }
 
 export async function applyEnvelope(
-  raw: CookieEnvelope,
+  raw: CookieEnvelope | ExportEnvelope,
   options: { localGeneration: number; allowForeignOnce: boolean }
 ): Promise<"applied" | "foreign_session" | "cancelled"> {
-  const envelope = validateCookieEnvelope(raw);
+  const envelope = raw.protocolVersion === 3 ? parseExportEnvelope(raw) : validateCookieEnvelope(raw);
+  if ((await chrome.storage.local.get(JOURNAL_KEY))[JOURNAL_KEY]) {
+    await recoverInterruptedWrite();
+    if ((await chrome.storage.local.get(JOURNAL_KEY))[JOURNAL_KEY]) return "foreign_session";
+  }
   const state = await readLocalState();
-  if (state.localGeneration !== options.localGeneration ||
+  if (state.deviceId !== envelope.deviceId || state.localGeneration !== options.localGeneration ||
       state.serverGeneration !== envelope.generation ||
       !state.enabledIntent || state.manualOverride) return "cancelled";
+  if (envelope.protocolVersion === 3 && (envelope.applyBefore <= Date.now() ||
+      !state.snapshot || !sameTuple(envelope, tupleForSnapshot(state.snapshot)))) return "cancelled";
   if (!options.allowForeignOnce && await inspectLocalTgc() === "foreign") {
     return "foreign_session";
   }
@@ -222,6 +239,9 @@ export async function applyEnvelope(
       const unchanged = await getExact(identity);
       const unchangedDigest = unchanged ? await digestCookie(unchanged) : null;
       if (unchangedDigest !== entry.previousDigest) throw new SyncError("COOKIE_WRITE_TRANSIENT");
+      const beforeWrite = await readLocalState();
+      if (beforeWrite.localGeneration !== options.localGeneration || !beforeWrite.enabledIntent || beforeWrite.manualOverride ||
+          (envelope.protocolVersion === 3 && envelope.applyBefore <= Date.now())) throw new SyncError("COOKIE_WRITE_TRANSIENT");
       let written: chrome.cookies.Cookie | null;
       try {
         written = await chrome.cookies.set(target);
@@ -257,26 +277,41 @@ export async function applyEnvelope(
       });
     }
     const keep = new Set(managed.map(snapshotId));
+    let cleanupConflict=false;
     for (const old of state.managed) {
       if (keep.has(snapshotId(old))) continue;
       const current = await getExact(old);
-      if (current && await digestCookie(current) === old.digest) await remove(old);
+      if (current && await digestCookie(current) === old.digest && !await remove(old)) {
+        managed.push(old);
+        cleanupConflict=true;
+      }
     }
 
     journal.phase = "committed";
-    await updateLocalStateWith({ [JOURNAL_KEY]: journal }, (current) => ({
-      ...current,
-      managed,
-      appliedVersion: envelope.sessionVersion,
-      localWriteState: "ready",
-    }));
+    await updateLocalStateWith({ [JOURNAL_KEY]: journal }, (current) => {
+      if (current.localGeneration !== options.localGeneration || !current.enabledIntent || current.manualOverride ||
+          current.serverGeneration !== envelope.generation) throw new SyncError("COOKIE_WRITE_TRANSIENT");
+      return { ...current, managed,appliedVersion:cleanupConflict ? null : envelope.sessionVersion,
+        localWriteState:cleanupConflict ? "foreign_session" : "ready",
+        localError:cleanupConflict ? "LOCAL_COOKIE_CONFLICT" : null };
+    });
     await clearJournal();
-    return "applied";
+    return cleanupConflict ? "foreign_session" : "applied";
   } catch (error) {
-    await rollback(journal, snapshots);
-    await clearJournal();
+    if (await rollback(journal,snapshots)) await clearJournal();
+    else { journal.phase="writing"; await writeJournal(journal,snapshots); }
     throw error;
   }
+}
+
+export async function verifyManagedCookies(): Promise<boolean> {
+  const state = await readLocalState();
+  if (!state.managed.some((cookie) => cookie.name === "SOURCEID_TGC")) return false;
+  for (const entry of state.managed) {
+    const current = await getExact(entry);
+    if (!current || await digestCookie(current) !== entry.digest) return false;
+  }
+  return true;
 }
 
 export async function clearOwnedCookies(): Promise<void> {
@@ -284,7 +319,9 @@ export async function clearOwnedCookies(): Promise<void> {
   const remaining: ManagedCookie[] = [];
   for (const entry of state.managed) {
     const current = await getExact(entry);
-    if (current && await digestCookie(current) === entry.digest) await remove(entry);
+    if (current && await digestCookie(current) === entry.digest) {
+      if (!await remove(entry)) remaining.push(entry);
+    }
     else if (current) remaining.push(entry);
   }
   await updateLocalState((current) => ({
@@ -304,7 +341,8 @@ export async function recoverInterruptedWrite(): Promise<void> {
   }
   const session = await chrome.storage.session.get(SNAPSHOT_KEY);
   const snapshots = (session[SNAPSHOT_KEY] as CookieSnapshots | undefined) ?? null;
-  await rollback(journal, snapshots);
-  await clearJournal();
-  await updateLocalState((state) => ({ ...state, localWriteState: "error" }));
+  const complete=await rollback(journal,snapshots);
+  if (complete) await clearJournal();
+  await updateLocalState((state) => ({ ...state, localWriteState:complete ? "error" : "foreign_session",
+    localError:complete ? "LOCAL_WRITE_FAILED" : "LOCAL_COOKIE_CONFLICT",receipt:null,pendingAck:false }));
 }

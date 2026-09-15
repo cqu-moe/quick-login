@@ -1,10 +1,14 @@
 import { API_PATHS, AUTH_ISSUER, config, DEVICE_SCOPE } from "../shared/config";
-import type { ApiError, DeviceStatus } from "../shared/contracts";
-import { updateLocalState } from "./storage";
+import type { ApiError } from "../shared/contracts";
+import { clientMetadata } from "../shared/client-metadata";
+import { parseApiResponse, parseRegistrationResponse, type ReasonCode } from "../shared/protocol-v3.generated";
+import { readLocalState, updateLocalState, updateLocalStateWith } from "./storage";
 
 const TOKENS_KEY = "quicklogin.tokens";
 const PENDING_KEY = "quicklogin.pkce";
 const PENDING_TTL_MS = 10 * 60_000;
+const RESUME_KEY = "quicklogin.resume";
+interface ResumeContext { resumeTicket: string; deviceId: string; expiresAt: number }
 
 interface Tokens {
   accessToken: string;
@@ -20,6 +24,14 @@ interface PendingPkce {
 }
 
 let refreshFlight: Promise<Tokens> | null = null;
+let loginFlight: Promise<void> | null = null;
+
+export class AuthorizationError extends Error {
+  constructor(public readonly code: ReasonCode | "TEMPORARY_UNAVAILABLE") {
+    super(code);
+    this.name = "AuthorizationError";
+  }
+}
 
 function randomBase64Url(bytes = 32): string {
   const value = crypto.getRandomValues(new Uint8Array(bytes));
@@ -38,7 +50,7 @@ async function readTokens(): Promise<Tokens | null> {
   return (stored[TOKENS_KEY] as Tokens | undefined) ?? null;
 }
 
-async function saveTokens(body: Record<string, unknown>): Promise<Tokens> {
+async function saveTokens(body: Record<string, unknown>, authGeneration: number): Promise<Tokens> {
   if (typeof body.access_token !== "string" || typeof body.refresh_token !== "string") {
     throw new Error("INVALID_TOKEN_RESPONSE");
   }
@@ -48,27 +60,43 @@ async function saveTokens(body: Record<string, unknown>): Promise<Tokens> {
     refreshToken: body.refresh_token,
     expiresAt: Date.now() + Math.max(30, expiresIn) * 1_000,
   };
-  await chrome.storage.local.set({ [TOKENS_KEY]: tokens });
+  await updateLocalStateWith({ [TOKENS_KEY]: tokens }, (state) => {
+    if (state.authGeneration !== authGeneration) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
+    return state;
+  });
   return tokens;
 }
 
 async function tokenRequest(params: URLSearchParams): Promise<Tokens> {
-  const response = await fetch(`${config.authOrigin}${API_PATHS.oauthToken}`, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: params,
-    credentials: "omit",
-  });
-  const body = await response.json() as Record<string, unknown>;
-  if (!response.ok) throw new Error("TOKEN_EXCHANGE_FAILED");
-  return saveTokens(body);
+  const authGeneration = (await readLocalState()).authGeneration;
+  let response: Response;
+  try {
+    response = await fetch(`${config.authOrigin}${API_PATHS.oauthToken}`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: params,
+      credentials: "omit",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new AuthorizationError("TEMPORARY_UNAVAILABLE");
+  }
+  const body = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!response.ok) {
+    if (body?.error === "invalid_grant") {
+      throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
+    }
+    throw new AuthorizationError("TEMPORARY_UNAVAILABLE");
+  }
+  if (!body) throw new AuthorizationError("CONTRACT_INVALID");
+  return saveTokens(body, authGeneration);
 }
 
 async function refreshTokens(force = false): Promise<Tokens> {
   if (refreshFlight) return refreshFlight;
   refreshFlight = (async () => {
     const current = await readTokens();
-    if (!current) throw new Error("UNAUTHORIZED");
+    if (!current) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
     if (!force && current.expiresAt > Date.now() + 30_000) return current;
     return tokenRequest(new URLSearchParams({
       grant_type: "refresh_token",
@@ -92,6 +120,7 @@ async function send(path: string, init: RequestInit, token: string): Promise<Res
     ...init,
     headers,
     credentials: "omit",
+    signal: init.signal ?? AbortSignal.timeout(15_000),
   });
 }
 
@@ -100,8 +129,8 @@ export async function authorizedFetch(path: string, init: RequestInit = {}): Pro
   let response = await send(path, init, tokens.accessToken);
   if (response.status !== 401) return response;
 
-  const error = await response.clone().json().catch(() => null) as ApiError | null;
-  if (error?.error.code === "DEVICE_REVOKED") return response;
+  const error = await response.clone().json().catch(() => null) as (Partial<ApiError> & {code?:string}) | null;
+  if (error?.error?.code === "DEVICE_REVOKED" || error?.code === "DEVICE_REVOKED") return response;
   tokens = await refreshTokens(true);
   response = await send(path, init, tokens.accessToken);
   return response;
@@ -115,33 +144,51 @@ function deviceMetadata() {
   };
 }
 
-async function registerSavedAuthorization(): Promise<boolean> {
+async function registerSavedAuthorization(resume?: ResumeContext): Promise<boolean> {
   if (!await readTokens()) return false;
-  const response = await authorizedFetch(API_PATHS.quickloginDevices, {
-    method: "POST",
-    body: JSON.stringify(deviceMetadata()),
-  });
+  const local = await readLocalState();
+  const localGeneration = local.localGeneration;
+  let response: Response;
+  try {
+    response = await authorizedFetch("/api/v1/cqu/quicklogin/registrations", {
+      method: "POST",
+      body: JSON.stringify({ protocolVersion:3,requestId:crypto.randomUUID(),registrationId:local.registrationId,
+        client:clientMetadata(local),deviceName:deviceMetadata().deviceName,
+        ...(local.deviceId ? { deviceId:local.deviceId } : {}),
+        ...(resume ? { resumeTicket:resume.resumeTicket,deviceId:resume.deviceId } : {}) }),
+    });
+  } catch (error) {
+    if (error instanceof AuthorizationError && error.code === "AUTH_RECONNECT_REQUIRED") {
+      await chrome.storage.local.remove(TOKENS_KEY); return false;
+    }
+    throw error;
+  }
   if (!response.ok) {
     const body = await response.clone().json().catch(() => null) as ApiError | null;
-    if (response.status === 401 || body?.error.code === "DEVICE_REVOKED") {
+    if (response.status === 401 || body?.error?.code === "DEVICE_REVOKED") {
       await chrome.storage.local.remove(TOKENS_KEY);
       return false;
     }
-    throw new Error(`DEVICE_REGISTRATION_FAILED:${body?.error.code ?? response.status}`);
+    throw new AuthorizationError(response.status === 426 ? "PROTOCOL_UNSUPPORTED" :
+      response.status === 403 ? "FORBIDDEN" : "INTERNAL_STATE_UNAVAILABLE");
   }
-  const status = await response.json() as DeviceStatus;
-  await updateLocalState((local) => ({
-    ...local,
-    deviceId: status.deviceId,
-    serverGeneration: status.generation,
-    status,
-    lastError: null,
-  }));
+  const result = parseApiResponse(await response.json(),parseRegistrationResponse).data;
+  await updateLocalState((local) => {
+    if (local.localGeneration !== localGeneration) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
+    return { ...local,deviceId:result.deviceId,serverGeneration:result.snapshot.versions.generation,
+      snapshot:result.snapshot,authorization:"authorized",observation:"fresh",localError:null,
+      receipt:null,pendingAck:false,lastConfirmedAt:Date.now(),lastError:null,
+      reportEpoch:resume ? crypto.randomUUID() : local.reportEpoch };
+  });
+  await chrome.storage.session.remove(RESUME_KEY);
   return true;
 }
 
-export async function loginInteractive(): Promise<void> {
-  if (await registerSavedAuthorization()) return;
+async function performInteractiveLogin(resume?: ResumeContext): Promise<void> {
+  if (!resume && await registerSavedAuthorization()) return;
+  if (!resume && (await readLocalState()).deviceId) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
+  await updateLocalState((state)=>({...state,authGeneration:state.authGeneration+1,localGeneration:state.localGeneration+1,
+    authorization:"authorizing",receipt:null,pendingAck:false}));
   const state = randomBase64Url();
   const verifier = randomBase64Url();
   const redirectUri = chrome.identity.getRedirectURL();
@@ -167,9 +214,11 @@ export async function loginInteractive(): Promise<void> {
   });
   const stored = (await chrome.storage.local.get(PENDING_KEY))[PENDING_KEY] as PendingPkce | undefined;
   const url = callback ? new URL(callback) : null;
+  const expected = stored ? new URL(stored.redirectUri) : null;
   if (!stored || Date.now() - stored.createdAt > PENDING_TTL_MS ||
       stored.state !== url?.searchParams.get("state") ||
-      !url?.toString().startsWith(stored.redirectUri)) {
+      url?.origin !== expected?.origin || url?.pathname !== expected?.pathname ||
+      url?.username || url?.password || url?.hash) {
     await chrome.storage.local.remove(PENDING_KEY);
     throw new Error("OAUTH_STATE_MISMATCH");
   }
@@ -184,17 +233,37 @@ export async function loginInteractive(): Promise<void> {
     redirect_uri: stored.redirectUri,
     resource: AUTH_ISSUER,
   }));
-  if (!await registerSavedAuthorization()) {
+  if (!await registerSavedAuthorization(resume)) {
     throw new Error("DEVICE_REGISTRATION_FAILED");
   }
 }
 
+export function loginInteractive(resume?: ResumeContext): Promise<void> {
+  if (loginFlight) return loginFlight;
+  loginFlight = (async () => {
+    if (resume) {
+      if (resume.expiresAt <= Date.now() || resume.resumeTicket.length > 4096 || !resume.deviceId) throw new AuthorizationError("INVALID_REQUEST");
+      await chrome.storage.session.set({ [RESUME_KEY]:resume });
+    }
+    const pendingResume=(await chrome.storage.session.get(RESUME_KEY))[RESUME_KEY] as ResumeContext | undefined;
+    await performInteractiveLogin(pendingResume && pendingResume.expiresAt > Date.now() ? pendingResume : undefined);
+  })().finally(() => { loginFlight=null; });
+  return loginFlight;
+}
+
 export async function clearDeviceAuthorization(): Promise<void> {
-  await chrome.storage.local.remove([TOKENS_KEY, PENDING_KEY]);
-  await updateLocalState((state) => ({
+  await updateLocalStateWith({ [TOKENS_KEY]: null, [PENDING_KEY]: null }, (state) => ({
     ...state,
+    localGeneration: state.localGeneration + 1,
+    authGeneration: state.authGeneration + 1,
     deviceId: null,
     serverGeneration: null,
+    snapshot: null,
+    receipt: null,
+    pendingAck: false,
+    authorization: "disconnected",
+    observation: "checking",
+    reportEpoch: crypto.randomUUID(),
     enabledIntent: false,
     recovery: null,
   }));

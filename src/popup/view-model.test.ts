@@ -1,38 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { derivePopupView, type PopupInput } from "./view-model";
+import { readySnapshot, receipt } from "../test/protocol-fixtures";
 
-const status = {
-  protocolVersion: 2 as const, deviceId: "device-a", generation: 4,
-  masterEnabled: true, enabled: true, deviceLimit: 5, used: 1,
-  disabledReason: null, state: "ready" as const, sessionVersion: 7,
-  appliedVersion: null, loginAt: 1, lastKeepAliveAt: 2, lastSeenAt: 3,
-};
-const input: PopupInput = {
-  authorized: true, status, manualOverride: false,
-  localWriteState: "idle", lastError: null,
-};
+const input=(): PopupInput => ({ snapshot:readySnapshot(),local:{authorization:"authorized",enabledIntent:true,
+  observation:"fresh",cookieState:"applied",receipt:receipt(),pendingAck:false},lastError:null,lastConfirmedAt:Date.now(),nextAttemptAt:null });
 
-describe("popup state table", () => {
-  it.each([
-    [{ ...input, authorized: false, status: null }, "未连接 Auth"],
-    [{ ...input, status: { ...status, masterEnabled: false } }, "尚未开启"],
-    [{ ...input, status: { ...status, state: "preparing" as const } }, "正在同步"],
-    [{ ...input, localWriteState: "ready" as const }, "已就绪"],
-    [{ ...input, manualOverride: true }, "手动登录中"],
-    [{ ...input, status: { ...status, state: "revoked" as const } }, "已退出"],
-    [{ ...input, localWriteState: "foreign_session" as const }, "已有学校登录"],
-  ] satisfies Array<[PopupInput, string]>)("maps state to %s", (value, heading) => {
-    expect(derivePopupView(value).heading).toBe(heading);
+describe("current protocol popup projection",() => {
+  it("reconnects the existing device through Auth instead of creating another grant blindly",()=>{
+    const value=input();value.local.authorization="reconnect_required";
+    expect(derivePopupView(value).actions).toEqual(["open_settings"]);
   });
-
-  it("does not claim completion while the cloud is ready but local write is not", () => {
-    expect(derivePopupView(input).heading).toBe("正在同步");
+  it("is ready only after the current-version application was acknowledged",() => {
+    expect(derivePopupView(input()).heading).toBe("已就绪");
+    const pending=input();pending.local.pendingAck=true;
+    expect(derivePopupView(pending).heading).toContain("正在确认");
   });
-
-  it("keeps the ready state free of descriptions and device-management actions", () => {
-    const view = derivePopupView({ ...input, localWriteState: "ready" });
-
-    expect(view.description).toBe("");
-    expect(view.actions).toEqual([]);
+  it("reports a failed observation instead of repeating an old rebind instruction",() => {
+    const value=input();value.local.observation="unreachable";
+    expect(derivePopupView(value).heading).toBe("暂时无法连接 Auth");
+  });
+  it("shows a password action only for current explicit rejection",() => {
+    const value=input();value.snapshot!.binding={...value.snapshot!.binding,credentialsState:"rejected",evidenceKind:"password_rejected"};
+    value.snapshot!.cloud={...value.snapshot!.cloud,state:"blocked",usableUntil:null};
+    expect(derivePopupView(value).heading).toBe("学校密码需要更新");
+    expect(derivePopupView(value).actions).toEqual(["open_settings"]);
+  });
+  it("keeps a close control available while the cloud is preparing",() => {
+    const value=input();value.snapshot!.cloud.state="logging_in";value.snapshot!.cloud.usableUntil=null;
+    expect(derivePopupView(value).switchEnabled).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { loginInteractive } from "./auth";
+import { requestConnection } from "./connection";
 import {
   enterManualMode,
   retryAutomaticNow,
@@ -11,9 +11,16 @@ import { readLocalState, updateLocalState } from "./storage";
 import { markManualRequired } from "./sync";
 import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
 import { config } from "../shared/config";
+import { localCookieState } from "./api-v3";
+import { recordFailure } from "./sync";
+import type { PopupInput } from "../popup/view-model";
+import { derivePresentation } from "../shared/protocol-v3.generated";
 
 export type BackgroundMessage =
   | { type: "SYNC" }
+  | { type: "CHECK_STATE" }
+  | { type: "RETRY_LOCAL" }
+  | { type: "OPEN_EXTENSION_SETTINGS" }
   | { type: "LOGIN" }
   | { type: "SET_ENABLED"; enabled: boolean }
   | { type: "ENTER_MANUAL" }
@@ -48,7 +55,8 @@ async function processContentMessage(
   } else if (message.type === "LOGIN_FORM_VISIBLE") {
     const before = await readLocalState();
     if (before.recovery?.phase === "navigated" &&
-        before.recovery.navigatedTabId === sender.tab.id) {
+        before.recovery.navigatedTabId === sender.tab.id &&
+        (!sender.documentId || before.recovery.navigatedDocumentId !== sender.documentId)) {
       await markManualRequired();
       return {
         kind: "manual_required",
@@ -58,15 +66,21 @@ async function processContentMessage(
     await sync("login_form");
   }
   const after = await readLocalState();
-  if (after.recovery?.phase === "finished" && after.localWriteState === "ready") {
-    await updateLocalState((state) => ({
-      ...state,
-      recovery: state.recovery ? {
+  if (after.recovery?.phase === "finished" && after.localWriteState === "ready" &&
+      after.enabledIntent && !after.manualOverride && !after.pendingAck) {
+    let navigationAccepted=false;
+    await updateLocalState((state) => {
+      if (state.localGeneration !== after.localGeneration || !state.enabledIntent || state.manualOverride || state.pendingAck ||
+          state.recovery?.id !== after.recovery?.id || state.recovery?.phase !== "finished" || state.localWriteState !== "ready") return state;
+      navigationAccepted=true;
+      return { ...state,recovery:{
         ...state.recovery,
         phase: "navigated",
         navigatedTabId: sender.tab.id,
-      } : null,
-    }));
+        navigatedDocumentId: sender.documentId ?? null,
+      }};
+    });
+    if (!navigationAccepted) return {kind:"idle"};
     await chrome.tabs.update(sender.tab.id, { url: sender.url });
     return { kind: "navigating" };
   }
@@ -86,15 +100,23 @@ export function handleContentMessage(
   const key = `${sender.tab.id}:${sender.documentId ?? sender.url}`;
   const existing = loginFormFlights.get(key);
   if (existing) return existing;
-  const flight = processContentMessage(message, sender);
+  const flight = processContentMessage(message, sender).finally(() => {
+    if (loginFormFlights.get(key) === flight) loginFormFlights.delete(key);
+  });
   loginFormFlights.set(key, flight);
   return flight;
 }
 
 export async function handleMessage(message: BackgroundMessage) {
+  const launch = (operation: () => Promise<unknown>) => {
+    void operation().catch(recordFailure);
+    return { accepted:true };
+  };
   switch (message.type) {
-    case "LOGIN": await loginInteractive(); return { ok: true };
-    case "SET_ENABLED": await setEnabled(message.enabled); return { ok: true };
+    case "LOGIN": return requestConnection();
+    case "SET_ENABLED":
+      if (typeof message.enabled !== "boolean") throw new Error("INVALID_REQUEST");
+      return launch(() => setEnabled(message.enabled));
     case "ENTER_MANUAL": await enterManualMode(); return { ok: true };
     case "RESUME": await resumeAutomaticMode(); return { ok: true };
     case "SWITCH_TO_MANAGED": await switchToManagedOnce(); return { ok: true };
@@ -102,19 +124,28 @@ export async function handleMessage(message: BackgroundMessage) {
       const state = await readLocalState();
       const url = new URL("/settings", config.authOrigin);
       if (state.deviceId) url.searchParams.set("quickloginDevice", state.deviceId);
+      if (state.deviceId && state.authorization === "reconnect_required") url.searchParams.set("quickloginReconnect","1");
+      const presentation=derivePresentation(state.snapshot,{authorization:state.authorization,observation:state.observation});
+      if (presentation.actionTarget) {
+        const target=new URL(presentation.actionTarget,config.authOrigin);
+        for (const [key,value] of target.searchParams) url.searchParams.set(key,value);
+      }
       await chrome.tabs.create({ url: url.toString() });
       return { ok: true };
     }
-    case "SYNC": await retryAutomaticNow(); return { ok: true };
+    case "OPEN_EXTENSION_SETTINGS":
+      await chrome.tabs.create({url:`chrome://extensions/?id=${chrome.runtime.id}`}); return {ok:true};
+    case "SYNC": return launch(retryAutomaticNow);
+    case "CHECK_STATE": return launch(() => sync("popup"));
+    case "RETRY_LOCAL": return launch(() => sync("popup"));
     case "GET_UI_STATE": {
       const state = await readLocalState();
-      return {
-        authorized: state.deviceId !== null,
-        status: state.status,
-        manualOverride: state.manualOverride,
-        localWriteState: state.localWriteState,
-        lastError: state.lastError,
-      };
+      return { deviceId:state.deviceId,snapshot:state.snapshot,
+        local:{ authorization:state.authorization,observation:state.observation,protocolSupport:state.protocolSupport,
+          ...(state.deviceId ? {enabledIntent:state.enabledIntent} : {}),mode:state.manualOverride ? "manual" : "automatic",
+          cookieState:localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
+        lastError:state.localError,lastConfirmedAt:state.lastConfirmedAt,nextAttemptAt:state.nextAttemptAt,
+      } satisfies PopupInput;
     }
   }
 }

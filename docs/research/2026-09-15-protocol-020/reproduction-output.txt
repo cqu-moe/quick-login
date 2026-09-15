@@ -1,0 +1,88 @@
+
+ RUN  v5.0.0 /Users/uu/Developer/cqu-moe/quicklogin/.worktrees/protocol-020-design
+
+ ❯ docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts (5 tests | 5 failed) 10ms
+   × a network failure must not leave the popup claiming current readiness 4ms
+   × a new generation must invalidate an old application receipt even if sessionVersion matches 1ms
+   × retrying a recoverable cloud failure must request server recovery 1ms
+   × a failed observation must not silently retain an old rebind instruction 1ms
+   × an unavailable binding service must not be reported as an unbound account 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts > a network failure must not leave the popup claiming current readiness
+AssertionError: expected '已就绪' not to be '已就绪' // Object.is equality
+ ❯ docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts:39:43
+     37|   await sync("alarm");
+     38|   const ui = await handleMessage({ type: "GET_UI_STATE" });
+     39|   expect(derivePopupView(ui).heading).not.toBe("已就绪");
+       |                                           ^
+     40| });
+     41|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts > a new generation must invalidate an old application receipt even if sessionVersion matches
+AssertionError: expected "exportCookies" to be called 1 times, but got 0 times
+ ❯ docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts:47:29
+     45|   setEnvelopeWriter(writer);
+     46|   await sync("alarm");
+     47|   expect(api.exportCookies).toHaveBeenCalledTimes(1);
+       |                             ^
+     48| });
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts > retrying a recoverable cloud failure must request server recovery
+AssertionError: expected "refresh" to be called 1 times, but got 0 times
+ ❯ docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts:53:23
+     51|   vi.mocked(api.status).mockResolvedValue({ ...remote, state: "tempora…
+     52|   await handleMessage({ type: "SYNC" });
+     53|   expect(api.refresh).toHaveBeenCalledTimes(1);
+       |                       ^
+     54| });
+     55|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts > a failed observation must not silently retain an old rebind instruction
+AssertionError: expected '学校账号状态已变化' not to be '学校账号状态已变化' // Object.is equality
+ ❯ docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts:63:47
+     61|   await sync("alarm");
+     62|   const ui = await handleMessage({ type: "GET_UI_STATE" });
+     63|   expect(derivePopupView(ui).description).not.toBe("学校账号状态已变化");
+       |                                               ^
+     64|   expect((await readLocalState()).lastError).not.toBeNull();
+     65| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts > an unavailable binding service must not be reported as an unbound account
+AssertionError: promise resolved "{ bound: false, epoch: +0 }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "bound": false,
++   "epoch": 0,
+  }
+
+ ❯ docs/research/2026-09-15-protocol-020/protocol-gaps.test.ts:74:67
+     72|     },
+     73|   } as never);
+     74|   await expect(broker.getQuickloginBindingEpoch("synthetic-user")).rej…
+       |                                                                   ^
+     75| });
+     76|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  15:55:44
+   Duration  439ms (environment 79%, transform 15%, import 3%, tests 3%, worker 1%)

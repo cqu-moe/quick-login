@@ -2,12 +2,14 @@
 
 Chrome MV3 扩展，为每个安装实例维护独立的重庆大学统一认证会话。Auth 负责设备授权、额度、云端学校会话和撤销；扩展后台按版本同步限定于 `sso.cqu.edu.cn` 的 Cookie，不读取或保存学校密码。
 
-当前协议版本为 `2`。status 心跳携带 `observedGeneration`，服务端始终返回当前设备 generation；只有观察值仍为当前版本时才接受 `appliedVersion`，避免总开关、额度或绑定状态变化后形成无法自愈的 409 循环。本仓库是正式扩展源码；`experiment/` 仅保留早期验证材料，不能作为 Chrome 加载目录。
+当前版本为 `0.2.0`，使用协议 `3`。Auth 与插件共用状态契约，通过 reconcile 对账、持久恢复作业、带完整版本的 Cookie 导出和应用回执完成同步。网络失联、学校密码问题、设备退出和浏览器同步失败分别处理；只有当前会话已写入并确认后才显示“已就绪”。[完整设计](docs/superpowers/specs/2026-09-15-quicklogin-020-protocol-design.md)记录状态、恢复与升级规则。
+
+本仓库是正式扩展源码；`experiment/` 仅保留早期验证材料，不能作为 Chrome 加载目录。
 
 ## 本地构建
 
 ```sh
-npm install
+npm ci
 npm run typecheck
 npm test
 npm run build
@@ -15,6 +17,8 @@ npm run check:package
 ```
 
 在 `chrome://extensions` 开启开发者模式，选择“加载已解压的扩展程序”，目录必须是本仓库生成的 `dist/`。不要选择仓库根目录或 `experiment/extension/`。
+
+已有 0.1.x 安装时，在原加载目录替换为新包内容后重新加载，保留设备身份和授权。升级会重新核验 Cookie，不沿用旧版“已同步”标记。`build-info.json` 记录源码提交、协议版本和共享契约指纹。Auth 设置页的“重新连接此设备”通过限于 Auth 来源的一次性消息完成授权恢复，避免误占新设备名额。
 
 ## Auth 公开配置
 

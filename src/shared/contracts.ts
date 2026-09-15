@@ -1,3 +1,5 @@
+import type { AuthorizationState, DeviceSnapshot, ObservationState, ReasonCode, Receipt } from "./protocol-v3.generated";
+
 export type ErrorCode =
   | "UNAUTHORIZED" | "FORBIDDEN" | "INVALID_REQUEST"
   | "NO_DEVICE_CAPACITY" | "DEVICE_LIMIT_REACHED" | "DEVICE_REVOKED"
@@ -63,10 +65,29 @@ export interface RecoveryRound {
   writeRetries: number;
   nextAttemptAt: number | null;
   navigatedTabId: number | null;
+  navigatedDocumentId?: string | null;
 }
 
 export interface LocalState {
-  schemaVersion: 1;
+  schemaVersion: 2;
+  authGeneration: number;
+  connectIntentId: string | null;
+  installationId: string;
+  registrationId: string;
+  reportEpoch: string;
+  clientReportSeq: number;
+  snapshot: DeviceSnapshot | null;
+  receipt: Receipt | null;
+  pendingAck: boolean;
+  authorization: AuthorizationState;
+  observation: ObservationState;
+  protocolSupport: "supported" | "client_update_required" | "service_upgrading";
+  lastConfirmedAt: number | null;
+  nextAttemptAt: number | null;
+  localError: ReasonCode | null;
+  schoolAccess: "unverified" | "accepted" | "login_form_seen";
+  networkFailures: number;
+  pendingCommand: { id: string; enabled: boolean } | null;
   deviceId: string | null;
   localGeneration: number;
   serverGeneration: number | null;

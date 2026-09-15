@@ -13,6 +13,9 @@ const labels: Record<PopupAction, string> = {
   resume: "恢复快捷登录",
   switch_managed: "切换到快捷登录",
   retry: "重试",
+  retry_local: "重新同步",
+  update: "更新插件",
+  fix_permissions: "检查浏览器权限",
 };
 
 async function send(message: Record<string, unknown>) {
@@ -25,6 +28,8 @@ async function act(action: PopupAction): Promise<void> {
   if (action === "resume") await send({ type: "RESUME" });
   if (action === "switch_managed") await send({ type: "SWITCH_TO_MANAGED" });
   if (action === "retry") await send({ type: "SYNC" });
+  if (action === "retry_local") await send({ type: "RETRY_LOCAL" });
+  if (action === "update" || action === "fix_permissions") await send({ type: "OPEN_EXTENSION_SETTINGS" });
   await render();
 }
 
@@ -40,6 +45,10 @@ function pendingView(heading: string, switchChecked: boolean): PopupView {
 }
 
 function renderView(view: PopupView): void {
+  const signature=JSON.stringify(view);
+  if (app.dataset.view === signature) return;
+  const focused=(document.activeElement as HTMLElement | null)?.dataset.control;
+  app.dataset.view=signature;
   app.replaceChildren();
 
   const header = document.createElement("header");
@@ -75,6 +84,7 @@ function renderView(view: PopupView): void {
   const action = view.actions[0];
   if (action) {
     const button = document.createElement("button");
+    button.dataset.control="primary";
     button.type = "button";
     button.textContent = labels[action];
     button.addEventListener("click", async () => {
@@ -84,7 +94,8 @@ function renderView(view: PopupView): void {
       try { await act(action); } catch { await render(); }
     });
     controls.append(button);
-  } else {
+  }
+  if (view.switchVisible ?? !action) {
     const control = document.createElement("label");
     control.className = "switch-control";
     const label = document.createElement("span");
@@ -92,6 +103,7 @@ function renderView(view: PopupView): void {
     label.textContent = "开启 QuickLogin";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
+    checkbox.dataset.control="switch";
     checkbox.checked = view.switchChecked;
     checkbox.disabled = !view.switchEnabled;
     checkbox.addEventListener("change", async () => {
@@ -112,12 +124,23 @@ function renderView(view: PopupView): void {
   }
 
   app.append(header, status, controls);
+  if (focused) app.querySelector<HTMLElement>(`[data-control="${focused}"]`)?.focus();
 }
 
+let renderSequence=0;
 async function render(): Promise<void> {
+  const sequence=++renderSequence;
   const input = await send({ type: "GET_UI_STATE" }) as PopupInput;
+  if (sequence !== renderSequence) return;
   renderView(derivePopupView(input));
 }
 
 renderView(pendingView("正在检查", false));
-void render();
+void render().then(() => send({type:"CHECK_STATE"}));
+chrome.storage.onChanged.addListener((_changes,areaName) => {
+  if (areaName === "local") void render();
+});
+const foregroundTimer=window.setInterval(() => {
+  if (document.visibilityState === "visible") void send({type:"CHECK_STATE"});
+},5_000);
+window.addEventListener("pagehide",() => window.clearInterval(foregroundTimer),{once:true});

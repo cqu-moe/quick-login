@@ -1,28 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
+import { readySnapshot, receipt } from "../test/protocol-fixtures";
 import type { PopupInput } from "./view-model";
 
 const readyInput: PopupInput = {
-  authorized: true,
-  status: {
-    protocolVersion: 2,
-    deviceId: "device-a",
-    generation: 4,
-    masterEnabled: true,
-    enabled: true,
-    deviceLimit: 5,
-    used: 1,
-    disabledReason: null,
-    state: "ready",
-    sessionVersion: 7,
-    appliedVersion: 7,
-    loginAt: 1,
-    lastKeepAliveAt: 2,
-    lastSeenAt: 3,
-  },
-  manualOverride: false,
-  localWriteState: "ready",
-  lastError: null,
+  snapshot: readySnapshot(),
+  local: { authorization: "authorized", enabledIntent:true, observation:"fresh", cookieState:"applied", receipt:receipt(), pendingAck:false },
+  lastError:null,lastConfirmedAt:Date.now(),nextAttemptAt:null,
 };
 
 beforeEach(() => {
@@ -50,8 +34,7 @@ describe("popup rendering", () => {
     const enablePending = new Promise<void>((resolve) => { finishEnable = resolve; });
     const disabledInput: PopupInput = {
       ...readyInput,
-      status: { ...readyInput.status!, enabled: false, state: "disabled" },
-      localWriteState: "idle",
+      local: { ...readyInput.local, enabledIntent:false, cookieState:"unknown" },
     };
     Object.assign(fake.runtime, {
       sendMessage: vi.fn(async (message: unknown) => {

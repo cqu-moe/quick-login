@@ -5,6 +5,7 @@ import type { ContentMessage } from "../shared/messages";
 import { sync } from "./sync";
 import { applyEnvelope, recoverInterruptedWrite } from "./cookie-store";
 import { setEnvelopeWriter } from "./sync";
+import { handleExternalMessage } from "./external";
 
 setEnvelopeWriter(applyEnvelope);
 
@@ -30,14 +31,22 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     void sync("alarm");
   }
 });
-chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessage, sender) => {
+chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessage, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
-  if (sender.tab) return handleContentMessage(message as ContentMessage, sender);
+  if (sender.tab) {
+    void handleContentMessage(message as ContentMessage,sender).then(sendResponse,()=>sendResponse({kind:"idle"}));
+    return true;
+  }
   const senderUrl = sender.url ? new URL(sender.url) : null;
   if (!senderUrl || senderUrl.protocol !== "chrome-extension:" ||
       senderUrl.hostname !== chrome.runtime.id || senderUrl.pathname !== "/popup.html") {
     return false;
   }
-  return handleMessage(message as BackgroundMessage);
+  void handleMessage(message as BackgroundMessage).then(sendResponse,()=>sendResponse({accepted:false}));
+  return true;
+});
+chrome.runtime.onMessageExternal.addListener((message,sender,sendResponse) => {
+  void handleExternalMessage(message,sender).then(sendResponse,()=>sendResponse({accepted:false}));
+  return true;
 });
 void start();

@@ -4,6 +4,17 @@ import { join } from "node:path";
 const root = new URL("../dist/", import.meta.url);
 const manifest = JSON.parse(await readFile(new URL("manifest.json", root), "utf8"));
 const failures = [];
+const pkg=JSON.parse(await readFile(new URL("../package.json",import.meta.url),"utf8"));
+const lock=JSON.parse(await readFile(new URL("../package-lock.json",import.meta.url),"utf8"));
+const sourceManifest=JSON.parse(await readFile(new URL("../public/manifest.json",import.meta.url),"utf8"));
+const buildInfo=JSON.parse(await readFile(new URL("build-info.json",root),"utf8"));
+if ([lock.version,lock.packages[""].version,sourceManifest.version,manifest.version,buildInfo.extensionVersion].some(version=>version!==pkg.version)) {
+  failures.push("source, lockfile, manifest and built package versions differ");
+}
+if (buildInfo.protocolVersion!==3 || !/^[a-f0-9]{40}$/.test(buildInfo.sourceCommit) || !/^[a-f0-9]{64}$/.test(buildInfo.contractDigest)) failures.push("invalid build provenance");
+const contract=await readFile(new URL("../src/shared/protocol-v3.generated.ts",import.meta.url),"utf8");
+if (!contract.includes(`CONTRACT_DIGEST = '${buildInfo.contractDigest}'`)) failures.push("built protocol differs from current canonical contract");
+if (JSON.stringify(manifest.externally_connectable)!==JSON.stringify({matches:["https://auth.cqu.moe/*"]})) failures.push("unexpected external messaging origins");
 const exactPermissions = ["alarms", "cookies", "identity", "storage"];
 const exactHosts = ["https://auth.cqu.moe/*", "https://sso.cqu.edu.cn/*"];
 

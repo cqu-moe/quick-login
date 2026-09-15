@@ -1,25 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { snapshot, response } from "../test/protocol-fixtures";
+import { updateLocalState } from "./storage";
 import { installChromeFake } from "../test/chrome-fake";
-import { authorizedFetch, loginInteractive } from "./auth";
+import { authorizedFetch, clearDeviceAuthorization, loginInteractive } from "./auth";
 
 const stableResource = "https://auth.cqu.moe/api/auth";
 
-const deviceStatus = {
-  protocolVersion: 2,
-  deviceId: "device-from-grant",
-  generation: 1,
-  masterEnabled: true,
-  enabled: false,
-  deviceLimit: 5,
-  used: 0,
-  disabledReason: null,
-  state: "disabled",
-  sessionVersion: 0,
-  appliedVersion: null,
-  loginAt: null,
-  lastKeepAliveAt: null,
-  lastSeenAt: null,
-};
+const deviceStatus = { deviceId: "device-a", snapshot: snapshot() };
+
 
 beforeEach(() => {
   installChromeFake();
@@ -27,6 +15,72 @@ beforeEach(() => {
 });
 
 describe("device authorization", () => {
+  it("requires explicit resume for an existing device whose tokens are missing",async()=>{
+    await updateLocalState(state=>({...state,deviceId:"existing-device",authorization:"reconnect_required"}));
+    const launch=vi.spyOn(chrome.identity,"launchWebAuthFlow");
+    await expect(loginInteractive()).rejects.toMatchObject({code:"AUTH_RECONNECT_REQUIRED"});
+    expect(launch).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps a rotated refresh token when only the local cookie intent changes", async () => {
+    await chrome.storage.local.set({"quicklogin.tokens":{accessToken:"expired",refreshToken:"old-refresh",expiresAt:0}});
+    let release!: (response:Response)=>void;
+    vi.mocked(fetch).mockImplementation((input)=>String(input).endsWith("/oauth2/token")
+      ? new Promise((resolve)=>{release=resolve;}) : Promise.resolve(Response.json({ok:true})));
+    const pending=authorizedFetch("/probe");
+    const result=expect(pending).resolves.toMatchObject({status:200});
+    await vi.waitFor(()=>expect(fetch).toHaveBeenCalledOnce());
+    await updateLocalState((state)=>({...state,manualOverride:true,localGeneration:state.localGeneration+1}));
+    release(Response.json({access_token:"new-access",refresh_token:"rotated-refresh",expires_in:300}));
+    await result;
+    expect((await chrome.storage.local.get("quicklogin.tokens"))["quicklogin.tokens"]).toMatchObject({refreshToken:"rotated-refresh"});
+  });
+  it("does not restore tokens from a refresh that finishes after disconnect", async () => {
+    await chrome.storage.local.set({
+      "quicklogin.tokens": { accessToken: "expired", refreshToken: "synthetic", expiresAt: 0 },
+    });
+    let release!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementation((input) => String(input).endsWith("/oauth2/token")
+      ? new Promise((resolve) => { release = resolve; })
+      : Promise.resolve(Response.json({ ok: true })));
+    const pending = authorizedFetch("/probe");
+    const result = expect(pending).rejects.toMatchObject({ code: "AUTH_RECONNECT_REQUIRED" });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    await clearDeviceAuthorization();
+    release(Response.json({ access_token: "late-access", refresh_token: "late-refresh", expires_in: 300 }));
+    await result;
+    expect((await chrome.storage.local.get("quicklogin.tokens"))["quicklogin.tokens"]).toBeFalsy();
+  });
+  it("rejects an OAuth callback with the right state but a different path", async () => {
+    vi.spyOn(chrome.identity, "launchWebAuthFlow").mockImplementation(async ({ url }) =>
+      `https://test-extension.chromiumapp.org/unexpected?code=synthetic&state=${new URL(url).searchParams.get("state")}`
+    );
+    vi.mocked(fetch).mockImplementation(async (input) => Response.json(
+      String(input).endsWith("/oauth2/token")
+        ? { access_token: "fresh-access", refresh_token: "fresh-refresh", expires_in: 300 }
+        : response(deviceStatus)
+    ));
+    await expect(loginInteractive()).rejects.toThrow("OAUTH_STATE_MISMATCH");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes revoked refresh grants from temporary token service failures", async () => {
+    await chrome.storage.local.set({
+      "quicklogin.tokens": { accessToken: "expired", refreshToken: "synthetic", expiresAt: 0 },
+    });
+    vi.mocked(fetch).mockResolvedValue(Response.json({ error: "invalid_grant" }, { status: 400 }));
+    await expect(authorizedFetch("/probe")).rejects.toMatchObject({ code: "AUTH_RECONNECT_REQUIRED" });
+  });
+
+  it("retains a refresh grant when the token service is unavailable", async () => {
+    await chrome.storage.local.set({
+      "quicklogin.tokens": { accessToken: "expired", refreshToken: "synthetic", expiresAt: 0 },
+    });
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 503 }));
+    await expect(authorizedFetch("/probe")).rejects.toMatchObject({ code: "TEMPORARY_UNAVAILABLE" });
+    expect((await chrome.storage.local.get("quicklogin.tokens"))["quicklogin.tokens"])
+      .toMatchObject({ refreshToken: "synthetic" });
+  });
   it("rejects a callback with a different OAuth state", async () => {
     vi.spyOn(chrome.identity, "launchWebAuthFlow").mockImplementation(async () =>
       "https://test-extension.chromiumapp.org/?code=synthetic&state=wrong"
@@ -85,7 +139,7 @@ describe("device authorization", () => {
       }
       apiCalls += 1;
       return apiCalls === 1
-        ? Response.json({ error: { code: "UNAUTHORIZED", message: "UNAUTHORIZED" } }, { status: 401 })
+        ? Response.json({ code: "AUTH_RECONNECT_REQUIRED", detail: "access token expired" }, { status: 401 })
         : Response.json({ ok: true });
     });
     expect((await authorizedFetch("/probe")).status).toBe(200);
@@ -106,7 +160,7 @@ describe("device authorization", () => {
           expires_in: 300,
         });
       }
-      return Response.json(deviceStatus);
+      return Response.json(response(deviceStatus));
     });
 
     await loginInteractive();
@@ -137,26 +191,25 @@ describe("device authorization", () => {
       },
     });
     const launch = vi.spyOn(chrome.identity, "launchWebAuthFlow");
-    vi.mocked(fetch).mockResolvedValue(Response.json({
-      ...deviceStatus,
+    vi.mocked(fetch).mockResolvedValue(Response.json(response({
       deviceId: "device-from-saved-grant",
-    }));
+      snapshot: { ...snapshot(), identity: { ...snapshot().identity, deviceId: "device-from-saved-grant" } },
+    })));
 
     await loginInteractive();
 
     expect(launch).not.toHaveBeenCalled();
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(String(vi.mocked(fetch).mock.calls[0]![0]))
-      .toBe("https://auth.cqu.moe/api/v1/cqu/quicklogin/devices");
+      .toBe("https://auth.cqu.moe/api/v1/cqu/quicklogin/registrations");
     expect(vi.mocked(fetch).mock.calls[0]![1]?.method).toBe("POST");
-    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]![1]?.body))).toEqual({
-      deviceName: "macOS Chrome",
-      browserFamily: "chrome",
-      browserVersion: "140.0.0.0",
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0]![1]?.body))).toMatchObject({
+      protocolVersion: 3, deviceName: "macOS Chrome",
+      client: { extensionVersion: "0.2.0", browserVersion: "140.0.0.0" },
     });
-    await expect(chrome.storage.local.get("quicklogin.state")).resolves
+    await expect(chrome.storage.local.get("quicklogin.state.v2")).resolves
       .toMatchObject({
-        "quicklogin.state": { deviceId: "device-from-saved-grant" },
+        "quicklogin.state.v2": { deviceId: "device-from-saved-grant" },
       });
   });
 });

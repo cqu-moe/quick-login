@@ -1,129 +1,40 @@
-import type { DeviceStatus, ErrorCode, LocalState } from "../shared/contracts";
+import { derivePresentation, type DeviceSnapshot, type LocalPresentation, type ReasonCode, type ActionTarget } from "../shared/protocol-v3.generated";
 
-export type PopupAction =
-  | "login" | "open_settings" | "resume" | "switch_managed" | "retry";
-
+export type PopupAction = "login" | "open_settings" | "resume" | "switch_managed" | "retry" | "retry_local" | "update" | "fix_permissions";
 export interface PopupInput {
-  authorized: boolean;
-  status: DeviceStatus | null;
-  manualOverride: boolean;
-  localWriteState: LocalState["localWriteState"];
-  lastError: ErrorCode | null;
+  deviceId?:string|null;
+  snapshot: DeviceSnapshot | null;
+  local: LocalPresentation;
+  lastError: ReasonCode | null;
+  lastConfirmedAt: number | null;
+  nextAttemptAt: number | null;
 }
-
 export interface PopupView {
-  heading: string;
-  description: string;
-  tone: "ready" | "busy" | "attention" | "neutral";
-  switchEnabled: boolean;
-  switchChecked: boolean;
-  actions: PopupAction[];
+  heading:string;description:string;tone:"ready"|"busy"|"attention"|"neutral";
+  switchEnabled:boolean;switchChecked:boolean;switchVisible?:boolean;
+  actions:PopupAction[];actionTarget?:ActionTarget;
 }
-
 export function derivePopupView(input: PopupInput): PopupView {
-  const status = input.status;
-  if (status?.state === "revoked" || input.lastError === "DEVICE_REVOKED") {
-    return {
-      heading: "已退出",
-      description: "连接 Auth 后可重新使用",
-      tone: "attention",
-      switchEnabled: false, switchChecked: false, actions: ["login"],
-    };
-  }
-  if (!input.authorized) {
-    return {
-      heading: "未连接 Auth",
-      description: "连接后会自动准备学校登录",
-      tone: "attention",
-      switchEnabled: false, switchChecked: false, actions: ["login"],
-    };
-  }
-  if (!status) {
-    return {
-      heading: "正在检查",
-      description: "",
-      tone: "busy",
-      switchEnabled: false, switchChecked: false, actions: [],
-    };
-  }
-  if (!status.masterEnabled) {
-    return {
-      heading: "尚未开启",
-      description: "请先在 Auth 开启快捷登录",
-      tone: "attention",
-      switchEnabled: false, switchChecked: status.enabled, actions: ["open_settings"],
-    };
-  }
-  if (input.lastError === "DEVICE_LIMIT_REACHED" || input.lastError === "NO_DEVICE_CAPACITY") {
-    return {
-      heading: "设备名额已满",
-      description: "请先在 Auth 退出不用的设备",
-      tone: "attention",
-      switchEnabled: true, switchChecked: false, actions: ["open_settings"],
-    };
-  }
-  if (status.state === "needs_reauth") {
-    return {
-      heading: "需要重新绑定",
-      description: "学校账号状态已变化",
-      tone: "attention",
-      switchEnabled: true, switchChecked: status.enabled, actions: ["open_settings"],
-    };
-  }
-  if (input.manualOverride) {
-    return {
-      heading: "手动登录中",
-      description: "恢复后会继续同步",
-      tone: "neutral",
-      switchEnabled: true, switchChecked: status.enabled, actions: ["resume"],
-    };
-  }
-  if (input.localWriteState === "foreign_session") {
-    return {
-      heading: "已有学校登录",
-      description: "不会覆盖当前会话",
-      tone: "neutral",
-      switchEnabled: true, switchChecked: status.enabled, actions: ["switch_managed"],
-    };
-  }
-  if (status.state === "preparing" || status.state === "refreshing") {
-    return {
-      heading: "正在同步",
-      description: "正在更新学校登录",
-      tone: "busy",
-      switchEnabled: false, switchChecked: status.enabled, actions: [],
-    };
-  }
-  if (status.state === "ready" && input.localWriteState === "ready") {
-    return {
-      heading: "已就绪",
-      description: "",
-      tone: "ready",
-      switchEnabled: true, switchChecked: status.enabled, actions: [],
-    };
-  }
-  if (status.state === "ready" && input.localWriteState === "error") {
-    return {
-      heading: "同步失败",
-      description: "稍后会自动重试",
-      tone: "attention",
-      switchEnabled: true, switchChecked: status.enabled, actions: ["retry"],
-    };
-  }
-  if (status.state === "ready") {
-    return {
-      heading: "正在同步",
-      description: "正在更新学校登录",
-      tone: "busy",
-      switchEnabled: false, switchChecked: status.enabled, actions: [],
-    };
-  }
-  return {
-    heading: status.enabled ? "同步失败" : "已关闭",
-    description: status.enabled ? "稍后会自动重试" : "",
-    tone: status.enabled ? "attention" : "neutral",
-    switchEnabled: true,
-    switchChecked: status.enabled,
-    actions: status.enabled ? ["retry"] : [],
+  const state=derivePresentation(input.snapshot,input.local);
+  const actions:Partial<Record<typeof state.actionCode,PopupAction>>={
+    connect_auth:"login",update_extension:"update",open_auth:"open_settings",manage_devices:"open_settings",
+    resume_automatic:"resume",switch_to_quicklogin:"switch_managed",reconcile:"retry",bind_school:"open_settings",
+    update_password:"open_settings",complete_verification:"open_settings",retry_session:"retry",
+    fix_permissions:"fix_permissions",retry_local:"retry_local",confirm_receipt:"retry_local",
   };
+  const action=state.statusCode === "reconnect_required" && (input.deviceId ?? input.snapshot?.identity.deviceId)
+    ? "open_settings" : actions[state.actionCode];
+  const authorized=input.local.authorization === "authorized" && input.snapshot?.authorization.state === "authorized";
+  const enabled=input.local.enabledIntent ?? input.snapshot?.authorization.deviceEnabled ?? false;
+  let description=state.detail ?? "";
+  if (state.statusCode === "unreachable" && input.lastConfirmedAt !== null) {
+    description=`上次确认：${new Date(input.lastConfirmedAt).toLocaleTimeString("zh-CN")}`;
+  } else if (state.statusCode === "retry_wait" && input.snapshot?.cloud.retryAt) {
+    description=`预计 ${new Date(input.snapshot.cloud.retryAt).toLocaleTimeString("zh-CN")} 后重试`;
+  }
+  const busy=["authorizing","checking","preparing","refreshing","syncing","pending_ack","binding_updating"].includes(state.statusCode);
+  const neutral=["disabled","device_off","master_off","manual","foreign"].includes(state.statusCode);
+  return {heading:state.title,description,tone:state.statusCode === "ready" ? "ready" : busy ? "busy" : neutral ? "neutral" : "attention",
+    switchEnabled:authorized && (enabled || input.snapshot?.capabilities.canEnable === true),
+    switchChecked:enabled,switchVisible:authorized,actions:action ? [action] : [],actionTarget:state.actionTarget};
 }

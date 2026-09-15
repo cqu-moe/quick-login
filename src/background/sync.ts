@@ -1,237 +1,254 @@
-import type { CookieEnvelope, ErrorCode, LocalState, RecoveryRound } from "../shared/contracts";
-import { config, PREPARING_SYNC_DELAY_MS, SYNC_ALARM } from "../shared/config";
-import * as api from "./api";
+import type { LocalState, RecoveryRound } from "../shared/contracts";
+import { PREPARING_SYNC_DELAY_MS, SYNC_ALARM } from "../shared/config";
+import { REASON_CODES, sameTuple, tupleForSnapshot, type DeviceSnapshot, type ExportEnvelope, type ReasonCode } from "../shared/protocol-v3.generated";
+import * as api from "./api-v3";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
-import { responseError, retryBounded, SyncError } from "./retry";
-import { clearOwnedCookies } from "./cookie-store";
+import { clearOwnedCookies, verifyManagedCookies } from "./cookie-store";
 
-export type SyncReason = "alarm" | "startup" | "network" | "enable" | "login_form" | "user_retry";
-export type EnvelopeWriter = (
-  envelope: CookieEnvelope,
-  options: { localGeneration: number; allowForeignOnce: boolean }
-) => Promise<"applied" | "foreign_session" | "cancelled">;
-
-let writer: EnvelopeWriter = async () => {
-  throw new SyncError("COOKIE_WRITE_TRANSIENT");
-};
+export type SyncReason = "alarm" | "startup" | "network" | "enable" | "login_form" | "user_retry" | "popup";
+export type EnvelopeWriter = (envelope: ExportEnvelope,
+  options: { localGeneration: number; allowForeignOnce: boolean }) => Promise<"applied" | "foreign_session" | "cancelled">;
+let writer: EnvelopeWriter = async () => { throw new api.ApiFailure("LOCAL_WRITE_FAILED"); };
 let syncFlight: Promise<void> | null = null;
-let allowForeignOnce = false;
+const pendingReasons = new Set<SyncReason>();
+let replacementGeneration: number | null = null;
 
-export function setEnvelopeWriter(next: EnvelopeWriter): void {
-  writer = next;
+export function setEnvelopeWriter(next: EnvelopeWriter): void { writer = next; }
+
+async function schedule(when: number): Promise<void> {
+  await chrome.alarms.create(`${SYNC_ALARM}-retry`, { when: Math.max(Date.now() + 30_000, when) });
 }
 
-function browserVersion(): string {
-  return navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)*)/)?.[1] ?? "unknown";
+export async function recordFailure(error: unknown): Promise<void> {
+  const candidate = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+  const code: ReasonCode = (REASON_CODES as readonly string[]).includes(candidate)
+    ? candidate as ReasonCode : candidate === "COOKIE_PERMISSION_DENIED" ? "LOCAL_PERMISSION_DENIED" :
+      candidate === "COOKIE_WRITE_TRANSIENT" ? "LOCAL_WRITE_FAILED" : "INTERNAL_STATE_UNAVAILABLE";
+  if (code === "DEVICE_REVOKED") {
+    await updateLocalState((state) => ({ ...state, localGeneration:state.localGeneration+1,
+      authorization:"revoked", enabledIntent:false, receipt:null, pendingAck:false, localError:code }));
+    await clearOwnedCookies();
+    await clearDeviceAuthorization();
+    await updateLocalState((state) => ({ ...state, authorization:"revoked", localError:code }));
+    return;
+  }
+  const state = await updateLocalState((current) => {
+    const failures = current.networkFailures + 1;
+    const delays = [30_000,60_000,180_000,300_000];
+    const retryAt = error instanceof api.ApiFailure && error.retryAt !== null ? error.retryAt :
+      Date.now() + Math.round(delays[Math.min(failures-1,delays.length-1)] * (0.8+Math.random()*0.4));
+    return { ...current, localError:code, networkFailures:failures, nextAttemptAt:retryAt,
+      observation: code.startsWith("LOCAL_") ? current.observation : "unreachable",
+      localWriteState: code.startsWith("LOCAL_") ? "error" : current.localWriteState,
+      authorization: code === "AUTH_RECONNECT_REQUIRED" ? "reconnect_required" : current.authorization,
+      protocolSupport: code === "PROTOCOL_UNSUPPORTED" || code === "CLIENT_UPDATE_REQUIRED" ? "client_update_required" : current.protocolSupport };
+  });
+  await schedule(state.nextAttemptAt!);
 }
 
-async function rememberWait(nextAttemptAt: number): Promise<void> {
-  await updateLocalState((state) => ({
-    ...state,
-    recovery: state.recovery ? { ...state.recovery, nextAttemptAt } : null,
-  }));
-  chrome.alarms.create(`${SYNC_ALARM}-retry`, { when: nextAttemptAt });
+async function adopt(snapshot: DeviceSnapshot, fence: number): Promise<LocalState> {
+  return updateLocalState((current) => {
+    if (current.localGeneration !== fence || current.deviceId !== snapshot.identity.deviceId) return current;
+    const old = current.snapshot;
+    if (old && snapshot.versions.generation < old.versions.generation) return current;
+    if (old && snapshot.versions.generation === old.versions.generation &&
+        (snapshot.versions.deviceRevision < old.versions.deviceRevision ||
+         snapshot.versions.accountRevision < old.versions.accountRevision ||
+         (snapshot.versions.bindingRevision !== null && old.versions.bindingRevision !== null &&
+          snapshot.versions.bindingRevision < old.versions.bindingRevision))) return current;
+    const tuple = tupleForSnapshot(snapshot);
+    const invalidated = current.serverGeneration !== snapshot.versions.generation ||
+      (old !== null && !sameTuple(tupleForSnapshot(old), tuple));
+    const validReceipt = tuple !== null && sameTuple(current.receipt, tuple);
+    return { ...current, snapshot, serverGeneration:snapshot.versions.generation,
+      localGeneration: current.localGeneration + (invalidated ? 1 : 0),
+      authorization:snapshot.authorization.state, observation:snapshot.observation,
+      lastConfirmedAt:Date.now(), networkFailures:0, nextAttemptAt:null, localError:null,
+      receipt:validReceipt ? current.receipt : null, pendingAck:validReceipt && current.pendingAck,
+      appliedVersion:validReceipt ? current.appliedVersion : null,
+      localWriteState: invalidated && current.localWriteState === "ready" ? "idle" : current.localWriteState };
+  });
 }
 
-async function requestEnvelope(generation: number, sessionVersion: number) {
-  return retryBounded(async () => {
-    try {
-      return await api.exportCookies(generation, sessionVersion);
-    } catch (error) {
-      if (error instanceof Response) throw await responseError(error);
-      throw error;
-    }
-  }, rememberWait);
+async function ackCurrent(local: LocalState): Promise<void> {
+  if (!local.receipt) return;
+  const receipt = local.receipt;
+  const ack = await api.acknowledge(receipt);
+  const after = await readLocalState();
+  if (after.localGeneration !== local.localGeneration || !sameTuple(after.receipt,receipt)) return;
+  if (ack.exportId !== receipt.exportId || ack.reportEpoch !== after.reportEpoch || ack.clientReportSeq !== after.clientReportSeq) {
+    throw new api.ApiFailure("CONTRACT_INVALID");
+  }
+  if (!ack.accepted || !sameTuple(ack.acceptedTuple,receipt)) {
+    await updateLocalState((state) => ({ ...state, receipt:null, pendingAck:false, appliedVersion:null, localWriteState:"idle" }));
+    await schedule(Date.now()+30_000);
+    return;
+  }
+  await adopt(ack.snapshot, local.localGeneration);
+  await updateLocalState((state) => sameTuple(state.receipt,receipt) ? { ...state,pendingAck:false } : state);
 }
 
 async function runSync(reason: SyncReason): Promise<void> {
   let local = await readLocalState();
-  if (!local.deviceId) return;
-  if (local.recovery?.nextAttemptAt && Date.now() < local.recovery.nextAttemptAt) return;
-
-  if (local.pendingOperation === "disable") {
-    try {
-      await api.setDeviceEnabled(false);
-      local = await updateLocalState((state) => ({ ...state, pendingOperation: null }));
-    } catch {
+  if (!local.deviceId || local.authorization === "revoked") return;
+  if (reason === "alarm" && local.nextAttemptAt !== null && Date.now() < local.nextAttemptAt) return;
+  const fence = local.localGeneration;
+  try {
+    if (reason === "startup" || local.protocolSupport !== "supported" || !local.snapshot) {
+      const capabilities = await api.capabilities();
+      if (!capabilities.supportedProtocolVersions.includes(3) || !capabilities.features.reconcile || !capabilities.features.receipts) {
+        await updateLocalState((state) => ({ ...state,protocolSupport:"service_upgrading",observation:"stale" }));
+        await schedule(Date.now()+60_000); return;
+      }
+      await updateLocalState((state) => ({ ...state,protocolSupport:"supported" }));
+    }
+    let currentCookiesVerified = false;
+    if (local.receipt) {
+      currentCookiesVerified = await verifyManagedCookies();
+      local = await updateLocalState((state) => {
+        if (state.localGeneration !== fence) return state;
+        return currentCookiesVerified && state.receipt
+          ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() },pendingAck:true }
+          : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle" };
+      });
+    }
+    const result = await api.reconcile();
+    if ((await readLocalState()).localGeneration !== fence) return;
+    local = await adopt(result.snapshot,fence);
+    if (local.snapshot !== null && local.snapshot.snapshotId !== result.snapshot.snapshotId) return;
+    if (result.receiptAck?.accepted && local.receipt && result.receiptAck.exportId === local.receipt.exportId &&
+        result.receiptAck.reportEpoch === local.reportEpoch && result.receiptAck.clientReportSeq === local.clientReportSeq &&
+        sameTuple(result.receiptAck.acceptedTuple,local.receipt)) {
+      local = await updateLocalState((state) => ({ ...state,pendingAck:false }));
+    }
+    let remote = local.snapshot;
+    if (!remote) return;
+    if (local.pendingCommand) {
+      const command = local.pendingCommand;
+      const update = await api.operate("set_enabled",remote,command.id,command.enabled);
+      local = await adopt(update.snapshot,local.localGeneration);
+      local = await updateLocalState((state) => state.pendingCommand?.id === command.id
+        ? { ...state,pendingCommand:null,pendingOperation:null } : state);
+      remote = local.snapshot!;
+    }
+    if (remote.authorization.state === "revoked") throw new api.ApiFailure("DEVICE_REVOKED");
+    if (remote.authorization.policy !== "enabled" || !local.enabledIntent) {
+      await clearOwnedCookies();
+      await updateLocalState((state) => ({ ...state,receipt:null,pendingAck:false,localWriteState:"idle" }));
       return;
     }
-  }
-
-  let remote;
-  try {
-    remote = await api.status({
-      protocolVersion: config.protocolVersion,
-      observedGeneration: local.serverGeneration ?? 0,
-      appliedVersion: local.appliedVersion,
-      browserVersion: browserVersion(),
-    });
-  } catch (error) {
-    if (error instanceof Response) {
-      const parsed = await responseError(error);
-      if (parsed.code === "DEVICE_REVOKED") {
-        await updateLocalState((state) => ({
-          ...state,
-          localGeneration: state.localGeneration + 1,
-          enabledIntent: false,
-          status: state.status ? { ...state.status, state: "revoked", enabled: false } : null,
-          lastError: "DEVICE_REVOKED",
-        }));
-        await clearOwnedCookies();
-        await clearDeviceAuthorization();
-        return;
+    if (local.manualOverride || remote.observation !== "fresh" || remote.freshUntil <= Date.now()) return;
+    if (local.localWriteState === "foreign_session" && replacementGeneration !== local.localGeneration) return;
+    const userRecovery = (reason === "login_form" && currentCookiesVerified) ||
+      (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen"));
+    const waiting = remote.cloud.retryAt !== null && Date.now() < remote.cloud.retryAt;
+    if ((userRecovery && remote.capabilities.canRetry && !waiting) ||
+        (!remote.capabilities.canExport && remote.capabilities.canEnsure && !waiting &&
+         ["absent","expired","blocked"].includes(remote.cloud.state))) {
+      if (!local.recovery || local.recovery.generation !== remote.versions.generation) {
+        const versions = remote.versions;
+        local = await updateLocalState((state) => ({ ...state,recovery:{ id:crypto.randomUUID(),
+          generation:versions.generation,sessionVersion:versions.sessionVersion,phase:"downloading",
+          downloadRetries:0,writeRetries:0,nextAttemptAt:null,navigatedTabId:null } }));
       }
-      await updateLocalState((state) => ({ ...state, lastError: parsed.code as ErrorCode }));
+      const response = await api.operate(userRecovery ? "retry_session" : "ensure_session",remote,
+        `${remote.identity.deviceId}:${remote.versions.generation}:${remote.versions.bindingEpoch}:${local.recovery!.id}`);
+      local = await adopt(response.snapshot,local.localGeneration);
+      remote = local.snapshot!;
     }
-    return;
-  }
-
-  local = await updateLocalState((state) => ({
-    ...state,
-    status: remote,
-    serverGeneration: remote.generation,
-    lastError: null,
-  }));
-  if (!remote.masterEnabled || !remote.enabled) {
-    await clearOwnedCookies();
-    return;
-  }
-  if (local.manualOverride) return;
-  if (remote.state === "preparing" || remote.state === "refreshing") {
-    chrome.alarms.create(`${SYNC_ALARM}-retry`, {
-      when: Date.now() + PREPARING_SYNC_DELAY_MS,
-    });
-    return;
-  }
-  if (remote.state !== "ready") return;
-  await chrome.alarms.clear(`${SYNC_ALARM}-retry`);
-  if (local.appliedVersion === remote.sessionVersion &&
-      reason !== "login_form" && reason !== "user_retry") return;
-
-  const round: RecoveryRound = local.recovery?.generation === remote.generation
-    ? local.recovery
-    : {
-        id: crypto.randomUUID(),
-        generation: remote.generation,
-        sessionVersion: remote.sessionVersion,
-        phase: "downloading",
-        downloadRetries: 0,
-        writeRetries: 0,
-        nextAttemptAt: null,
-        navigatedTabId: null,
-      };
-  local = await updateLocalState((state) => ({ ...state, recovery: round }));
-  const generationFence = local.localGeneration;
-
-  try {
-    const envelope = await requestEnvelope(remote.generation, remote.sessionVersion);
+    if (!remote.capabilities.canExport || remote.cloud.state !== "ready") {
+      await schedule(remote.presentation.nextCheckAt ?? Date.now()+PREPARING_SYNC_DELAY_MS); return;
+    }
+    if (local.receipt && sameTuple(local.receipt,tupleForSnapshot(remote)) && local.localWriteState === "ready") {
+      if (local.pendingAck) await ackCurrent(local);
+      return;
+    }
+    const generationFence = local.localGeneration;
+    const round: RecoveryRound = { id:crypto.randomUUID(),generation:remote.versions.generation,
+      sessionVersion:remote.versions.sessionVersion,phase:"downloading",downloadRetries:0,writeRetries:0,
+      nextAttemptAt:null,navigatedTabId:null };
+    await updateLocalState((state) => ({ ...state,recovery:round }));
+    const envelope = await api.exportSession(remote);
+    if (!sameTuple(envelope,tupleForSnapshot(remote)) || envelope.deviceId !== local.deviceId) throw new api.ApiFailure("SESSION_CHANGED");
+    if (envelope.applyBefore <= Date.now()) throw new api.ApiFailure("STALE_SNAPSHOT");
     if ((await readLocalState()).localGeneration !== generationFence) return;
-    await updateLocalState((state) => ({
-      ...state,
-      recovery: state.recovery ? { ...state.recovery, phase: "writing", nextAttemptAt: null } : null,
-      localWriteState: "writing",
-    }));
-    const result = await retryBounded(
-      () => writer(envelope, {
-        localGeneration: generationFence,
-        allowForeignOnce: allowForeignOnce && reason === "user_retry",
-      }),
-      rememberWait
-    );
-    if (result === "applied") {
-      await updateLocalState((state) => ({
-        ...state,
-        appliedVersion: envelope.sessionVersion,
-        localWriteState: "ready",
-        recovery: state.recovery ? { ...state.recovery, phase: "finished", nextAttemptAt: null } : null,
-      }));
-    } else if (result === "foreign_session") {
-      await updateLocalState((state) => ({ ...state, localWriteState: "foreign_session" }));
+    await updateLocalState((state) => ({ ...state,localWriteState:"writing" }));
+    const applied = await writer(envelope,{ localGeneration:generationFence,
+      allowForeignOnce:replacementGeneration === generationFence && reason === "user_retry" });
+    if (applied === "cancelled") {
+      await updateLocalState((state) => state.localWriteState === "writing" ? { ...state,localWriteState:"idle" } : state);
+      return;
     }
+    if (applied === "foreign_session") {
+      await updateLocalState((state) => ({ ...state,localWriteState:"foreign_session",receipt:null,pendingAck:false }));
+      return;
+    }
+    local = await updateLocalState((state) => {
+      if (state.localGeneration !== generationFence || !state.enabledIntent || state.manualOverride) return state;
+      return { ...state,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
+        bindingEpoch:envelope.bindingEpoch,credentialRevision:envelope.credentialRevision,
+        sessionVersion:envelope.sessionVersion,exportId:envelope.exportId,result:"applied",verifiedAt:Date.now() },
+        pendingAck:true,appliedVersion:envelope.sessionVersion,localWriteState:"ready",schoolAccess:"unverified",
+        recovery:{ ...round,phase:"finished" } };
+    });
+    if (local.localGeneration === generationFence) await ackCurrent(local);
   } catch (error) {
-    const code = error instanceof SyncError &&
-      error.code !== "COOKIE_WRITE_TRANSIENT" && error.code !== "COOKIE_PERMISSION_DENIED"
-      ? error.code : "TEMPORARY_UNAVAILABLE";
-    await updateLocalState((state) => ({ ...state, localWriteState: "error", lastError: code }));
+    const current=await readLocalState();
+    if (current.deviceId !== local.deviceId || current.localGeneration !== local.localGeneration) return;
+    await recordFailure(error);
   }
 }
 
 export function sync(reason: SyncReason): Promise<void> {
-  if (syncFlight) return syncFlight;
-  syncFlight = runSync(reason).finally(() => { syncFlight = null; });
+  if (syncFlight) {
+    if (reason === "user_retry" || reason === "enable" || reason === "login_form") pendingReasons.add(reason);
+    return syncFlight;
+  }
+  syncFlight = (async () => {
+    await runSync(reason);
+    while (pendingReasons.size) {
+      const next = pendingReasons.values().next().value!;
+      pendingReasons.delete(next); await runSync(next);
+    }
+  })().finally(() => { syncFlight=null; });
   return syncFlight;
 }
 
-export async function setEnabled(enabled: boolean): Promise<void> {
-  if (!enabled) {
-    await updateLocalState((state) => ({
-      ...state,
-      enabledIntent: false,
-      localGeneration: state.localGeneration + 1,
-      pendingOperation: "disable",
-      recovery: null,
-    }));
-    await clearOwnedCookies();
-    try {
-      const status = await api.setDeviceEnabled(false);
-      await updateLocalState((state) => ({ ...state, status, pendingOperation: null }));
-    } catch {
-      return;
-    }
-    return;
-  }
-  const status = await api.setDeviceEnabled(true);
-  await updateLocalState((state) => ({
-    ...state,
-    enabledIntent: true,
-    serverGeneration: status.generation,
-    status,
-    lastError: null,
-  }));
-  await sync("enable");
+export async function setEnabled(enabled: boolean,expectedConnectIntentId?:string): Promise<void> {
+  let accepted=false;
+  const local = await updateLocalState((state) => {
+    if (expectedConnectIntentId !== undefined && state.connectIntentId !== expectedConnectIntentId) return state;
+    accepted=true;
+    return { ...state,enabledIntent:enabled,
+    connectIntentId:null,
+    localGeneration:state.localGeneration+1,pendingCommand:{ id:crypto.randomUUID(),enabled },
+    pendingOperation:enabled ? null : "disable",receipt:null,pendingAck:false,recovery:null,
+    localWriteState:"idle",localError:null };
+  });
+  if (!accepted) return;
+  if (!enabled) await clearOwnedCookies();
+  if (local.deviceId) await sync("enable");
 }
-
 export async function enterManualMode(): Promise<void> {
-  await updateLocalState((state) => ({
-    ...state,
-    manualOverride: true,
-    localGeneration: state.localGeneration + 1,
-    recovery: state.recovery ? { ...state.recovery, phase: "manual_required" } : null,
-  }));
+  await updateLocalState((state) => ({ ...state,manualOverride:true,localGeneration:state.localGeneration+1,
+    connectIntentId:null,
+    receipt:null,pendingAck:false,recovery:state.recovery ? { ...state.recovery,phase:"manual_required" } : null }));
+  void sync("popup");
 }
-
 export async function resumeAutomaticMode(): Promise<void> {
-  await updateLocalState((state) => ({
-    ...state,
-    manualOverride: false,
-    recovery: null,
-    lastError: null,
-  }));
+  await updateLocalState((state) => ({ ...state,manualOverride:false,recovery:null,localError:null,nextAttemptAt:null }));
   await sync("user_retry");
 }
-
 export async function retryAutomaticNow(): Promise<void> {
-  const state = await updateLocalState((current) => current.manualOverride
-    ? current
-    : { ...current, recovery: null, lastError: null }
-  );
-  if (state.manualOverride) return;
-  await sync("user_retry");
+  const state=await updateLocalState((current) => ({ ...current,nextAttemptAt:null,localError:null }));
+  if (!state.manualOverride) await sync("user_retry");
 }
-
 export async function switchToManagedOnce(): Promise<void> {
-  allowForeignOnce = true;
-  try {
-    await sync("user_retry");
-  } finally {
-    allowForeignOnce = false;
-  }
+  replacementGeneration=(await readLocalState()).localGeneration;
+  try { await sync("user_retry"); } finally { replacementGeneration=null; }
 }
-
 export async function markManualRequired(): Promise<void> {
-  await updateLocalState((state) => ({
-    ...state,
-    recovery: state.recovery ? { ...state.recovery, phase: "manual_required" } : null,
-  }));
+  await updateLocalState((state) => ({ ...state,schoolAccess:"login_form_seen",
+    recovery:state.recovery ? { ...state.recovery,phase:"manual_required" } : null }));
 }

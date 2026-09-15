@@ -6,7 +6,7 @@ import { recoverInterruptedWrite } from "./cookie-store";
 
 beforeEach(async () => {
   installChromeFake();
-  await chrome.storage.local.set({ "quicklogin.state": initialLocalState() });
+  await chrome.storage.local.set({ "quicklogin.state.v2": initialLocalState() });
 });
 
 describe("cookie journal recovery", () => {

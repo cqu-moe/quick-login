@@ -33,7 +33,7 @@ export function installChromeFake() {
   const cookieKey = (cookie: Pick<chrome.cookies.Cookie, "storeId" | "domain" | "path" | "name">) =>
     `${cookie.storeId}\0${cookie.domain}\0${cookie.path}\0${cookie.name}`;
   const fake = {
-    storage: { local: area(local), session: area(session) },
+    storage: { local: area(local), session: area(session), onChanged:event() },
     alarms: {
       get: async (name: string) => alarms.get(name),
       create: (name: string, info: chrome.alarms.AlarmCreateInfo) => {
@@ -103,9 +103,11 @@ export function installChromeFake() {
     },
     runtime: {
       id: "test-extension",
+      getManifest:()=>({version:"0.2.0"}),
       onInstalled: event(),
       onStartup: event(),
       onMessage: event(),
+      onMessageExternal:event(),
       sendMessage: async () => ({ kind: "idle" }),
     },
     tabs: {
