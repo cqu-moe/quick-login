@@ -1,3 +1,51 @@
+# QuickLogin 0.2.1 发布与验收（2026-09-15）
+
+## 已交付
+
+- 插件源码：`6a4be4289d380c12b92f27c388cdbe41deab5a4c`，已推送 `quick-login/main`。
+- Auth 源码：`0f640b52d78ff9425dd978a238cc1e1fbc390ab8`，已推送 `auth/main`。
+- [生产 CI](https://github.com/cqu-moe/auth/actions/runs/34964465904)：成功；检查、迁移、部署均完成。
+- Worker：`d6bd0feb-bc91-4dff-b074-e1b57c8e12f5`，100% 流量。
+- Container：版本 67，当前镜像标签 `d6bd0feb`，5 healthy / 0 failed，health.errors 为空。
+- 健康、capabilities、overview 均 HTTP 200；protocolVersion=3，serverBuild 与上述 Auth 提交一致。
+- 安装包：`releases/cqu-quicklogin-0.2.1-canary.zip`，22986 字节，仅含 dist 的 8 个文件。
+- SHA-256：`e811fe778471c99f40fdf1cff2d2cbcc5b230d109765f2f82e44003e60cc9258`。
+- 契约指纹：`0263d6f205e113cdc2da8661f2fdf8c7e5b52b5a41045b90633d8d5989625a38`。
+- ZIP 内容、CRC、manifest 版本和 build-info 源码提交均已核验。旧 0.2.0 包保留，未覆盖。
+- Chrome Web Store：未上传、未发布。
+
+## 验证结果及实际边界
+
+| 项目 | 结果 |
+| --- | --- |
+| 插件 | 65 测试、typecheck、build、check:package 通过 |
+| Auth | 849 单元测试、281 DO 测试、两套 typecheck、API/边界检查、API lint、前端 lint/build 通过 |
+| Container | 365 个测试通过；13 种实际 raw-CDP 失败格式贯穿生产响应与 Worker 消费测试 |
+| 独立审查 | 协议、跨仓库整合及所有具体修正复审通过 |
+| 既有 Ego 安装升级 | 实际运行 0.2.1/sourceCommit 与包一致；deviceId、授权及 schema 2 保留，设备数仍为 2 |
+| 真实学校自动登录 | **未通过**：交付读回为 `retry_wait / VERIFICATION_COOLDOWN`（等待验证恢复），尚无当前 Cookie 的成功 ACK，不能据此声称已进入学校业务页面 |
+| 用户 Chrome | 未控制、未自动重载；需用户从最终包更新原安装目录 |
+
+Ego 的普通扩展标签页不等于原生 action popup；该测试环境无 active browser window，不能用其调试标签页标题证明真实 Chrome 弹窗。此次以实际后台存储、服务器快照和包 provenance 核验升级；UI 有自动化与实际组件预览证据。学校登录成功与 Cookie 回执仍是独立业务门禁。
+
+当前实现已把上游返回的验证码、凭据、人工验证和超时错误分类，并保留正确的等待/人工处理状态；这不等于校方登录已经恢复。后续排查入口见 [运行状态交接](quicklogin-021-runtime-status.md)。
+
+## 安装
+
+已有插件无需卸载：把新包内容解压覆盖原加载目录，然后在扩展管理页点击“重新加载”。根目录应直接包含 manifest.json。不要并行加载另一份副本。
+
+原始主目录 dist 在用户更新前保持旧安装内容，避免运行中的旧后台与新弹窗混用；交付文件以上述版本化 ZIP 为准。
+
+## 本次主要行为
+
+- 共用协议、状态及错误定义；Auth 主学校会话、设备会话、浏览器应用回执分开表达。
+- generation/绑定/凭据/会话版本完整校验，网络错误不再冒充未绑定。
+- 作业与验证码租约持久化，旧任务、旧保活和旧回执不能覆盖新意图。
+- 实际容器错误被规范化；设备 CAPTCHA 不污染其他设备或全局凭据，手动登录先停止自动写入。
+- 设备行仅保留名称、一个状态、一行版本/联系信息；退出后果仅在确认时显示。
+
+## 历史发布记录（不代表当前状态）
+
 # QuickLogin 发布门禁
 
 本文只描述发布顺序，不授权部署、生产写入或 Chrome Web Store 上传。所有命令先在测试环境执行；任何一步读回不一致都停止，不继续切换 mode。

@@ -1,3 +1,13 @@
+# QuickLogin 0.2.1 最终交接
+
+源代码已合入并推送两个 main；Auth 已完成生产部署；最终安装包为 `releases/cqu-quicklogin-0.2.1-canary.zip`。确切提交、Worker/Container、SHA-256 和验证结果统一见 [发布记录](quicklogin-release.md)。
+
+**尚未通过学校自动登录业务验收。** 实际 Ego 无损升级和服务端状态对账已确认，设备目前“等待验证恢复”，尚无新版 Cookie ACK。不要把部署成功、健康 200 或测试通过表述成学校已自动登录。
+
+后续工作的具体观测和验收条件见 [运行状态交接](quicklogin-021-runtime-status.md)。用户 Chrome 未操作，升级应覆盖原加载目录并重载，保留设备身份；不要卸载重装来绕过问题。
+
+## 历史实施交接
+
 # QuickLogin 实施交接
 
 交接时间：2026-09-11（Asia/Shanghai）
