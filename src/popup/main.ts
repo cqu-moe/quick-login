@@ -16,6 +16,7 @@ const labels: Record<PopupAction, string> = {
   retry_local: "重新同步",
   update: "更新插件",
   fix_permissions: "检查浏览器权限",
+  manual_login: "手动登录",
 };
 
 async function send(message: Record<string, unknown>) {
@@ -30,6 +31,7 @@ async function act(action: PopupAction): Promise<void> {
   if (action === "retry") await send({ type: "SYNC" });
   if (action === "retry_local") await send({ type: "RETRY_LOCAL" });
   if (action === "update" || action === "fix_permissions") await send({ type: "OPEN_EXTENSION_SETTINGS" });
+  if (action === "manual_login") await send({ type:"OPEN_SCHOOL_MANUAL" });
   await render();
 }
 

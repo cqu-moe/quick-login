@@ -19,3 +19,9 @@ it("checks the connection intent atomically with enabling",async()=>{
   await setEnabled(true,"superseded-intent");
   expect((await readLocalState()).enabledIntent).toBe(false);
 });
+it("stops automatic writes before opening the school manual-login page",async()=>{
+  const open=vi.spyOn(chrome.tabs,"create");
+  await handleMessage({type:"OPEN_SCHOOL_MANUAL"});
+  expect((await readLocalState()).manualOverride).toBe(true);
+  expect(open).toHaveBeenCalledWith({url:"https://sso.cqu.edu.cn/login"});
+});

@@ -6,6 +6,10 @@ const input=(): PopupInput => ({ snapshot:readySnapshot(),local:{authorization:"
   observation:"fresh",cookieState:"applied",receipt:receipt(),pendingAck:false},lastError:null,lastConfirmedAt:Date.now(),nextAttemptAt:null });
 
 describe("current protocol popup projection",() => {
+  it("offers local manual login for a device-only school challenge",()=>{
+    const value=input();value.snapshot!.cloud={...value.snapshot!.cloud,state:"blocked",usableUntil:null,reasonCode:"INTERACTION_REQUIRED"};
+    expect(derivePopupView(value).actions).toEqual(["manual_login"]);
+  });
   it("reconnects the existing device through Auth instead of creating another grant blindly",()=>{
     const value=input();value.local.authorization="reconnect_required";
     expect(derivePopupView(value).actions).toEqual(["open_settings"]);

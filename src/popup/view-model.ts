@@ -1,6 +1,6 @@
 import { derivePresentation, type DeviceSnapshot, type LocalPresentation, type ReasonCode, type ActionTarget } from "../shared/protocol-v3.generated";
 
-export type PopupAction = "login" | "open_settings" | "resume" | "switch_managed" | "retry" | "retry_local" | "update" | "fix_permissions";
+export type PopupAction = "login" | "open_settings" | "resume" | "switch_managed" | "retry" | "retry_local" | "update" | "fix_permissions" | "manual_login";
 export interface PopupInput {
   deviceId?:string|null;
   snapshot: DeviceSnapshot | null;
@@ -19,7 +19,7 @@ export function derivePopupView(input: PopupInput): PopupView {
   const actions:Partial<Record<typeof state.actionCode,PopupAction>>={
     connect_auth:"login",update_extension:"update",open_auth:"open_settings",manage_devices:"open_settings",
     resume_automatic:"resume",switch_to_quicklogin:"switch_managed",reconcile:"retry",bind_school:"open_settings",
-    update_password:"open_settings",complete_verification:"open_settings",retry_session:"retry",
+    update_password:"open_settings",complete_verification:"manual_login",retry_session:"retry",
     fix_permissions:"fix_permissions",retry_local:"retry_local",confirm_receipt:"retry_local",
   };
   const action=state.statusCode === "reconnect_required" && (input.deviceId ?? input.snapshot?.identity.deviceId)

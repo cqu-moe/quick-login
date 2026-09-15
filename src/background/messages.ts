@@ -21,6 +21,7 @@ export type BackgroundMessage =
   | { type: "CHECK_STATE" }
   | { type: "RETRY_LOCAL" }
   | { type: "OPEN_EXTENSION_SETTINGS" }
+  | { type: "OPEN_SCHOOL_MANUAL" }
   | { type: "LOGIN" }
   | { type: "SET_ENABLED"; enabled: boolean }
   | { type: "ENTER_MANUAL" }
@@ -135,6 +136,9 @@ export async function handleMessage(message: BackgroundMessage) {
     }
     case "OPEN_EXTENSION_SETTINGS":
       await chrome.tabs.create({url:`chrome://extensions/?id=${chrome.runtime.id}`}); return {ok:true};
+    case "OPEN_SCHOOL_MANUAL":
+      await enterManualMode();
+      await chrome.tabs.create({url:"https://sso.cqu.edu.cn/login"}); return {ok:true};
     case "SYNC": return launch(retryAutomaticNow);
     case "CHECK_STATE": return launch(() => sync("popup"));
     case "RETRY_LOCAL": return launch(() => sync("popup"));
