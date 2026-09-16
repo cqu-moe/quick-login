@@ -179,3 +179,11 @@ token，采集 host 为 `https://us.i.posthog.com`。仍需完成 unpacked exten
 manifest 的 `connect-src` 精确允许扩展自身、Auth API 和 PostHog US ingest；
 package gate 会拒绝再次遗漏任一必要 origin。typecheck、83 tests、build、包检查和
 ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；未上传商店。
+
+随后发现 PostHog SDK 的 `advanced_disable_feature_flags` 仍会请求
+`us-assets.i.posthog.com/array/<token>/config`。0.3.2 改用当前 SDK 的
+`advanced_disable_flags=true`，完全关闭扩展不需要的 flags/remote-config 网络路径，
+同时不扩大 CSP。候选包 `releases/cqu-quicklogin-0.3.2-canary.zip` 对应提交
+`1c7de1a58e364cd8a128cbbc3b77f715e5fd3c01`，SHA-256 为
+`b8b16dc4c164dcfbeb0e9ac1ba90476818e3addd86fa6e82ebf8293314ea603a`。
+所有自动门禁通过；Chrome unpacked 目录已更新，待 Reload 后实时验收。

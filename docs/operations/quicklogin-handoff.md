@@ -198,3 +198,13 @@ Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终�
 - 修复：CSP 精确允许 `self`、`https://auth.cqu.moe`、`https://us.i.posthog.com`；打包门禁新增精确 CSP 断言
 - 自动门禁：typecheck、18 files / 83 tests、build、package、ZIP integrity 全部通过
 - 真实验收：需要在 `chrome://extensions` 对现有 unpacked 扩展点击“重新加载”后再测试开关；未上传、未发布 Chrome Web Store
+
+## 2026-09-16 PostHog 0.3.2 远程配置修复
+
+- 修复提交：`1c7de1a58e364cd8a128cbbc3b77f715e5fd3c01`
+- 本地包：`releases/cqu-quicklogin-0.3.2-canary.zip`
+- SHA-256：`b8b16dc4c164dcfbeb0e9ac1ba90476818e3addd86fa6e82ebf8293314ea603a`
+- 根因：`advanced_disable_feature_flags` 不会关闭 PostHog `/array/<token>/config` 远程配置请求，因而被精确 CSP 拒绝
+- 修复：改用当前 SDK 的 `advanced_disable_flags=true`，扩展不再请求 flags/remote-config；package gate 直接检查源码配置
+- 自动门禁：typecheck、18 files / 83 tests、build、package、ZIP integrity 全部通过
+- 当前 Chrome unpacked 目录已备份 0.3.1 并原位更新为 0.3.2；仍需点击 Reload 验证实时开关
