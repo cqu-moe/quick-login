@@ -165,9 +165,9 @@ Ego 的普通扩展标签页不等于原生 action popup；该测试环境无 ac
 
 2026-09-16 PostHog 本地候选构建为
 `releases/cqu-quicklogin-0.3.0-canary.zip`，只包含 `dist/`，对应扩展提交
-`bc54201760d3314aa80b6831b5d354133ac47802`，SHA-256 为
-`dfaa011400985fc297ffa7e55fe66eb43cfaa7b63848c209ad604266750319dc`。
+`8bb2cb634729f090af18a118be403abacc2dc7eb`，SHA-256 为
+`c55434507cab339d18c0e6e23346810d3a920fd1694f34cf2bef8c0962e9910e`。
 ZIP 完整性、manifest 0.3.0、build-info 提交、typecheck、83 tests、build 和
-package gate 均通过。该构建没有可用的 `VITE_POSTHOG_PROJECT_TOKEN`，因此 SDK
-按设计保持关闭；完成 PostHog 项目回读并配置 token 后必须从同一提交重新 build/package，
-再做 unpacked extension Reload 和真实操作采集验收。未上传 Chrome Web Store。
+package gate 均通过。该构建从已验证的 PostHog US 项目 `608620` 动态读取公共项目
+token，采集 host 为 `https://us.i.posthog.com`。仍需完成 unpacked extension Reload
+和真实操作采集验收；未上传 Chrome Web Store。
