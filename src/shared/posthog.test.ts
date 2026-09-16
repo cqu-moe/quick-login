@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sanitizePostHogEvent, telemetryErrorCode } from "./posthog";
+import {
+  sanitizePostHogEvent,
+  shouldCaptureQuickloginException,
+  telemetryErrorCode,
+} from "./posthog";
 
 describe("QuickLogin PostHog privacy boundary", () => {
   it("removes cookie and auth material from nested events", () => {
@@ -33,5 +37,30 @@ describe("QuickLogin PostHog privacy boundary", () => {
     expect(telemetryErrorCode({ code: "COOKIE_PERMISSION_DENIED" })).toBe("COOKIE_PERMISSION_DENIED");
     expect(telemetryErrorCode(new Error("token=secret-token"))).toBe("UNEXPECTED_ERROR");
     expect(telemetryErrorCode({ code: "not safe user@example.com" })).toBe("UNEXPECTED_ERROR");
+  });
+
+  it("does not misclassify expected state transitions as runtime exceptions", () => {
+    for (const code of [
+      "AUTH_RECONNECT_REQUIRED",
+      "DEVICE_REVOKED",
+      "RATE_LIMITED",
+      "RECONCILING",
+      "CLIENT_UPDATE_REQUIRED",
+      "LOCAL_PERMISSION_DENIED",
+      "OPERATION_CANCELLED",
+    ]) {
+      expect(shouldCaptureQuickloginException({ code }), code).toBe(false);
+    }
+
+    for (const code of [
+      "WAF_CHALLENGE",
+      "CONTAINER_UNAVAILABLE",
+      "INTERNAL_STATE_UNAVAILABLE",
+      "CONTRACT_INVALID",
+      "UNKNOWN_SERVER_ERROR",
+    ]) {
+      expect(shouldCaptureQuickloginException({ code }), code).toBe(true);
+    }
+    expect(shouldCaptureQuickloginException(new TypeError("boom"))).toBe(true);
   });
 });

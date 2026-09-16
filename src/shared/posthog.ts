@@ -19,6 +19,30 @@ const REDACTED = "[redacted]";
 const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const LABELED_SECRET = /\b(password|cookie|authorization|token|student_?id|email|otp|code|ticket)\s*[:=]\s*[^\s,;&]+/gi;
 const BEARER = /\bBearer\s+[^\s,;&]+/gi;
+const EXPECTED_STATE_CODES = new Set([
+  "AUTH_RECONNECT_REQUIRED",
+  "DEVICE_REVOKED",
+  "MASTER_DISABLED",
+  "DEVICE_DISABLED",
+  "QUOTA_BLOCKED",
+  "SERVICE_PAUSED",
+  "BINDING_UNBOUND",
+  "BINDING_UPDATING",
+  "BINDING_CHANGED",
+  "CREDENTIALS_REJECTED",
+  "INTERACTION_REQUIRED",
+  "STALE_SNAPSHOT",
+  "SESSION_CHANGED",
+  "RECONCILING",
+  "RATE_LIMITED",
+  "VERIFICATION_COOLDOWN",
+  "LOCAL_PERMISSION_DENIED",
+  "LOCAL_COOKIE_CONFLICT",
+  "PROTOCOL_UNSUPPORTED",
+  "CLIENT_UPDATE_REQUIRED",
+  "FORBIDDEN",
+  "OPERATION_CANCELLED",
+]);
 
 function isSensitiveKey(key: string): boolean {
   const normalized = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
@@ -84,6 +108,10 @@ export function telemetryErrorCode(error: unknown): string {
   return /^[A-Z][A-Z0-9_]{1,63}$/.test(candidate) ? candidate : "UNEXPECTED_ERROR";
 }
 
+export function shouldCaptureQuickloginException(error: unknown): boolean {
+  return !EXPECTED_STATE_CODES.has(telemetryErrorCode(error));
+}
+
 async function installationId(): Promise<string> {
   const stored = await chrome.storage.local.get(INSTALLATION_ID_KEY);
   const existing = stored[INSTALLATION_ID_KEY];
@@ -98,7 +126,8 @@ async function client(): Promise<PostHog | null> {
   if (!token) return null;
   const instance = new PostHog();
   instance.init(token, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST?.trim() || "https://us.i.posthog.com",
+    api_host: import.meta.env.VITE_POSTHOG_HOST?.trim() || "https://p.cqu.moe",
+    ui_host: "https://us.posthog.com",
     defaults: "2026-05-30",
     bootstrap: { distinctID: await installationId() },
     persistence: "memory",
@@ -159,6 +188,7 @@ export async function captureQuickloginException(
   error: unknown,
   operation: QuickLoginOperation
 ): Promise<void> {
+  if (!shouldCaptureQuickloginException(error)) return;
   await withClient((instance) => {
     instance.captureException(error, {
       ...commonProperties(),

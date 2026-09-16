@@ -18,12 +18,15 @@ const posthogSource=await readFile(new URL("../src/shared/posthog.ts",import.met
 if (!/advanced_disable_flags:\s*true/.test(posthogSource) || /advanced_disable_feature_flags:\s*true/.test(posthogSource)) {
   failures.push("QuickLogin must disable PostHog remote config and flags requests");
 }
+if (!/VITE_POSTHOG_HOST\?\.trim\(\) \|\| "https:\/\/p\.cqu\.moe"/.test(posthogSource) || posthogSource.includes("https://us.i.posthog.com")) {
+  failures.push("QuickLogin must use the managed PostHog proxy by default");
+}
 if (JSON.stringify(manifest.externally_connectable)!==JSON.stringify({matches:["https://auth.cqu.moe/*"]})) failures.push("unexpected external messaging origins");
 const exactPermissions = ["alarms", "cookies", "identity", "storage"];
 const exactHosts = [
   "https://auth.cqu.moe/*",
+  "https://p.cqu.moe/*",
   "https://sso.cqu.edu.cn/*",
-  "https://us.i.posthog.com/*",
 ];
 
 if (JSON.stringify([...manifest.permissions].sort()) !== JSON.stringify(exactPermissions)) {
@@ -32,7 +35,7 @@ if (JSON.stringify([...manifest.permissions].sort()) !== JSON.stringify(exactPer
 if (JSON.stringify([...manifest.host_permissions].sort()) !== JSON.stringify(exactHosts)) {
   failures.push("manifest host permissions differ from the approved list");
 }
-const exactExtensionCsp = "script-src 'self'; object-src 'self'; connect-src 'self' https://auth.cqu.moe https://us.i.posthog.com;";
+const exactExtensionCsp = "script-src 'self'; object-src 'self'; connect-src 'self' https://auth.cqu.moe https://p.cqu.moe;";
 if (manifest.content_security_policy?.extension_pages !== exactExtensionCsp) {
   failures.push("extension CSP must allow only self, Auth, and the PostHog ingest host");
 }
