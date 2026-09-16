@@ -16,7 +16,11 @@ const contract=await readFile(new URL("../src/shared/protocol-v3.generated.ts",i
 if (!contract.includes(`CONTRACT_DIGEST = '${buildInfo.contractDigest}'`)) failures.push("built protocol differs from current canonical contract");
 if (JSON.stringify(manifest.externally_connectable)!==JSON.stringify({matches:["https://auth.cqu.moe/*"]})) failures.push("unexpected external messaging origins");
 const exactPermissions = ["alarms", "cookies", "identity", "storage"];
-const exactHosts = ["https://auth.cqu.moe/*", "https://sso.cqu.edu.cn/*"];
+const exactHosts = [
+  "https://auth.cqu.moe/*",
+  "https://sso.cqu.edu.cn/*",
+  "https://us.i.posthog.com/*",
+];
 
 if (JSON.stringify([...manifest.permissions].sort()) !== JSON.stringify(exactPermissions)) {
   failures.push("manifest permissions differ from the approved list");

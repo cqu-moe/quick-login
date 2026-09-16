@@ -5,6 +5,11 @@ import * as api from "./api-v3";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
 import { clearOwnedCookies, verifyManagedCookies } from "./cookie-store";
+import {
+  captureQuickloginException,
+  captureQuickloginOperation,
+  telemetryErrorCode,
+} from "../shared/posthog";
 
 export type SyncReason = "alarm" | "startup" | "network" | "enable" | "login_form" | "user_retry" | "popup";
 export type EnvelopeWriter = (envelope: ExportEnvelope,
@@ -207,6 +212,7 @@ async function runSync(reason: SyncReason): Promise<void> {
       await updateLocalState((state) => ({ ...state,managedSwitch:null,localWriteState:"foreign_session",receipt:null,pendingAck:false }));
       return;
     }
+    await captureQuickloginOperation("cookie_apply", "success");
     local = await updateLocalState((state) => {
       if (state.localGeneration !== generationFence || !state.enabledIntent || state.manualOverride) return state;
       return { ...state,managedSwitch:null,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
@@ -220,6 +226,8 @@ async function runSync(reason: SyncReason): Promise<void> {
     const current=await readLocalState();
     if (current.deviceId !== local.deviceId || current.localGeneration !== local.localGeneration) return;
     await recordFailure(error);
+    await captureQuickloginOperation("sync", "failure", telemetryErrorCode(error));
+    await captureQuickloginException(error, "sync");
   }
 }
 

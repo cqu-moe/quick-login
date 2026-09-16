@@ -15,6 +15,12 @@ import { localCookieState } from "./api-v3";
 import { recordFailure } from "./sync";
 import type { PopupInput } from "../popup/view-model";
 import { derivePresentation } from "../shared/protocol-v3.generated";
+import {
+  captureQuickloginException,
+  captureQuickloginOperation,
+  telemetryErrorCode,
+  type QuickLoginOperation,
+} from "../shared/posthog";
 
 export type BackgroundMessage =
   | { type: "SYNC" }
@@ -109,18 +115,29 @@ export function handleContentMessage(
 }
 
 export async function handleMessage(message: BackgroundMessage) {
-  const launch = (operation: () => Promise<unknown>) => {
-    void operation().catch(recordFailure);
+  const tracked = async (name: QuickLoginOperation, operation: () => Promise<unknown>) => {
+    try {
+      const result = await operation();
+      await captureQuickloginOperation(name, "success");
+      return result;
+    } catch (error) {
+      await captureQuickloginOperation(name, "failure", telemetryErrorCode(error));
+      await captureQuickloginException(error, name);
+      throw error;
+    }
+  };
+  const launch = (name: QuickLoginOperation, operation: () => Promise<unknown>) => {
+    void tracked(name, operation).catch(recordFailure);
     return { accepted:true };
   };
   switch (message.type) {
     case "LOGIN": return requestConnection();
     case "SET_ENABLED":
       if (typeof message.enabled !== "boolean") throw new Error("INVALID_REQUEST");
-      return launch(() => setEnabled(message.enabled));
+      return launch(message.enabled ? "enable" : "disable", () => setEnabled(message.enabled));
     case "ENTER_MANUAL": await enterManualMode(); return { ok: true };
-    case "RESUME": await resumeAutomaticMode(); return { ok: true };
-    case "SWITCH_TO_MANAGED": await switchToManagedOnce(); return { ok: true };
+    case "RESUME": await tracked("resume", resumeAutomaticMode); return { ok: true };
+    case "SWITCH_TO_MANAGED": await tracked("switch_managed", switchToManagedOnce); return { ok: true };
     case "OPEN_SETTINGS": {
       const state = await readLocalState();
       const url = new URL("/settings", config.authOrigin);
@@ -139,9 +156,9 @@ export async function handleMessage(message: BackgroundMessage) {
     case "OPEN_SCHOOL_MANUAL":
       await enterManualMode();
       await chrome.tabs.create({url:"https://sso.cqu.edu.cn/login"}); return {ok:true};
-    case "SYNC": return launch(retryAutomaticNow);
-    case "CHECK_STATE": return launch(() => sync("popup"));
-    case "RETRY_LOCAL": return launch(() => sync("popup"));
+    case "SYNC": return launch("sync", retryAutomaticNow);
+    case "CHECK_STATE": { void sync("popup").catch(recordFailure); return { accepted:true }; }
+    case "RETRY_LOCAL": return launch("sync", () => sync("popup"));
     case "GET_UI_STATE": {
       const state = await readLocalState();
       return { deviceId:state.deviceId,snapshot:state.snapshot,

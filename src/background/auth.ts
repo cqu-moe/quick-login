@@ -3,6 +3,11 @@ import type { ApiError } from "../shared/contracts";
 import { clientMetadata } from "../shared/client-metadata";
 import { parseApiResponse, parseRegistrationResponse, type ReasonCode } from "../shared/protocol-v3.generated";
 import { readLocalState, updateLocalState, updateLocalStateWith } from "./storage";
+import {
+  captureQuickloginException,
+  captureQuickloginOperation,
+  telemetryErrorCode,
+} from "../shared/posthog";
 
 const TOKENS_KEY = "quicklogin.tokens";
 const PENDING_KEY = "quicklogin.pkce";
@@ -241,12 +246,19 @@ async function performInteractiveLogin(resume?: ResumeContext): Promise<void> {
 export function loginInteractive(resume?: ResumeContext): Promise<void> {
   if (loginFlight) return loginFlight;
   loginFlight = (async () => {
-    if (resume) {
-      if (resume.expiresAt <= Date.now() || resume.resumeTicket.length > 4096 || !resume.deviceId) throw new AuthorizationError("INVALID_REQUEST");
-      await chrome.storage.session.set({ [RESUME_KEY]:resume });
+    try {
+      if (resume) {
+        if (resume.expiresAt <= Date.now() || resume.resumeTicket.length > 4096 || !resume.deviceId) throw new AuthorizationError("INVALID_REQUEST");
+        await chrome.storage.session.set({ [RESUME_KEY]:resume });
+      }
+      const pendingResume=(await chrome.storage.session.get(RESUME_KEY))[RESUME_KEY] as ResumeContext | undefined;
+      await performInteractiveLogin(pendingResume && pendingResume.expiresAt > Date.now() ? pendingResume : undefined);
+      await captureQuickloginOperation("connect", "success");
+    } catch (error) {
+      await captureQuickloginOperation("connect", "failure", telemetryErrorCode(error));
+      await captureQuickloginException(error, "connect");
+      throw error;
     }
-    const pendingResume=(await chrome.storage.session.get(RESUME_KEY))[RESUME_KEY] as ResumeContext | undefined;
-    await performInteractiveLogin(pendingResume && pendingResume.expiresAt > Date.now() ? pendingResume : undefined);
   })().finally(() => { loginFlight=null; });
   return loginFlight;
 }
