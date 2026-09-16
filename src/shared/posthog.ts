@@ -109,7 +109,7 @@ async function client(): Promise<PostHog | null> {
     disable_session_recording: true,
     disable_surveys: true,
     disable_product_tours: true,
-    advanced_disable_feature_flags: true,
+    advanced_disable_flags: true,
     request_batching: false,
     person_profiles: "never",
     error_tracking: { captureExtensionExceptions: true },

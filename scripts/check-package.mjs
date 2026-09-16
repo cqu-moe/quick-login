@@ -14,6 +14,10 @@ if ([lock.version,lock.packages[""].version,sourceManifest.version,manifest.vers
 if (buildInfo.protocolVersion!==3 || !/^[a-f0-9]{40}$/.test(buildInfo.sourceCommit) || !/^[a-f0-9]{64}$/.test(buildInfo.contractDigest)) failures.push("invalid build provenance");
 const contract=await readFile(new URL("../src/shared/protocol-v3.generated.ts",import.meta.url),"utf8");
 if (!contract.includes(`CONTRACT_DIGEST = '${buildInfo.contractDigest}'`)) failures.push("built protocol differs from current canonical contract");
+const posthogSource=await readFile(new URL("../src/shared/posthog.ts",import.meta.url),"utf8");
+if (!/advanced_disable_flags:\s*true/.test(posthogSource) || /advanced_disable_feature_flags:\s*true/.test(posthogSource)) {
+  failures.push("QuickLogin must disable PostHog remote config and flags requests");
+}
 if (JSON.stringify(manifest.externally_connectable)!==JSON.stringify({matches:["https://auth.cqu.moe/*"]})) failures.push("unexpected external messaging origins");
 const exactPermissions = ["alarms", "cookies", "identity", "storage"];
 const exactHosts = [
