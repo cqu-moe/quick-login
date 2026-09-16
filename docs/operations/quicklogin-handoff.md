@@ -176,3 +176,14 @@ npm run build:frontend  PASS — 206 modules
 - Chrome Web Store 上传/发布：未执行。
 
 Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终构建复测、长期观察和商店发布仍未完成。
+
+## 2026-09-16 PostHog 0.3.0 候选
+
+- 实现提交：`bc54201760d3314aa80b6831b5d354133ac47802`
+- 本地包：`releases/cqu-quicklogin-0.3.0-canary.zip`
+- SHA-256：`dfaa011400985fc297ffa7e55fe66eb43cfaa7b63848c209ad604266750319dc`
+- 包内容：仅 `dist/`，ZIP integrity、manifest 0.3.0 与 build-info commit 已核对
+- 自动门禁：typecheck、18 files / 83 tests、build、package 全部通过
+- PostHog 配置：构建时缺 `VITE_POSTHOG_PROJECT_TOKEN`，遥测处于显式 no-op；需要 token 后重建
+- 真实验收：unpacked Reload、连接/同步/Cookie 应用事件与异常回读均 `NOT RUN`
+- Chrome Web Store：未上传、未发布

@@ -162,3 +162,12 @@ Ego 的普通扩展标签页不等于原生 action popup；该测试环境无 ac
 它固定使用 `/api/v1` OAuth/device 路径和稳定 issuer audience；未上传商店。
 
 2026-09-11 canary 构建为 `releases/cqu-quicklogin-0.1.2-canary.zip`，只包含 `dist/`，对应扩展提交 `09e0158`，SHA-256 为 `498d2c45ee7b24b5f4cf37042aa9ed3e4bc4a1cca896df7489180d620e44fa1f`。该文件未上传到商店；它固定使用 canary 扩展 ID。
+
+2026-09-16 PostHog 本地候选构建为
+`releases/cqu-quicklogin-0.3.0-canary.zip`，只包含 `dist/`，对应扩展提交
+`bc54201760d3314aa80b6831b5d354133ac47802`，SHA-256 为
+`dfaa011400985fc297ffa7e55fe66eb43cfaa7b63848c209ad604266750319dc`。
+ZIP 完整性、manifest 0.3.0、build-info 提交、typecheck、83 tests、build 和
+package gate 均通过。该构建没有可用的 `VITE_POSTHOG_PROJECT_TOKEN`，因此 SDK
+按设计保持关闭；完成 PostHog 项目回读并配置 token 后必须从同一提交重新 build/package，
+再做 unpacked extension Reload 和真实操作采集验收。未上传 Chrome Web Store。
