@@ -28,6 +28,10 @@ if (JSON.stringify([...manifest.permissions].sort()) !== JSON.stringify(exactPer
 if (JSON.stringify([...manifest.host_permissions].sort()) !== JSON.stringify(exactHosts)) {
   failures.push("manifest host permissions differ from the approved list");
 }
+const exactExtensionCsp = "script-src 'self'; object-src 'self'; connect-src 'self' https://auth.cqu.moe https://us.i.posthog.com;";
+if (manifest.content_security_policy?.extension_pages !== exactExtensionCsp) {
+  failures.push("extension CSP must allow only self, Auth, and the PostHog ingest host");
+}
 
 const referenced = [
   manifest.background?.service_worker,
