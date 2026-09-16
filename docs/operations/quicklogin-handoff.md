@@ -188,3 +188,13 @@ Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终�
 - PostHog 配置：已从 US 项目 `608620` 动态读取公共项目 token 构建，采集 host 为 `https://us.i.posthog.com`
 - 真实验收：unpacked Reload、连接/同步/Cookie 应用事件与异常回读均 `NOT RUN`
 - Chrome Web Store：未上传、未发布
+
+## 2026-09-16 PostHog 0.3.1 CSP 修复
+
+- 修复提交：`9631cf176a085b2b9167a48f24ae45e29ee424bd`
+- 本地包：`releases/cqu-quicklogin-0.3.1-canary.zip`
+- SHA-256：`0fd1e571c07c4e1bd400dc4e784276b6ebf3ba5e9ae1ac7b4a655cfd865dac92`
+- 根因：0.3.0 增加 PostHog CSP 时，`connect-src` 漏掉 `https://auth.cqu.moe`，导致 capabilities、token、registration 和 reconcile 请求被 Chrome 在扩展内部拒绝
+- 修复：CSP 精确允许 `self`、`https://auth.cqu.moe`、`https://us.i.posthog.com`；打包门禁新增精确 CSP 断言
+- 自动门禁：typecheck、18 files / 83 tests、build、package、ZIP integrity 全部通过
+- 真实验收：需要在 `chrome://extensions` 对现有 unpacked 扩展点击“重新加载”后再测试开关；未上传、未发布 Chrome Web Store

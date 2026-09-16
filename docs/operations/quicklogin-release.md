@@ -171,3 +171,11 @@ ZIP 完整性、manifest 0.3.0、build-info 提交、typecheck、83 tests、buil
 package gate 均通过。该构建从已验证的 PostHog US 项目 `608620` 动态读取公共项目
 token，采集 host 为 `https://us.i.posthog.com`。仍需完成 unpacked extension Reload
 和真实操作采集验收；未上传 Chrome Web Store。
+
+2026-09-16 修复 0.3.0 扩展 CSP 遗漏 Auth origin，发布本地候选
+`releases/cqu-quicklogin-0.3.1-canary.zip`。包对应源码提交
+`9631cf176a085b2b9167a48f24ae45e29ee424bd`，SHA-256 为
+`0fd1e571c07c4e1bd400dc4e784276b6ebf3ba5e9ae1ac7b4a655cfd865dac92`。
+manifest 的 `connect-src` 精确允许扩展自身、Auth API 和 PostHog US ingest；
+package gate 会拒绝再次遗漏任一必要 origin。typecheck、83 tests、build、包检查和
+ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；未上传商店。
