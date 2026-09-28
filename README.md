@@ -50,3 +50,5 @@ npm run check:package
 发布到私有 R2 由 `vX.Y.Z` 标签触发，要求版本一致且提交已属于 main。CI 先通过门禁，校验版本化 ZIP 后上传并切换当前版本；Auth 每次下载校验会话和内测资格。初次需要配置 R2、Auth binding 与 GitHub 环境，详见 [官网验收记录](docs/acceptance/quicklogin-website.md)。
 
 官网通过 Cloudflare Workers Builds 连接 main 部署，Worker 名称为 `quick-login-website`；GitHub Actions 只做检查和标签触发的插件包发布。
+
+Cloudflare 的根目录保持仓库根目录。根级 `wrangler.jsonc` 是官网唯一部署配置，`assets.directory` 指向 `website/dist`，`previews: {}` 支持默认 `npx wrangler preview`；扩展构建目录 `dist` 不会作为网站资源发布。

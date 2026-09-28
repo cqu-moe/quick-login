@@ -5,7 +5,7 @@
 - 根目录：仓库根目录。
 - 构建命令：`npm run typecheck:website && npm run build:website && npm run check:website`。
 - 部署命令：`npm run deploy:website`。
-- 如开启非生产分支构建，部署命令使用 `npx wrangler versions upload --config website/wrangler.jsonc`。
+- 新版 Worker Previews 的预览命令保留 `npx wrangler preview`；仓库根目录 `wrangler.jsonc` 含空 `previews` 区块，静态资源固定为 `website/dist`。
 - 插件 ZIP 仍由 GitHub 的 vX.Y.Z 标签流水线发到私有 R2，quicklogin-release 环境及其凭据继续使用。
 
 控制台 build 72d3f313 失败原因：官网 PR 尚未合入 main，所克隆旧代码没有 typecheck:website 脚本。构建命令本身无需改成扩展构建命令。
