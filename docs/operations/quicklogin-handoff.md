@@ -1,3 +1,18 @@
+# QuickLogin 0.3.4 授权恢复与开关修复（2026-09-28）
+
+- 扩展源码提交：`62c79f9aedac5a4da632b0bb6c83fae507a35a92`（隔离分支 `codex/quicklogin-auth-recovery`，未推送或合入 main）。
+- 安装包：`releases/cqu-quicklogin-0.3.4-canary.zip`，122678 字节，仅含 8 个 dist 文件。
+- SHA-256：`993204a2c3ea4daf888b1a07ac3132f8f3ff96198bc9eef64914afd4e5c0877b`。ZIP CRC、文件清单、逐文件内容、manifest 版本与 build-info 源码提交均已核验。
+- 根因：Auth QuickLogin refresh 校验钩子使用 `code: INVALID_GRANT`，扩展仅识别 OAuth 标准的 `error: invalid_grant`，误报网络故障。现兼容两种格式，提示前往 Auth 恢复原设备，停止重复刷新失效授权。
+- 本地关闭而服务端快照仍开启时，`canEnable=false` 不再锁死重新开启；确实无法开启时保留 Auth 入口。禁用开关不再显示等待鼠标。
+- 验证：19 个测试文件 / 88 项测试、typecheck、build、check:package 通过；新增回归在修复前失败，修复后通过，包含真实外部消息到 OAuth、原设备注册、重新开启与同步（仅浏览器 API/HTTP 使用合成数据）。独立代码复核通过。
+- 测试存在上游 posthog-js source map 警告，基线亦存在，不影响通过结果。
+- Auth 代码未修改或部署。未操作用户 Chrome、未覆盖已加载目录、未重载扩展、未上传或发布 Chrome Web Store。实际浏览器重连与学校登录仍待升级后验证。
+- 使用方式：解压并覆盖原加载目录，在 Chrome 扩展管理页重载，随后在弹窗点“前往 Auth”恢复原设备授权；不要卸载重装。
+- 本次合成 token 在线格式探测被 Cloudflare 403 挑战拦截；错误格式依据 Auth 源码确认，未声称完成线上授权验收，也未确定用户 token 最初失效的具体原因。
+
+## 历史记录
+
 # QuickLogin 0.2.5 弹窗稳定性修复（2026-09-15）
 
 - 源码 `486b334af778a1bf4f09e7e84d4e37e4cc37e426`；安装包 `releases/cqu-quicklogin-0.2.5-canary.zip`，23290 字节，8 个 dist 文件。
