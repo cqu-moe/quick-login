@@ -85,16 +85,19 @@ class PublishTests(unittest.TestCase):
     def setUp(self):
         PackageTests.setUp(self)
         self.store = {}
+        self.metadata = {}
         self.events = []
         self.get_patch = patch.object(release, 's3_get', side_effect=self.get)
         self.put_patch = patch.object(release, 's3_put', side_effect=self.put)
         self.get_patch.start(); self.put_patch.start()
         self.addCleanup(self.get_patch.stop); self.addCleanup(self.put_patch.stop)
 
-    def get(self, bucket, endpoint, key, destination):
+    def get(self, bucket, endpoint, key, destination, *, expected_sha256=None):
         self.events.append(('get', key))
         if key not in self.store:
             return None
+        if expected_sha256 is not None and self.metadata.get(key, {}).get('sha256') != expected_sha256:
+            raise ValueError('Missing or inconsistent object digest metadata')
         data = self.store[key]
         destination.write_bytes(data)
         return '"' + hashlib.md5(data).hexdigest() + '"'
@@ -107,6 +110,7 @@ class PublishTests(unittest.TestCase):
         if etag is not None and (current is None or etag != '"' + hashlib.md5(current).hexdigest() + '"'):
             return False
         self.store[key] = source.read_bytes()
+        self.metadata[key] = {'sha256': sha256} if sha256 else {}
         return True
 
     def record(self, version):
@@ -132,6 +136,13 @@ class PublishTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.publish(record)
         self.assertEqual(self.store[record['objectKey']], b'tampered')
 
+    def test_existing_bytes_without_auth_digest_metadata_cannot_be_promoted(self):
+        record = self.record('0.4.0'); self.publish(record)
+        self.metadata[record['objectKey']] = {}
+        del self.store[release.CHANNEL_KEY]
+        with self.assertRaises(ValueError): self.publish(record)
+        self.assertNotIn(release.CHANNEL_KEY, self.store)
+
     def test_monotonic_promotion_and_explicit_verified_rollback(self):
         old = self.record('0.9.0'); self.publish(old)
         latest = self.record('0.10.0'); self.publish(latest)
@@ -144,8 +155,8 @@ class PublishTests(unittest.TestCase):
     def test_failed_remote_readback_and_pointer_conflict_do_not_promote(self):
         record = self.record('0.4.0')
         original = self.get
-        def corrupt(bucket, endpoint, key, destination):
-            etag = original(bucket, endpoint, key, destination)
+        def corrupt(bucket, endpoint, key, destination, **kwargs):
+            etag = original(bucket, endpoint, key, destination, **kwargs)
             if key == record['objectKey']: destination.write_bytes(b'corrupt')
             return etag
         with patch.object(release, 's3_get', side_effect=corrupt):

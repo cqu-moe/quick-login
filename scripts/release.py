@@ -131,8 +131,10 @@ def s3_call(endpoint, operation, *arguments):
     return json.loads(result.stdout or '{}')
 
 
-def s3_get(bucket, endpoint, key, destination):
+def s3_get(bucket, endpoint, key, destination, *, expected_sha256=None):
     response = s3_call(endpoint, 'get-object', '--bucket', bucket, '--key', key, destination)
+    if response is not None and expected_sha256 is not None and response.get('Metadata', {}).get('sha256') != expected_sha256:
+        raise ValueError('Missing or inconsistent object digest metadata')
     return None if response is None else response['ETag']
 
 
@@ -166,7 +168,7 @@ def verify_package(record, payload):
 
 def promote_release(record, bucket, endpoint, directory, *, rollback=False):
     remote_zip = directory / 'remote.zip'
-    if s3_get(bucket, endpoint, record['objectKey'], remote_zip) is None:
+    if s3_get(bucket, endpoint, record['objectKey'], remote_zip, expected_sha256=record['sha256']) is None:
         raise ValueError('Published package is missing')
     verify_package(record, remote_zip.read_bytes())
     pointer = directory / 'current.json'
@@ -194,7 +196,7 @@ def publish_release(record, archive, bucket, endpoint):
         directory = Path(temporary)
         if not s3_put(bucket, endpoint, record['objectKey'], archive, create=True, sha256=record['sha256']):
             remote = directory / 'existing.zip'
-            if s3_get(bucket, endpoint, record['objectKey'], remote) is None:
+            if s3_get(bucket, endpoint, record['objectKey'], remote, expected_sha256=record['sha256']) is None:
                 raise RuntimeError('Existing package disappeared')
             verify_package(record, remote.read_bytes())
         metadata_key = f"quicklogin/releases/{record['version']}/release.json"

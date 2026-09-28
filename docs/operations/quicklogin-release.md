@@ -1,3 +1,15 @@
+# 官网与 0.4.0 发布初始化（待部署）
+
+1. 在目标 Cloudflare 账户创建或核对私有桶 `cqu-quicklogin-releases`，确认 r2.dev 和自定义公开域名均关闭。
+2. Auth 的 `QUICKLOGIN_RELEASES` binding 指向此桶；先部署并验证 Auth 新接口，公开 `/release` 在尚无包时应返回 503。
+3. QuickLogin 仓库配置 `quicklogin-release` 环境：secrets `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`CLOUDFLARE_ACCOUNT_ID`，变量 `R2_BUCKET=cqu-quicklogin-releases`。R2 token 只授权该桶对象读写。限制环境为受信任版本标签及 main 回滚，不把密钥复制进源码。
+4. 配置 `quicklogin-website` 环境：secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`。令牌仅授予官网 Worker 部署及所需域名操作权限。
+5. 官网 main 变更通过门禁后部署；插件须明确推送 `v0.4.0` 标签才发布。每次发布先在源码中统一版本，添加 `docs/releases/X.Y.Z.md`，将提交合入 main 后再推送同名标签。
+6. `Publish canary` 自动校验、打包、上传、读回并提升版本，Workflow Summary 和私有 R2 release.json 记录来源及摘要。按这份证据更新运维文档，不让流水线自行改 main 或 Git 身份。
+7. `Roll back canary` 仅从 main 手动指定已发布版本运行，与发布共享并发组；它不删除或覆盖历史包。
+
+首次上线尚未执行。网站本地合成预览不代表生产身份校验或真实下载验收。受保护环境、密钥与资源必须先核对；没有配置时工作流应失败而不是公开包。
+
 # 私有 R2 发布脚本（尚未上线）
 
 发布使用 AWS CLI 1.42.49；S3 凭据从 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` 读取。构建后的版本记录路径为 `releases/X.Y.Z.json`。

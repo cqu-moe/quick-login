@@ -18,3 +18,5 @@ experiment/**/.dev.vars
 *.key
 
 scripts/__pycache__/
+
+releases/*.json
