@@ -138,7 +138,7 @@ h1 {
 .switch-control input:checked + .switch-track { background: #2563eb; }
 .switch-control input:checked + .switch-track span { transform: translateX(28px); }
 .switch-control input:focus-visible + .switch-track { outline: 2px solid #3b82f6; outline-offset: 3px; }
-.switch-control input:disabled + .switch-track { opacity: .45; cursor: wait; }
+.switch-control input:disabled + .switch-track { opacity: .45; cursor: not-allowed; }
 .sr-only {
   position: absolute;
   width: 1px;

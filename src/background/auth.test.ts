@@ -64,11 +64,11 @@ describe("device authorization", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("distinguishes revoked refresh grants from temporary token service failures", async () => {
+  it.each([{ error: "invalid_grant" }, { code: "INVALID_GRANT", message: "invalid refresh token" }])("recognizes invalid refresh grants: %j", async (body) => {
     await chrome.storage.local.set({
       "quicklogin.tokens": { accessToken: "expired", refreshToken: "synthetic", expiresAt: 0 },
     });
-    vi.mocked(fetch).mockResolvedValue(Response.json({ error: "invalid_grant" }, { status: 400 }));
+    vi.mocked(fetch).mockResolvedValue(Response.json(body, { status: 400 }));
     await expect(authorizedFetch("/probe")).rejects.toMatchObject({ code: "AUTH_RECONNECT_REQUIRED" });
   });
 

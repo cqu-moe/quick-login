@@ -48,7 +48,7 @@ export async function recordFailure(error: unknown): Promise<void> {
   const state = await updateLocalState((current) => {
     const failures = current.networkFailures + 1;
     const delays = [30_000,60_000,180_000,300_000];
-    const retryAt = error instanceof api.ApiFailure && error.retryAt !== null ? error.retryAt :
+    const retryAt = code === "AUTH_RECONNECT_REQUIRED" ? null : error instanceof api.ApiFailure && error.retryAt !== null ? error.retryAt :
       Date.now() + Math.round(delays[Math.min(failures-1,delays.length-1)] * (0.8+Math.random()*0.4));
     return { ...current, localError:code, networkFailures:failures, nextAttemptAt:retryAt,
       observation: code.startsWith("LOCAL_") ? current.observation : "unreachable",
@@ -56,7 +56,8 @@ export async function recordFailure(error: unknown): Promise<void> {
       authorization: code === "AUTH_RECONNECT_REQUIRED" ? "reconnect_required" : current.authorization,
       protocolSupport: code === "PROTOCOL_UNSUPPORTED" || code === "CLIENT_UPDATE_REQUIRED" ? "client_update_required" : current.protocolSupport };
   });
-  await schedule(state.nextAttemptAt!);
+  if (state.nextAttemptAt === null) await chrome.alarms.clear(`${SYNC_ALARM}-retry`);
+  else await schedule(state.nextAttemptAt);
 }
 
 async function adopt(snapshot: DeviceSnapshot, fence: number): Promise<LocalState> {
@@ -109,7 +110,7 @@ async function ackCurrent(local: LocalState): Promise<void> {
 
 async function runSync(reason: SyncReason): Promise<void> {
   let local = await readLocalState();
-  if (!local.deviceId || local.authorization === "revoked") return;
+  if (!local.deviceId || local.authorization === "revoked" || local.authorization === "reconnect_required") return;
   if (reason === "alarm" && local.nextAttemptAt !== null && Date.now() < local.nextAttemptAt) return;
   if (local.managedSwitch && !hasManagedSwitch(local)) {
     local = await updateLocalState(state => state.managedSwitch?.id === local.managedSwitch?.id

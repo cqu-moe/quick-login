@@ -29,6 +29,13 @@ describe("current protocol popup projection",() => {
     expect(derivePopupView(value).heading).toBe("学校密码需要更新");
     expect(derivePopupView(value).actions).toEqual(["open_settings"]);
   });
+  it("keeps an Auth recovery action when local off hides a server policy block",()=>{
+    const value=input();value.local.enabledIntent=false;
+    value.snapshot!.authorization.policy="master_off";
+    value.snapshot!.authorization.masterEnabled=false;
+    value.snapshot!.capabilities.canEnable=false;
+    expect(derivePopupView(value)).toMatchObject({switchEnabled:false,actions:["open_settings"]});
+  });
   it("keeps a close control available while the cloud is preparing",() => {
     const value=input();value.snapshot!.cloud.state="logging_in";value.snapshot!.cloud.usableUntil=null;
     expect(derivePopupView(value).switchEnabled).toBe(true);

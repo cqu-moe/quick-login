@@ -34,6 +34,7 @@ describe("popup rendering", () => {
     const enablePending = new Promise<void>((resolve) => { finishEnable = resolve; });
     const disabledInput: PopupInput = {
       ...readyInput,
+      snapshot: { ...readyInput.snapshot!, capabilities: { ...readyInput.snapshot!.capabilities, canEnable:false } },
       local: { ...readyInput.local, enabledIntent:false, cookieState:"unknown" },
     };
     Object.assign(fake.runtime, {

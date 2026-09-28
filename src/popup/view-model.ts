@@ -26,6 +26,9 @@ export function derivePopupView(input: PopupInput): PopupView {
     ? "open_settings" : actions[state.actionCode];
   const authorized=input.local.authorization === "authorized" && input.snapshot?.authorization.state === "authorized";
   const enabled=input.local.enabledIntent ?? input.snapshot?.authorization.deviceEnabled ?? false;
+  const switchEnabled=authorized && (enabled || input.snapshot?.capabilities.canEnable === true ||
+    (input.snapshot?.authorization.deviceEnabled === true && input.snapshot.authorization.policy === "enabled"));
+  const recoveryAction=state.statusCode === "disabled" && !switchEnabled ? "open_settings" : action;
   let description=state.detail ?? "";
   if (state.statusCode === "unreachable" && input.lastConfirmedAt !== null) {
     description=`上次确认：${new Date(input.lastConfirmedAt).toLocaleTimeString("zh-CN")}`;
@@ -35,6 +38,6 @@ export function derivePopupView(input: PopupInput): PopupView {
   const busy=["authorizing","checking","preparing","refreshing","syncing","pending_ack","binding_updating"].includes(state.statusCode);
   const neutral=["disabled","device_off","master_off","manual","foreign"].includes(state.statusCode);
   return {heading:state.title,description,tone:state.statusCode === "ready" ? "ready" : busy ? "busy" : neutral ? "neutral" : "attention",
-    switchEnabled:authorized && (enabled || input.snapshot?.capabilities.canEnable === true),
-    switchChecked:enabled,switchVisible:authorized,actions:action ? [action] : [],actionTarget:state.actionTarget};
+    switchEnabled,
+    switchChecked:enabled,switchVisible:authorized,actions:recoveryAction ? [recoveryAction] : [],actionTarget:state.actionTarget};
 }

@@ -88,7 +88,7 @@ async function tokenRequest(params: URLSearchParams): Promise<Tokens> {
   }
   const body = await response.json().catch(() => null) as Record<string, unknown> | null;
   if (!response.ok) {
-    if (body?.error === "invalid_grant") {
+    if (body?.error === "invalid_grant" || body?.code === "INVALID_GRANT") {
       throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
     }
     throw new AuthorizationError("TEMPORARY_UNAVAILABLE");
