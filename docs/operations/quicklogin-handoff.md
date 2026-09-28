@@ -1,3 +1,17 @@
+# 官网改用 Cloudflare Git 集成（2026-09-28）
+
+生产 Worker 使用控制台实际创建的 `quick-login-website`，域名仍为 `quicklogin.cqu.moe`。官网由 Cloudflare Workers Builds 连接 `cqu-moe/quick-login` 的 main 自动构建部署；移除 GitHub 的官网部署工作流，不再要求 quicklogin-website 环境中的部署 Token。
+
+- 根目录：仓库根目录。
+- 构建命令：`npm run typecheck:website && npm run build:website && npm run check:website`。
+- 部署命令：`npm run deploy:website`。
+- 如开启非生产分支构建，部署命令使用 `npx wrangler versions upload --config website/wrangler.jsonc`。
+- 插件 ZIP 仍由 GitHub 的 vX.Y.Z 标签流水线发到私有 R2，quicklogin-release 环境及其凭据继续使用。
+
+控制台 build 72d3f313 失败原因：官网 PR 尚未合入 main，所克隆旧代码没有 typecheck:website 脚本。构建命令本身无需改成扩展构建命令。
+
+## 之前的配置记录
+
 # QuickLogin 0.4.0 官网与受控下载（本地完成，未上线）
 
 - 官网及 CI 代码提交：`27f20484146a45f09238ebe055202e6ba05f670e`；分支 `codex/quicklogin-website`，尚未推送或合入 main。

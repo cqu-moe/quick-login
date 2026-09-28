@@ -48,3 +48,5 @@ npm run check:package
 官网源码位于 `website/`，使用 `npm run dev:website` 预览；生产构建为 `npm run build:website`，检查为 `npm run typecheck:website` 和 `npm run check:website`。输出 `website/dist/` 不进入扩展 ZIP。
 
 发布到私有 R2 由 `vX.Y.Z` 标签触发，要求版本一致且提交已属于 main。CI 先通过门禁，校验版本化 ZIP 后上传并切换当前版本；Auth 每次下载校验会话和内测资格。初次需要配置 R2、Auth binding 与 GitHub 环境，详见 [官网验收记录](docs/acceptance/quicklogin-website.md)。
+
+官网通过 Cloudflare Workers Builds 连接 main 部署，Worker 名称为 `quick-login-website`；GitHub Actions 只做检查和标签触发的插件包发布。
