@@ -1,3 +1,15 @@
+# QuickLogin 0.4.0 官网与受控下载（本地完成，未上线）
+
+- 官网及 CI 代码提交：`27f20484146a45f09238ebe055202e6ba05f670e`；分支 `codex/quicklogin-website`，尚未推送或合入 main。
+- Auth 提交：`08593b35159d4822904471131e6a477f4884c389`；尚未推送或部署，本次 Worker version 不适用。
+- 本地候选包：`releases/cqu-quicklogin-0.4.0-canary.zip`，122318 字节；扩展源码 `c29f7ec84416bdce610d4c0e9b15fbbea14d7c42`。
+- SHA-256：`c017d12fec904768b2bfc4e6a80fbb6fc034f9436e46bed9f0095f6d7151d474`；ZIP CRC、8 个文件、manifest 与 build-info 均已核验。
+- 已通过 94 项插件/官网、8 项发布脚本、858 项 Auth 单元及 317 项集成测试；复核提出的窄屏与不同版本字节验证已修正。
+- CI 已实现标签发包、私有 R2 条件写入与校验后切换版本；当前仓库尚无 CI secrets/environments，R2 目标桶尚未建立，不能声称自动发布已启用。
+- [完整验收与首次上线清单](../acceptance/quicklogin-website.md)。未操作用户 Chrome，未上传 Chrome Web Store。
+
+## 此前记录
+
 # QuickLogin 0.3.4 授权恢复与开关修复（2026-09-28）
 
 - 扩展源码提交：`62c79f9aedac5a4da632b0bb6c83fae507a35a92`（隔离分支 `codex/quicklogin-auth-recovery`，未推送或合入 main）。

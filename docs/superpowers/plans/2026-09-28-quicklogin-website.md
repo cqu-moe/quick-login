@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本计划推荐在当前会话中顺序执行，方法由用户审阅后选择。
 
+**执行状态（2026-09-28）：** 任务 1—5 的实现与本地验证已完成；任务 6 的本地检查和独立复核已完成，云端初始化、推送、CI 实跑及生产身份验收仍待执行。详细证据见 `docs/acceptance/quicklogin-website.md`。
+
 **Goal:** 交付 quicklogin.cqu.moe 五页官网、Auth 内测鉴权下载、私有 R2 安装包及标签触发的自动发布流程。
 
 **Architecture:** 官网在 QuickLogin 仓库独立静态构建；Auth 复用现有会话与资格来源，公开发布元数据，鉴权后流式返回私有 R2 ZIP。CI 上传不可变版本并验证后切换 canary 指针，官网和下载接口读取同一发布记录。
@@ -155,4 +157,4 @@ CI run 链接放发布报告，不进入决定包身份的字段。同一版本�
 
 ## 计划自检
 
-设计的五类页面、三态、返回流程、下载鉴权、私有存储、不可变发布、回滚、隐私与验证边界均已落到任务。五项 Review Focus 分别有任务中的具体断言。当前文档是实施计划，未运行产品测试、创建云资源或部署；其检查框只在执行并取得证据后勾选。
+设计的五类页面、三态、返回流程、下载鉴权、私有存储、不可变发布、回滚、隐私与验证边界均已落到任务。五项 Review Focus 分别有任务中的具体断言。当前执行证据记录在验收文档与本任务 ledger；尚未创建云资源、推送、运行远端 CI 或部署。
