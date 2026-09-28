@@ -30,6 +30,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: ./.github/actions/verify
+        with:
+          posthog-project-token: ${{ vars.POSTHOG_PROJECT_TOKEN }}
       - name: Build verified archive
         run: python3 scripts/release.py build --tag "v$RELEASE_VERSION" --notes "docs/releases/$RELEASE_VERSION.md" --output releases
       - name: Install pinned upload CLI

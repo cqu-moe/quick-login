@@ -29,6 +29,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: ./.github/actions/verify
+        with:
+          posthog-project-token: ${{ vars.POSTHOG_PROJECT_TOKEN }}
       - name: Deploy static assets
         run: npx wrangler deploy --config website/wrangler.jsonc
         env:

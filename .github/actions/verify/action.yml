@@ -1,5 +1,10 @@
 name: Verify QuickLogin
 description: Run extension, website and release quality gates
+inputs:
+  posthog-project-token:
+    description: Optional public browser analytics project token
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
@@ -14,7 +19,7 @@ runs:
     - run: npm run build
       shell: bash
       env:
-        VITE_POSTHOG_PROJECT_TOKEN: ${{ vars.POSTHOG_PROJECT_TOKEN }}
+        VITE_POSTHOG_PROJECT_TOKEN: ${{ inputs.posthog-project-token }}
         VITE_POSTHOG_HOST: https://p.cqu.moe
     - run: npm run check:package
       shell: bash
