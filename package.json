@@ -1,6 +1,6 @@
 {
   "name": "cqu-quicklogin",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,13 @@
     "test": "vitest run",
     "build": "vite build",
     "check:package": "npm run check:contract && node scripts/check-package.mjs",
-    "check:contract": "node scripts/check-contract.mjs"
+    "check:contract": "node scripts/check-contract.mjs",
+    "test:release": "python3 -m unittest discover -s scripts -p 'test_release.py'",
+    "dev:website": "vite --config website/vite.config.ts",
+    "build:website": "vite build --config website/vite.config.ts",
+    "typecheck:website": "tsc --noEmit -p website/tsconfig.json",
+    "check:website": "node scripts/check-website.mjs",
+    "deploy:website": "wrangler deploy"
   },
   "devDependencies": {
     "@types/chrome": "^0.2.9",
@@ -16,7 +22,8 @@
     "jsdom": "^30.0.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "wrangler": "4.142.0"
   },
   "dependencies": {
     "posthog-js": "^1.433.5"

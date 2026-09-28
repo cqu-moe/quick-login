@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CQU 快捷登录",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnKmDEExDUakIrMqF7+QbUEJp1LmdS+3L5+LAocJHUDKe9Yc4LnulBunpvyYsaS0qNVJthEJM6AVHN7mGczgm31+FJyUz25EIIhB2ePENdujnivTkNNsZdeT9h0m8D4w0hfm1JVxtwRDmym9/DC78Qpf0djGhqHPzO71U5ObLzmmw2iSs5Kyi5IjL/BNbpMsmla/gChNm5tr/rgx3bs1LCcPH1Jzop8hOf1J2RFUCXqbByxTB8ovFx0UYbpQ74YWC220VQwGjlWY3C6ToWbfszbYd+tSRMYPbrEQUe6ZukXj4p7N91t2d91XcSQglgt2s3Ey8mYV/nTqmUtKjIBdcLQIDAQAB",
   "permissions": [
     "cookies",

@@ -16,3 +16,7 @@ experiment/**/result.json
 experiment/**/.dev.vars
 *.pem
 *.key
+
+scripts/__pycache__/
+
+releases/*.json

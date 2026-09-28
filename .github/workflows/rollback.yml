@@ -1,0 +1,47 @@
+name: Roll back canary
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Previously published X.Y.Z version to restore
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: quicklogin-canary-publish
+  cancel-in-progress: false
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: quicklogin-release
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install --disable-pip-version-check awscli==1.42.49
+      - name: Restore verified version
+        env:
+          RESTORE_VERSION: ${{ inputs.version }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_MAX_ATTEMPTS: "3"
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID" && test -n "$AWS_SECRET_ACCESS_KEY" && test -n "$R2_BUCKET" && test -n "$R2_ACCOUNT_ID"
+          python3 scripts/release.py rollback --version "$RESTORE_VERSION" --bucket "$R2_BUCKET" --endpoint "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com" > rollback.json
+          cat rollback.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Read back restored public version
+        run: |
+          curl --fail --silent --show-error https://auth.cqu.moe/api/v1/cqu/quicklogin/release -o /tmp/quicklogin-restored.json
+          python3 - <<'PYTHON'
+          import json
+          from pathlib import Path
+          expected=json.loads(Path('rollback.json').read_text())
+          actual=json.loads(Path('/tmp/quicklogin-restored.json').read_text())['data']
+          assert all(expected[key]==actual[key] for key in ('version','sha256'))
+          PYTHON

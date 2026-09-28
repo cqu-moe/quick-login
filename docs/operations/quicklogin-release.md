@@ -1,3 +1,57 @@
+# 官网改用 Cloudflare Git 集成（2026-09-28）
+
+生产 Worker 使用控制台实际创建的 `quick-login-website`，域名仍为 `quicklogin.cqu.moe`。官网由 Cloudflare Workers Builds 连接 `cqu-moe/quick-login` 的 main 自动构建部署；移除 GitHub 的官网部署工作流，不再要求 quicklogin-website 环境中的部署 Token。
+
+- 根目录：仓库根目录。
+- 构建命令：`npm run typecheck:website && npm run build:website && npm run check:website`。
+- 部署命令：`npm run deploy:website`。
+- 新版 Worker Previews 的预览命令保留 `npx wrangler preview`；仓库根目录 `wrangler.jsonc` 含空 `previews` 区块，静态资源固定为 `website/dist`。
+- 插件 ZIP 仍由 GitHub 的 vX.Y.Z 标签流水线发到私有 R2，quicklogin-release 环境及其凭据继续使用。
+
+控制台 build 72d3f313 失败原因：官网 PR 尚未合入 main，所克隆旧代码没有 typecheck:website 脚本。构建命令本身无需改成扩展构建命令。
+
+## 之前的配置记录
+
+# QuickLogin 0.4.0 官网与受控下载（本地完成，未上线）
+
+- 官网及 CI 代码提交：`27f20484146a45f09238ebe055202e6ba05f670e`；分支 `codex/quicklogin-website`，尚未推送或合入 main。
+- Auth 提交：`08593b35159d4822904471131e6a477f4884c389`；尚未推送或部署，本次 Worker version 不适用。
+- 本地候选包：`releases/cqu-quicklogin-0.4.0-canary.zip`，122318 字节；扩展源码 `c29f7ec84416bdce610d4c0e9b15fbbea14d7c42`。
+- SHA-256：`c017d12fec904768b2bfc4e6a80fbb6fc034f9436e46bed9f0095f6d7151d474`；ZIP CRC、8 个文件、manifest 与 build-info 均已核验。
+- 已通过 94 项插件/官网、8 项发布脚本、858 项 Auth 单元及 317 项集成测试；复核提出的窄屏与不同版本字节验证已修正。
+- CI 已实现标签发包、私有 R2 条件写入与校验后切换版本；当前仓库尚无 CI secrets/environments，R2 目标桶尚未建立，不能声称自动发布已启用。
+- [完整验收与首次上线清单](../acceptance/quicklogin-website.md)。未操作用户 Chrome，未上传 Chrome Web Store。
+
+## 此前记录
+
+# 官网与 0.4.0 发布初始化（待部署）
+
+1. 在目标 Cloudflare 账户创建或核对私有桶 `cqu-quicklogin-releases`，确认 r2.dev 和自定义公开域名均关闭。
+2. Auth 的 `QUICKLOGIN_RELEASES` binding 指向此桶；先部署并验证 Auth 新接口，公开 `/release` 在尚无包时应返回 503。
+3. QuickLogin 仓库配置 `quicklogin-release` 环境：secrets `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`CLOUDFLARE_ACCOUNT_ID`，变量 `R2_BUCKET=cqu-quicklogin-releases`。R2 token 只授权该桶对象读写。限制环境为受信任版本标签及 main 回滚，不把密钥复制进源码。
+4. 配置 `quicklogin-website` 环境：secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`。令牌仅授予官网 Worker 部署及所需域名操作权限。
+5. 官网 main 变更通过门禁后部署；插件须明确推送 `v0.4.0` 标签才发布。每次发布先在源码中统一版本，添加 `docs/releases/X.Y.Z.md`，将提交合入 main 后再推送同名标签。
+6. `Publish canary` 自动校验、打包、上传、读回并提升版本，Workflow Summary 和私有 R2 release.json 记录来源及摘要。按这份证据更新运维文档，不让流水线自行改 main 或 Git 身份。
+7. `Roll back canary` 仅从 main 手动指定已发布版本运行，与发布共享并发组；它不删除或覆盖历史包。
+
+首次上线尚未执行。网站本地合成预览不代表生产身份校验或真实下载验收。受保护环境、密钥与资源必须先核对；没有配置时工作流应失败而不是公开包。
+
+# 私有 R2 发布脚本（尚未上线）
+
+发布使用 AWS CLI 1.42.49；S3 凭据从 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` 读取。构建后的版本记录路径为 `releases/X.Y.Z.json`。
+
+- 发布：`python3 scripts/release.py publish --record releases/X.Y.Z.json --bucket <目标私有桶> --endpoint https://<账户ID>.r2.cloudflarestorage.com`
+- 回滚：`python3 scripts/release.py rollback --version X.Y.Z --bucket <目标私有桶> --endpoint https://<账户ID>.r2.cloudflarestorage.com`
+- ZIP 与版本记录只允许条件创建；重复执行必须内容相同。读取远端 ZIP 核验摘要和内嵌 provenance 后，才按 ETag 条件更新当前指针。
+- CLI 失败、权限不足不能被当作对象不存在；旧任务不能自动降级。回滚也要验证目标包。
+- 每个 ZIP 写入 `sha256` 自定义元数据，Auth 按记录、对象大小及此摘要核验后流式下载。
+
+当前仅通过本地合成存储与真实 CLI 参数校验，未上传生产 R2。
+
+# 官网安装包构建（实现中）
+
+使用 `python3 scripts/release.py build --tag vX.Y.Z --notes docs/releases/X.Y.Z.md --output releases`，先执行现有 package 门禁，再验证标签、源码与构建版本及 HEAD。ZIP 仅含 dist 内容，顺序、时间和权限固定；已有不同版本文件拒绝覆盖。记录输出为 `releases/X.Y.Z.json`。当前未上传 R2 或部署。
+
 # QuickLogin 0.3.4 授权恢复与开关修复（2026-09-28）
 
 - 扩展源码提交：`62c79f9aedac5a4da632b0bb6c83fae507a35a92`（隔离分支 `codex/quicklogin-auth-recovery`，未推送或合入 main）。

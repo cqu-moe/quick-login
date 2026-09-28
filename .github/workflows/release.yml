@@ -1,0 +1,81 @@
+name: Publish canary
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+concurrency:
+  group: quicklogin-canary-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment: quicklogin-release
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Verify tag belongs to main
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 -c 'import os,re; assert re.fullmatch(r"v(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})",os.environ["RELEASE_TAG"])'
+          git merge-base --is-ancestor HEAD origin/main
+          printf 'RELEASE_VERSION=%s\n' "${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22.22.3"
+          cache: npm
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/verify
+        with:
+          posthog-project-token: ${{ vars.POSTHOG_PROJECT_TOKEN }}
+      - name: Build verified archive
+        run: python3 scripts/release.py build --tag "v$RELEASE_VERSION" --notes "docs/releases/$RELEASE_VERSION.md" --output releases
+      - name: Install pinned upload CLI
+        run: |
+          python3 -m pip install --disable-pip-version-check awscli==1.42.49
+          aws --version
+      - name: Publish private package and promote channel
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_MAX_ATTEMPTS: "3"
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID" && test -n "$AWS_SECRET_ACCESS_KEY" && test -n "$R2_BUCKET" && test -n "$R2_ACCOUNT_ID"
+          python3 scripts/release.py publish --record "releases/$RELEASE_VERSION.json" --bucket "$R2_BUCKET" --endpoint "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+      - name: Verify published metadata and anonymous denial
+        run: |
+          curl --fail --silent --show-error https://auth.cqu.moe/api/v1/cqu/quicklogin/release -o /tmp/quicklogin-release.json
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          local=json.loads(Path('releases',os.environ['RELEASE_VERSION']+'.json').read_text())
+          remote=json.loads(Path('/tmp/quicklogin-release.json').read_text())['data']
+          for key in ('version','filename','size','sha256'):
+              assert local[key]==remote[key],f'Published metadata differs: {key}'
+          PY
+          status="$(curl --silent --show-error --output /tmp/quicklogin-denied.json --write-out '%{http_code}' "https://auth.cqu.moe/api/v1/cqu/quicklogin/download?version=$RELEASE_VERSION")"
+          test "$status" = 401
+      - name: Record release evidence
+        if: always()
+        env:
+          PUBLISH_RESULT: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          path=Path('releases',os.environ.get('RELEASE_VERSION','invalid')+'.json')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as report:
+              report.write('## QuickLogin canary release\n\nResult: '+os.environ['PUBLISH_RESULT']+'\n\n')
+              if path.exists():
+                  record=json.loads(path.read_text())
+                  for key in ('version','filename','sourceCommit','sha256','size'):
+                      report.write(f'- {key}: `{record[key]}`\n')
+              report.write('\nR2 publication, Authenticated download acceptance and Chrome Web Store publication are separate states. No store upload was performed.\n')
+          PY

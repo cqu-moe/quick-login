@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://quicklogin.cqu.moe/sitemap.xml
