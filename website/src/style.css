@@ -892,3 +892,25 @@ nav a[aria-current="page"] {
 .release-slot {
   min-height: 310px;
 }
+
+@media (max-width: 380px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hero-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .product-scene {
+    padding-inline: 16px;
+    min-height: 370px;
+  }
+  .popup-window {
+    --popup-scale: 0.5641;
+    width: 220px;
+    height: 265px;
+  }
+  .step {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+}
