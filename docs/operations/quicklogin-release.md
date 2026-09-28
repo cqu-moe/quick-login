@@ -1,3 +1,7 @@
+# 官网安装包构建（实现中）
+
+使用 `python3 scripts/release.py build --tag vX.Y.Z --notes docs/releases/X.Y.Z.md --output releases`，先执行现有 package 门禁，再验证标签、源码与构建版本及 HEAD。ZIP 仅含 dist 内容，顺序、时间和权限固定；已有不同版本文件拒绝覆盖。记录输出为 `releases/X.Y.Z.json`。当前未上传 R2 或部署。
+
 # QuickLogin 0.3.4 授权恢复与开关修复（2026-09-28）
 
 - 扩展源码提交：`62c79f9aedac5a4da632b0bb6c83fae507a35a92`（隔离分支 `codex/quicklogin-auth-recovery`，未推送或合入 main）。
