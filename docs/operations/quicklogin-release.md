@@ -1,3 +1,15 @@
+# 私有 R2 发布脚本（尚未上线）
+
+发布使用 AWS CLI 1.42.49；S3 凭据从 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` 读取。构建后的版本记录路径为 `releases/X.Y.Z.json`。
+
+- 发布：`python3 scripts/release.py publish --record releases/X.Y.Z.json --bucket <目标私有桶> --endpoint https://<账户ID>.r2.cloudflarestorage.com`
+- 回滚：`python3 scripts/release.py rollback --version X.Y.Z --bucket <目标私有桶> --endpoint https://<账户ID>.r2.cloudflarestorage.com`
+- ZIP 与版本记录只允许条件创建；重复执行必须内容相同。读取远端 ZIP 核验摘要和内嵌 provenance 后，才按 ETag 条件更新当前指针。
+- CLI 失败、权限不足不能被当作对象不存在；旧任务不能自动降级。回滚也要验证目标包。
+- 每个 ZIP 写入 `sha256` 自定义元数据，Auth 按记录、对象大小及此摘要核验后流式下载。
+
+当前仅通过本地合成存储与真实 CLI 参数校验，未上传生产 R2。
+
 # 官网安装包构建（实现中）
 
 使用 `python3 scripts/release.py build --tag vX.Y.Z --notes docs/releases/X.Y.Z.md --output releases`，先执行现有 package 门禁，再验证标签、源码与构建版本及 HEAD。ZIP 仅含 dist 内容，顺序、时间和权限固定；已有不同版本文件拒绝覆盖。记录输出为 `releases/X.Y.Z.json`。当前未上传 R2 或部署。

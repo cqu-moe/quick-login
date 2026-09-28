@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import tempfile
+from urllib.parse import urlparse
 import zipfile
 
 VERSION = re.compile(r'(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})')
@@ -115,6 +117,111 @@ def build_release(repo, tag, notes, output):
     return record
 
 
+def s3_call(endpoint, operation, *arguments):
+    result = subprocess.run(['aws', '--endpoint-url', endpoint, '--region', 'auto', '--output', 'json',
+                             's3api', operation, *map(str, arguments)], capture_output=True, text=True)
+    if result.returncode:
+        match = re.search(r'An error occurred \(([^)]+)\)', result.stderr)
+        code = match.group(1) if match else 'CLI_FAILED'
+        if operation == 'get-object' and code in ('NoSuchKey', 'NotFound', '404'):
+            return None
+        if operation == 'put-object' and code in ('PreconditionFailed', '412', 'ConditionalRequestConflict', '409'):
+            return False
+        raise RuntimeError(f'S3 {operation} failed: {code}')
+    return json.loads(result.stdout or '{}')
+
+
+def s3_get(bucket, endpoint, key, destination):
+    response = s3_call(endpoint, 'get-object', '--bucket', bucket, '--key', key, destination)
+    return None if response is None else response['ETag']
+
+
+def s3_put(bucket, endpoint, key, source, *, etag=None, create=False, sha256=None):
+    if create == (etag is not None):
+        raise ValueError('Every write requires exactly one precondition')
+    arguments = ['--bucket', bucket, '--key', key, '--body', source,
+                 '--content-type', 'application/zip' if sha256 else 'application/json',
+                 '--cache-control', 'private, no-store']
+    arguments += ['--if-none-match', '*'] if create else ['--if-match', etag]
+    if sha256:
+        arguments += ['--metadata', json.dumps({'sha256': sha256})]
+    return s3_call(endpoint, 'put-object', *arguments) is not False
+
+
+def verify_package(record, payload):
+    validate_record(record)
+    if len(payload) != record['size'] or hashlib.sha256(payload).hexdigest() != record['sha256']:
+        raise ValueError('Package size or SHA-256 does not match release record')
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        if archive.testzip() is not None:
+            raise ValueError('Package CRC check failed')
+        manifest = json.loads(archive.read('manifest.json'))
+        info = json.loads(archive.read('build-info.json'))
+        if manifest['version'] != record['version'] or info['extensionVersion'] != record['version']:
+            raise ValueError('Embedded package version does not match release record')
+        for key in ('sourceCommit', 'protocolVersion', 'contractDigest'):
+            if info[key] != record[key]:
+                raise ValueError(f'Embedded {key} does not match release record')
+
+
+def promote_release(record, bucket, endpoint, directory, *, rollback=False):
+    remote_zip = directory / 'remote.zip'
+    if s3_get(bucket, endpoint, record['objectKey'], remote_zip) is None:
+        raise ValueError('Published package is missing')
+    verify_package(record, remote_zip.read_bytes())
+    pointer = directory / 'current.json'
+    etag = s3_get(bucket, endpoint, CHANNEL_KEY, pointer)
+    current = validate_record(json.loads(pointer.read_text())) if etag is not None else None
+    if current is not None:
+        if current['version'] == record['version']:
+            if current != record:
+                raise ValueError('Current version has conflicting metadata')
+            return {'version': record['version'], 'sha256': record['sha256'], 'promoted': False}
+        if not rollback and version_tuple(current['version']) > version_tuple(record['version']):
+            raise ValueError('An older release cannot replace the current version')
+    new_pointer = directory / 'next.json'; new_pointer.write_bytes(json_bytes(record))
+    if not s3_put(bucket, endpoint, CHANNEL_KEY, new_pointer, etag=etag, create=etag is None):
+        raise RuntimeError('Release pointer changed concurrently; rerun to re-evaluate')
+    if s3_get(bucket, endpoint, CHANNEL_KEY, pointer) is None or json.loads(pointer.read_text()) != record:
+        raise RuntimeError('Release pointer readback differs; inspect before retrying')
+    return {'previousVersion': current['version'] if current else None,
+            'version': record['version'], 'sha256': record['sha256'], 'promoted': True}
+
+
+def publish_release(record, archive, bucket, endpoint):
+    verify_package(record, archive.read_bytes())
+    with tempfile.TemporaryDirectory(prefix='quicklogin-publish-') as temporary:
+        directory = Path(temporary)
+        if not s3_put(bucket, endpoint, record['objectKey'], archive, create=True, sha256=record['sha256']):
+            remote = directory / 'existing.zip'
+            if s3_get(bucket, endpoint, record['objectKey'], remote) is None:
+                raise RuntimeError('Existing package disappeared')
+            verify_package(record, remote.read_bytes())
+        metadata_key = f"quicklogin/releases/{record['version']}/release.json"
+        metadata = directory / 'release.json'; metadata.write_bytes(json_bytes(record))
+        if not s3_put(bucket, endpoint, metadata_key, metadata, create=True):
+            existing = directory / 'existing.json'
+            if s3_get(bucket, endpoint, metadata_key, existing) is None or json.loads(existing.read_text()) != record:
+                raise ValueError('Refusing to overwrite existing release metadata')
+        # Read back the immutable record as well as the ZIP before promoting it.
+        checked = directory / 'checked.json'
+        if s3_get(bucket, endpoint, metadata_key, checked) is None or json.loads(checked.read_text()) != record:
+            raise ValueError('Release metadata readback differs')
+        return promote_release(record, bucket, endpoint, directory)
+
+
+def rollback_release(version, bucket, endpoint):
+    version_tuple(version)
+    with tempfile.TemporaryDirectory(prefix='quicklogin-rollback-') as temporary:
+        directory = Path(temporary); metadata = directory / 'release.json'
+        if s3_get(bucket, endpoint, f'quicklogin/releases/{version}/release.json', metadata) is None:
+            raise ValueError('Rollback version has not been published')
+        record = validate_record(json.loads(metadata.read_text()))
+        if record['version'] != version:
+            raise ValueError('Rollback metadata version differs')
+        return promote_release(record, bucket, endpoint, directory, rollback=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -122,12 +229,32 @@ def main():
     build.add_argument('--tag', required=True)
     build.add_argument('--notes', type=Path, required=True)
     build.add_argument('--output', type=Path, default=Path('releases'))
+    publish = commands.add_parser('publish')
+    publish.add_argument('--record', type=Path, required=True)
+    rollback = commands.add_parser('rollback')
+    rollback.add_argument('--version', required=True)
+    for command in (publish, rollback):
+        command.add_argument('--bucket', required=True)
+        command.add_argument('--endpoint', required=True)
     args = parser.parse_args()
-    root = Path(__file__).resolve().parent.parent
-    subprocess.run(['npm', 'run', 'check:package'], cwd=root, check=True)
-    notes = [line.removeprefix('- ').strip() for line in args.notes.read_text().splitlines() if line.startswith('- ')]
-    record = build_release(root, args.tag, notes, args.output)
-    print(json.dumps(record, ensure_ascii=False))
+    if args.command == 'build':
+        root = Path(__file__).resolve().parent.parent
+        subprocess.run(['npm', 'run', 'check:package'], cwd=root, check=True)
+        notes = [line.removeprefix('- ').strip() for line in args.notes.read_text().splitlines() if line.startswith('- ')]
+        result = build_release(root, args.tag, notes, args.output)
+    else:
+        endpoint = urlparse(args.endpoint)
+        if (endpoint.scheme != 'https' or not re.fullmatch(r'[a-f0-9]{32}\.r2\.cloudflarestorage\.com', endpoint.netloc)
+                or endpoint.path not in ('', '/') or endpoint.query or endpoint.fragment):
+            parser.error('Endpoint must be the HTTPS Cloudflare R2 S3 account endpoint')
+        if not re.fullmatch(r'[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]', args.bucket):
+            parser.error('Invalid bucket name')
+        if args.command == 'publish':
+            record = validate_record(json.loads(args.record.read_text()))
+            result = publish_release(record, args.record.parent / record['filename'], args.bucket, args.endpoint)
+        else:
+            result = rollback_release(args.version, args.bucket, args.endpoint)
+    print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == '__main__':
