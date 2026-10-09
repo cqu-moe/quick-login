@@ -267,3 +267,16 @@ Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终�
 - 修复：改用当前 SDK 的 `advanced_disable_flags=true`，扩展不再请求 flags/remote-config；package gate 直接检查源码配置
 - 自动门禁：typecheck、18 files / 83 tests、build、package、ZIP integrity 全部通过
 - 当前 Chrome unpacked 目录已备份 0.3.1 并原位更新为 0.3.2；仍需点击 Reload 验证实时开关
+
+## 2026-10-09 0.4.2 同步编号恢复候选
+
+- 扩展源码提交：`caa17f5b9dedd04c5f4d19e298401af2f16e3cfb`
+- 本地候选包：`releases/cqu-quicklogin-0.4.2-canary.zip`
+- SHA-256：`5f215fbdac3c3169b8c4647eba5cf6cf26ffc5bde644a22426372780b8f5a745`
+- 包大小：122976 bytes；仅包含 dist 内容，ZIP 完整性、根目录路径、manifest 0.4.2 和 build-info 提交均已核对。
+- 检查：typecheck、21 files / 111 tests、8 release tests、build、check:package，以及网站 typecheck/build/check 全部通过。
+- 审查：规范与需求两轴独立审查完成，发现的授权刷新竞争和中断连接卡死均已修复并复核，无剩余发现。
+- 修复：单次、经服务端确认的同步编号恢复；失败引导重连；授权与编号原子保存；旧请求隔离；中断授权恢复。详情见 [故障记录](quicklogin-report-epoch-incident.md)。
+- Auth 源码未修改，Worker 未部署。
+- 官网 canary：待合并主分支后的发布工作流执行。本地包不是线上发布证据；CI 将按合并提交重新构建，其 sourceCommit/SHA-256 以发布工作流产物为准。
+- 真实浏览器覆盖升级、学校页面验收：待验证。Chrome Web Store 未上传、未发布。

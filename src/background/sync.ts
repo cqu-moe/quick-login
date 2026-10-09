@@ -110,7 +110,7 @@ async function ackCurrent(local: LocalState): Promise<void> {
 
 async function runSync(reason: SyncReason): Promise<void> {
   let local = await readLocalState();
-  if (!local.deviceId || local.authorization === "revoked" || local.authorization === "reconnect_required") return;
+  if (!local.deviceId || local.authorization === "authorizing" || local.authorization === "revoked" || local.authorization === "reconnect_required") return;
   if (reason === "alarm" && local.nextAttemptAt !== null && Date.now() < local.nextAttemptAt) return;
   if (local.managedSwitch && !hasManagedSwitch(local)) {
     local = await updateLocalState(state => state.managedSwitch?.id === local.managedSwitch?.id
@@ -225,7 +225,8 @@ async function runSync(reason: SyncReason): Promise<void> {
     if (local.localGeneration === generationFence) await ackCurrent(local);
   } catch (error) {
     const current=await readLocalState();
-    if (current.deviceId !== local.deviceId || current.localGeneration !== local.localGeneration) return;
+    if (current.deviceId !== local.deviceId || current.localGeneration !== local.localGeneration ||
+        current.authGeneration !== local.authGeneration || current.authorization === "authorizing") return;
     await recordFailure(error);
     await captureQuickloginOperation("sync", "failure", telemetryErrorCode(error));
     await captureQuickloginException(error, "sync");
