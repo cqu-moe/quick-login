@@ -4,7 +4,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
 import { snapshot, readySnapshot, envelope, receipt } from "../test/protocol-fixtures";
 import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } from "./storage";
-import { setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
+import { setEnabled, setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
+import { JOURNAL_KEY } from "./cookie-journal";
 import * as api from "./api-v3";
 import type { DeviceSnapshot, OperationResponse } from "../shared/protocol-v3.generated";
 
@@ -18,8 +19,10 @@ function operationResponse(value: DeviceSnapshot): OperationResponse {
   };
 }
 
+let fake: ReturnType<typeof installChromeFake>;
+
 beforeEach(async () => {
-  installChromeFake();
+  fake = installChromeFake();
   await chrome.storage.local.set({ [LOCAL_STATE_KEY]: {
     ...initialLocalState(), deviceId: "device-a", serverGeneration: 4, enabledIntent: true,
     authorization: "authorized", snapshot: snapshot(), observation: "fresh",
@@ -101,6 +104,47 @@ it("discards an export completing after a local cancellation", async () => {
   await running;
   expect(writer).not.toHaveBeenCalled();
   expect(api.acknowledge).not.toHaveBeenCalled();
+});
+
+it("clears a cookie written immediately before disable without rollback resurrecting it", async () => {
+  const previous = {
+    ...envelope(),
+    cookies: envelope().cookies.map((cookie) =>
+      cookie.name === "SOURCEID_TGC" ? { ...cookie, value: "previous-managed-value" } : cookie
+    ),
+  };
+  await applyEnvelope(previous, { localGeneration: 0, allowForeignOnce: false });
+  const originalSet = chrome.cookies.set.bind(chrome.cookies);
+  let entered!: () => void;
+  let release!: () => void;
+  const began = new Promise<void>((resolve) => { entered = resolve; });
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  vi.spyOn(chrome.cookies, "set").mockImplementation(async (details) => {
+    const written = await originalSet(details);
+    if (details.name === "SOURCEID_TGC") {
+      entered();
+      await gate;
+    }
+    return written;
+  });
+  const replacement = {
+    ...envelope(),
+    cookies: envelope().cookies.map((cookie) =>
+      cookie.name === "SOURCEID_TGC" ? { ...cookie, value: "replacement-during-disable" } : cookie
+    ),
+  };
+  const application = applyEnvelope(replacement, { localGeneration: 0, allowForeignOnce: false });
+  const failure = expect(application).rejects.toMatchObject({ code: "COOKIE_WRITE_TRANSIENT" });
+  await began;
+  const disabling = setEnabled(false);
+  await vi.waitFor(async () => expect(await readLocalState()).toMatchObject({ enabledIntent: false }));
+  release();
+  await disabling;
+  await failure;
+
+  expect(fake.getCookie("SOURCEID_TGC")).toBeNull();
+  expect((await chrome.storage.local.get(JOURNAL_KEY))[JOURNAL_KEY]).toBeUndefined();
+  expect(await readLocalState()).toMatchObject({ enabledIntent: false });
 });
 
 it("schedules a background check while a durable server operation runs", async () => {
