@@ -1,3 +1,11 @@
+# 0.4.1 已发布（2026-10-09）
+
+- 发布源码/标签：`e36312d3a314e405409ac06dba2ff8fd4286a175` / `v0.4.1`。
+- 官网包：`cqu-quicklogin-0.4.1-canary.zip`，122473 字节。
+- SHA-256：`9839ffd6f01125af45dc2f9256e929749b5b96dbb8e1d5e480d04517d5a46a02`。
+- Publish canary 运行 `37921956246` 完成不可变包上传、R2 回读及 canary 从 0.4.0 晋级 0.4.1。随后公开接口 curl 验收被 Cloudflare challenge 拦截；已用真实浏览器读回 0.4.1 与相同 SHA-256。
+- 官网 changelog 已显示 0.4.1/0.4.0；后续由版本说明生成。CI 对明确的 Cloudflare challenge 记录浏览器验收待办，普通 HTTP 错误和元数据不一致仍失败。Chrome Web Store 未发布。
+
 # 版本自动发布与更新记录（2026-10-09）
 
 main 当前版本尚无标签时，Publish canary 工作流在完整校验后创建 vX.Y.Z 标签、发布不可覆盖的 ZIP/元数据并推进 canary 下载渠道。已有标签的普通 main 提交不重复发布；失败可重跑原工作流，或对已有标签手动 dispatch 重试。
