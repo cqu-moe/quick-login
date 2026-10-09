@@ -2,6 +2,9 @@
 
 ## Versioning and release
 
+- Every extension version change must be published to the website canary channel after checks; version bump alone is not delivery. The main release workflow creates the version tag and publishes automatically.
+- Maintain dated user-facing notes in `docs/releases/X.Y.Z.md`. Website changelog and RSS are generated from these files; do not maintain duplicate handwritten entries.
+
 - Treat user-visible extension changes and QuickLogin service behavior changes as releases. Bump the patch version for fixes, UI copy or motion changes, and retry-policy changes; bump the minor version for backward-compatible features; reserve major versions for incompatible protocol or storage changes.
 - When commit and deployment are already authorized, apply the necessary version bump without asking again.
 - Keep the root versions in `package.json`, `package-lock.json`, and `public/manifest.json` identical.

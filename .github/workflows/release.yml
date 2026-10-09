@@ -2,22 +2,65 @@ name: Publish canary
 on:
   push:
     tags: ["v*"]
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to retry publishing
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
   group: quicklogin-canary-publish
   cancel-in-progress: false
 jobs:
+  select:
+    runs-on: ubuntu-24.04
+    outputs:
+      publish: ${{ steps.release.outputs.publish }}
+      tag: ${{ steps.release.outputs.tag }}
+      ref: ${{ steps.release.outputs.ref }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, re, subprocess
+          from pathlib import Path
+          automatic = os.environ['EVENT_NAME'] == 'push' and os.environ['REF_TYPE'] == 'branch'
+          tag = 'v' + json.loads(Path('package.json').read_text())['version'] if automatic else (os.environ['INPUT_TAG'] or os.environ['REF_NAME'])
+          assert re.fullmatch(r'v(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})', tag), 'Invalid release tag'
+          exists = subprocess.run(['git','show-ref','--verify','--quiet','refs/tags/'+tag]).returncode == 0
+          publish = not automatic or not exists
+          ref = os.environ['GITHUB_SHA'] if automatic else tag
+          if publish:
+              assert Path('docs/releases', tag[1:] + '.md').is_file(), 'Missing release notes'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'publish={str(publish).lower()}\ntag={tag}\nref={ref}\n')
+          PYTHON
   publish:
+    needs: select
+    if: needs.select.outputs.publish == 'true'
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     environment: quicklogin-release
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          ref: ${{ needs.select.outputs.ref }}
       - name: Verify tag belongs to main
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ needs.select.outputs.tag }}
         run: |
           python3 -c 'import os,re; assert re.fullmatch(r"v(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})",os.environ["RELEASE_TAG"])'
           git merge-base --is-ancestor HEAD origin/main
@@ -34,6 +77,16 @@ jobs:
           posthog-project-token: ${{ vars.POSTHOG_PROJECT_TOKEN }}
       - name: Build verified archive
         run: python3 scripts/release.py build --tag "v$RELEASE_VERSION" --notes "docs/releases/$RELEASE_VERSION.md" --output releases
+      - name: Create immutable version tag after verification
+        env:
+          RELEASE_TAG: ${{ needs.select.outputs.tag }}
+        run: |
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
+          else
+            git tag "$RELEASE_TAG"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
       - name: Install pinned upload CLI
         run: |
           python3 -m pip install --disable-pip-version-check awscli==1.42.49

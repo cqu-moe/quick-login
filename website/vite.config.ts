@@ -1,11 +1,24 @@
 import { defineConfig } from "vite";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
+import { releaseContent } from "./releases.ts";
 const root = import.meta.dirname;
+const releases = releaseContent(resolve(root, "../docs/releases"), JSON.parse(readFileSync(resolve(root, "../package.json"), "utf8")).version);
 export default defineConfig({
   root,
   appType: "mpa",
   plugins: [
+    {
+      name: "release-notes",
+      transformIndexHtml(html) { return html.replace("<!-- release-entries -->", releases.html); },
+      generateBundle() { this.emitFile({ type: "asset", fileName: "changelog/rss.xml", source: releases.rss }); },
+      configureServer(server) {
+        server.middlewares.use("/changelog/rss.xml", (_request, response) => {
+          response.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+          response.end(releases.rss);
+        });
+      },
+    },
     {
       name: "static-page-partials",
       transformIndexHtml: {
