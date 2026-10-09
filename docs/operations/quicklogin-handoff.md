@@ -1,3 +1,13 @@
+# 版本自动发布与更新记录（2026-10-09）
+
+main 当前版本尚无标签时，Publish canary 工作流在完整校验后创建 vX.Y.Z 标签、发布不可覆盖的 ZIP/元数据并推进 canary 下载渠道。已有标签的普通 main 提交不重复发布；失败可重跑原工作流，或对已有标签手动 dispatch 重试。
+
+每次更新统一 package.json、package-lock.json、public/manifest.json 的版本，并添加 docs/releases/X.Y.Z.md（Date: YYYY-MM-DD 和面向用户的条目）。官网构建自动从这些文件生成 changelog 和 RSS，缺失当前版本说明会阻止构建。官网仍由 Cloudflare Git Connector 部署。
+
+0.4.1 说明已补齐，本次发布不更改插件行为或扩展 ID。发布提交、ZIP SHA-256 和渠道读回结果以 Publish canary 工作流的 release evidence 为准；Auth 配套为已合并提交 ac8346f675f8f065759610d6609ba54e7839dcb9，生产 Worker 404705d6-8b47-42d4-91bb-b0bfb7079028。Chrome Web Store 未发布。
+
+---
+
 # 官网改用 Cloudflare Git 集成（2026-09-28）
 
 生产 Worker 使用控制台实际创建的 `quick-login-website`，域名仍为 `quicklogin.cqu.moe`。官网由 Cloudflare Workers Builds 连接 `cqu-moe/quick-login` 的 main 自动构建部署；移除 GitHub 的官网部署工作流，不再要求 quicklogin-website 环境中的部署 Token。

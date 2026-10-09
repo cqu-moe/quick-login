@@ -46,3 +46,10 @@ for (const page of pages) {
 console.log(
   `website ok: ${pages.length} pages, navigation and local assets verified`,
 );
+
+const version = JSON.parse(await readFile("package.json", "utf8")).version;
+const changelog = new JSDOM(await readFile(resolve(root, "changelog/index.html"), "utf8")).window.document;
+const feed = new JSDOM(await readFile(resolve(root, "changelog/rss.xml"), "utf8"), { contentType: "application/xml" }).window.document;
+assert.equal(changelog.querySelector("article")?.id, `v${version}`, "Changelog must include current version first");
+assert.equal(feed.querySelector("item guid")?.textContent, `quicklogin-${version}`, "RSS must include current version first");
+assert.equal(feed.querySelector("item description")?.textContent, [...changelog.querySelectorAll("article:first-of-type li")].map(node => node.textContent).join("\n"), "RSS and changelog notes must agree");
