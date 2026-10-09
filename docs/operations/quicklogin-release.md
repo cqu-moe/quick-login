@@ -287,3 +287,13 @@ ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；�
 - Auth 源码未修改，Worker 未部署。
 - 官网 canary：待合并主分支后的发布工作流执行。本地包不是线上发布证据；CI 将按合并提交重新构建，其 sourceCommit/SHA-256 以发布工作流产物为准。
 - 真实浏览器覆盖升级、学校页面验收：待验证。Chrome Web Store 未上传、未发布。
+
+## 2026-10-09 0.4.2 官网 canary 正式发布
+
+- PR #10 已 squash 合并；发布源码提交：`6c9cdc2d2ae83f9a127e38cd743556a07dbb6064`，版本标签 `v0.4.2`。
+- 正式包：`cqu-quicklogin-0.4.2-canary.zip`，122983 bytes。
+- 正式 SHA-256：`ecfa184b81466f53ddad72a1c51e5051f98450f04819a6769118af4949624cec`。此值取代本地候选包校验值用于官网下载验收；没有覆盖旧候选档案。
+- [发布工作流 37927789633](https://github.com/cqu-moe/quick-login/actions/runs/37927789633) 成功：完整检查、ZIP 验证、R2 安装包与 canary 通道写入和回读均通过。
+- 官网生产构建 `ae34aff9-9729-4fdb-a1ae-a84cefa11902` 成功；浏览器访问 [下载页](https://quicklogin.cqu.moe/download/) 已显示 v0.4.2、正式包名与上述 SHA-256。
+- 命令行公开 HTTP 验收被 Cloudflare challenge 拦截；官网下载页公开元数据已通过浏览器读回。登录后实际下载、覆盖安装及学校页面验收仍待验证。
+- Auth 源码和 Worker 未变更。Chrome Web Store 未上传、未发布。
