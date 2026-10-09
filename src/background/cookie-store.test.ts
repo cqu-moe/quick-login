@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
-import { initialLocalState, readLocalState } from "./storage";
+import { initialLocalState, readLocalState, updateLocalState } from "./storage";
 import { applyEnvelope, clearOwnedCookies, inspectLocalTgc, recoverInterruptedWrite } from "./cookie-store";
-import { JOURNAL_KEY } from "./cookie-journal";
+import { JOURNAL_KEY, SNAPSHOT_KEY, snapshotId } from "./cookie-journal";
 import type { CookieEnvelope } from "../shared/contracts";
 
 let fake: ReturnType<typeof installChromeFake>;
@@ -78,6 +78,41 @@ describe("managed SSO cookies", () => {
     await expect(applyEnvelope(envelope, { localGeneration: 1, allowForeignOnce: true }))
       .rejects.toMatchObject({ code: "COOKIE_WRITE_TRANSIENT" });
     expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("previous-test-value");
+  });
+
+  it("discards an interrupted write after disable instead of restoring its snapshot", async () => {
+    await applyEnvelope(envelope, { localGeneration: 1, allowForeignOnce: false });
+    const managed = (await readLocalState()).managed.find((cookie) => cookie.name === "SOURCEID_TGC");
+    expect(managed).toBeDefined();
+    const current = fake.getCookie("SOURCEID_TGC")!;
+    const entry = {
+      name: current.name,
+      domain: current.domain,
+      path: current.path,
+      storeId: current.storeId,
+      digest: managed!.digest,
+      previousDigest: "different-previous-digest",
+      expectedDigest: managed!.digest,
+      completed: true,
+    };
+    await chrome.storage.local.set({
+      [JOURNAL_KEY]: {
+        id: "journal-disable-fence", localGeneration: 1, serverGeneration: 4,
+        sessionVersion: 7, phase: "writing", entries: [entry],
+      },
+    });
+    await chrome.storage.session.set({
+      [SNAPSHOT_KEY]: { [snapshotId(entry)]: { ...current, value: "previous-test-value" } },
+    });
+    await updateLocalState((state) => ({
+      ...state, enabledIntent: false, localGeneration: state.localGeneration + 1,
+    }));
+
+    await recoverInterruptedWrite();
+
+    expect(fake.getCookie("SOURCEID_TGC")).toBeNull();
+    expect((await chrome.storage.local.get(JOURNAL_KEY))[JOURNAL_KEY]).toBeUndefined();
+    expect(await readLocalState()).toMatchObject({ localWriteState: "idle" });
   });
 
   it("never deletes an ambiguous foreign domain cookie during owned cleanup", async () => {

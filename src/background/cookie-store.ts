@@ -131,17 +131,30 @@ async function restore(cookie: chrome.cookies.Cookie): Promise<void> {
   if (!restored) throw new SyncError("COOKIE_PERMISSION_DENIED");
 }
 
-async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | null): Promise<boolean> {
-  let complete=true;
+type RollbackResult = "restored" | "discarded" | "incomplete";
+
+async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | null): Promise<RollbackResult> {
+  let complete = true;
+  let discarded = false;
   for (const entry of [...journal.entries].reverse()) {
+    const state = await readLocalState();
+    const rollbackAuthorized = state.enabledIntent && state.localGeneration === journal.localGeneration;
     const current = await getExact(entry);
-    if (!current || await digestCookie(current) !== entry.expectedDigest) continue;
+    const currentDigest = current ? await digestCookie(current) : null;
+    if (!rollbackAuthorized) {
+      discarded = true;
+      // A disable/revoke can commit while applyEnvelope holds the write lock. Remove
+      // only the exact value this journal wrote; clearOwnedCookies runs afterward.
+      if (currentDigest === entry.expectedDigest && !await remove(entry)) complete = false;
+      continue;
+    }
+    if (currentDigest !== entry.expectedDigest) continue;
     if (entry.previousDigest === entry.expectedDigest) continue;
     const previous = snapshots?.[snapshotId(entry)];
     if (previous == null) { if (!await remove(entry)) complete=false; }
     else await restore(previous);
   }
-  return complete;
+  return complete ? discarded ? "discarded" : "restored" : "incomplete";
 }
 
 export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
@@ -178,13 +191,13 @@ export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreig
   return "foreign";
 }
 
-export async function applyEnvelope(
+async function applyEnvelopeUnlocked(
   raw: CookieEnvelope | ExportEnvelope,
   options: { localGeneration: number; allowForeignOnce: boolean }
 ): Promise<"applied" | "foreign_session" | "cancelled"> {
   const envelope = raw.protocolVersion === 3 ? parseExportEnvelope(raw) : validateCookieEnvelope(raw);
   if ((await chrome.storage.local.get(JOURNAL_KEY))[JOURNAL_KEY]) {
-    await recoverInterruptedWrite();
+    await recoverJournal();
     if ((await chrome.storage.local.get(JOURNAL_KEY))[JOURNAL_KEY]) return "foreign_session";
   }
   const state = await readLocalState();
@@ -301,7 +314,8 @@ export async function applyEnvelope(
     await clearJournal();
     return cleanupConflict ? "foreign_session" : "applied";
   } catch (error) {
-    if (await rollback(journal,snapshots)) await clearJournal();
+    const rollbackResult = await rollback(journal, snapshots);
+    if (rollbackResult !== "incomplete") await clearJournal();
     else { journal.phase="writing"; await writeJournal(journal,snapshots); }
     throw error;
   }
@@ -317,7 +331,7 @@ export async function verifyManagedCookies(): Promise<boolean> {
   return true;
 }
 
-export async function clearOwnedCookies(): Promise<void> {
+async function clearOwnedCookiesUnlocked(): Promise<void> {
   const state = await readLocalState();
   const remaining: ManagedCookie[] = [];
   for (const entry of state.managed) {
@@ -334,7 +348,7 @@ export async function clearOwnedCookies(): Promise<void> {
   }));
 }
 
-export async function recoverInterruptedWrite(): Promise<void> {
+async function recoverJournal(): Promise<void> {
   const stored = await chrome.storage.local.get(JOURNAL_KEY);
   const journal = stored[JOURNAL_KEY] as CookieJournal | undefined;
   if (!journal) return;
@@ -344,8 +358,39 @@ export async function recoverInterruptedWrite(): Promise<void> {
   }
   const session = await chrome.storage.session.get(SNAPSHOT_KEY);
   const snapshots = (session[SNAPSHOT_KEY] as CookieSnapshots | undefined) ?? null;
-  const complete=await rollback(journal,snapshots);
-  if (complete) await clearJournal();
-  await updateLocalState((state) => ({ ...state, localWriteState:complete ? "error" : "foreign_session",
-    localError:complete ? "LOCAL_WRITE_FAILED" : "LOCAL_COOKIE_CONFLICT",receipt:null,pendingAck:false }));
+  const result=await rollback(journal,snapshots);
+  if (result !== "incomplete") await clearJournal();
+  if (result === "restored") {
+    await updateLocalState((state) => ({ ...state, localWriteState:"error",
+      localError:"LOCAL_WRITE_FAILED",receipt:null,pendingAck:false }));
+  } else if (result === "discarded") {
+    await updateLocalState((state) => ({ ...state, localWriteState:"idle",
+      receipt:null,pendingAck:false }));
+  } else {
+    await updateLocalState((state) => ({ ...state, localWriteState:"foreign_session",
+      localError:"LOCAL_COOKIE_CONFLICT",receipt:null,pendingAck:false }));
+  }
+}
+
+let cookieWriteQueue: Promise<unknown> = Promise.resolve();
+
+function serializeCookieWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const result = cookieWriteQueue.then(operation);
+  cookieWriteQueue = result.then(() => undefined, () => undefined);
+  return result;
+}
+
+export function applyEnvelope(
+  raw: CookieEnvelope | ExportEnvelope,
+  options: { localGeneration: number; allowForeignOnce: boolean }
+): Promise<"applied" | "foreign_session" | "cancelled"> {
+  return serializeCookieWrite(() => applyEnvelopeUnlocked(raw, options));
+}
+
+export function clearOwnedCookies(): Promise<void> {
+  return serializeCookieWrite(clearOwnedCookiesUnlocked);
+}
+
+export function recoverInterruptedWrite(): Promise<void> {
+  return serializeCookieWrite(recoverJournal);
 }
