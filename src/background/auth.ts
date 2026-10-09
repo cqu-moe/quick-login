@@ -28,7 +28,7 @@ interface PendingPkce {
   createdAt: number;
 }
 
-let refreshFlight: Promise<Tokens> | null = null;
+let refreshFlight: { generation: number; promise: Promise<Tokens> } | null = null;
 let loginFlight: Promise<void> | null = null;
 
 export class AuthorizationError extends Error {
@@ -55,7 +55,7 @@ async function readTokens(): Promise<Tokens | null> {
   return (stored[TOKENS_KEY] as Tokens | undefined) ?? null;
 }
 
-async function saveTokens(body: Record<string, unknown>, authGeneration: number): Promise<Tokens> {
+async function saveTokens(body: Record<string, unknown>, authGeneration: number, newGrant: boolean): Promise<Tokens> {
   if (typeof body.access_token !== "string" || typeof body.refresh_token !== "string") {
     throw new Error("INVALID_TOKEN_RESPONSE");
   }
@@ -67,13 +67,14 @@ async function saveTokens(body: Record<string, unknown>, authGeneration: number)
   };
   await updateLocalStateWith({ [TOKENS_KEY]: tokens }, (state) => {
     if (state.authGeneration !== authGeneration) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
-    return state;
+    // Publish a new grant and its report epoch together. Refreshes keep the epoch.
+    return newGrant ? { ...state, reportEpoch: crypto.randomUUID(), clientReportSeq: 0 } : state;
   });
   return tokens;
 }
 
-async function tokenRequest(params: URLSearchParams): Promise<Tokens> {
-  const authGeneration = (await readLocalState()).authGeneration;
+async function tokenRequest(params: URLSearchParams, authGeneration: number): Promise<Tokens> {
+  if ((await readLocalState()).authGeneration !== authGeneration) throw new AuthorizationError("OPERATION_CANCELLED");
   let response: Response;
   try {
     response = await fetch(`${config.authOrigin}${API_PATHS.oauthToken}`, {
@@ -94,12 +95,12 @@ async function tokenRequest(params: URLSearchParams): Promise<Tokens> {
     throw new AuthorizationError("TEMPORARY_UNAVAILABLE");
   }
   if (!body) throw new AuthorizationError("CONTRACT_INVALID");
-  return saveTokens(body, authGeneration);
+  return saveTokens(body, authGeneration, params.get("grant_type") === "authorization_code");
 }
 
-async function refreshTokens(force = false): Promise<Tokens> {
-  if (refreshFlight) return refreshFlight;
-  refreshFlight = (async () => {
+async function refreshTokens(authGeneration: number, force = false): Promise<Tokens> {
+  if (refreshFlight?.generation === authGeneration) return refreshFlight.promise;
+  const flight = { generation: authGeneration, promise: (async () => {
     const current = await readTokens();
     if (!current) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
     if (!force && current.expiresAt > Date.now() + 30_000) return current;
@@ -108,12 +109,13 @@ async function refreshTokens(force = false): Promise<Tokens> {
       client_id: config.clientId,
       refresh_token: current.refreshToken,
       resource: AUTH_ISSUER,
-    }));
-  })();
+    }), authGeneration);
+  })() };
+  refreshFlight = flight;
   try {
-    return await refreshFlight;
+    return await flight.promise;
   } finally {
-    refreshFlight = null;
+    if (refreshFlight === flight) refreshFlight = null;
   }
 }
 
@@ -129,14 +131,22 @@ async function send(path: string, init: RequestInit, token: string): Promise<Res
   });
 }
 
-export async function authorizedFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  let tokens = await refreshTokens();
+export async function authorizedFetch(path: string, init: RequestInit = {}, expectedAuthGeneration?: number): Promise<Response> {
+  const generation = expectedAuthGeneration ?? (await readLocalState()).authGeneration;
+  const assertCurrentAuthorization = async () => {
+    if ((await readLocalState()).authGeneration !== generation) throw new AuthorizationError("OPERATION_CANCELLED");
+  };
+  await assertCurrentAuthorization();
+  let tokens = await refreshTokens(generation);
+  await assertCurrentAuthorization();
   let response = await send(path, init, tokens.accessToken);
   if (response.status !== 401) return response;
 
   const error = await response.clone().json().catch(() => null) as (Partial<ApiError> & {code?:string}) | null;
   if (error?.error?.code === "DEVICE_REVOKED" || error?.code === "DEVICE_REVOKED") return response;
-  tokens = await refreshTokens(true);
+  await assertCurrentAuthorization();
+  tokens = await refreshTokens(generation, true);
+  await assertCurrentAuthorization();
   response = await send(path, init, tokens.accessToken);
   return response;
 }
@@ -182,8 +192,7 @@ async function registerSavedAuthorization(resume?: ResumeContext): Promise<boole
     if (local.localGeneration !== localGeneration) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
     return { ...local,deviceId:result.deviceId,serverGeneration:result.snapshot.versions.generation,
       snapshot:result.snapshot,authorization:"authorized",observation:"fresh",localError:null,
-      receipt:null,pendingAck:false,lastConfirmedAt:Date.now(),lastError:null,
-      reportEpoch:resume ? crypto.randomUUID() : local.reportEpoch };
+      receipt:null,pendingAck:false,lastConfirmedAt:Date.now(),lastError:null };
   });
   await chrome.storage.session.remove(RESUME_KEY);
   return true;
@@ -192,7 +201,7 @@ async function registerSavedAuthorization(resume?: ResumeContext): Promise<boole
 async function performInteractiveLogin(resume?: ResumeContext): Promise<void> {
   if (!resume && await registerSavedAuthorization()) return;
   if (!resume && (await readLocalState()).deviceId) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
-  await updateLocalState((state)=>({...state,authGeneration:state.authGeneration+1,localGeneration:state.localGeneration+1,
+  const authorization = await updateLocalState((state)=>({...state,authGeneration:state.authGeneration+1,localGeneration:state.localGeneration+1,
     authorization:"authorizing",receipt:null,pendingAck:false}));
   const state = randomBase64Url();
   const verifier = randomBase64Url();
@@ -237,7 +246,7 @@ async function performInteractiveLogin(resume?: ResumeContext): Promise<void> {
     code_verifier: stored.verifier,
     redirect_uri: stored.redirectUri,
     resource: AUTH_ISSUER,
-  }));
+  }), authorization.authGeneration);
   if (!await registerSavedAuthorization(resume)) {
     throw new Error("DEVICE_REGISTRATION_FAILED");
   }

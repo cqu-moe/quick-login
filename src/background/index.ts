@@ -6,6 +6,7 @@ import { sync } from "./sync";
 import { applyEnvelope, recoverInterruptedWrite } from "./cookie-store";
 import { setEnvelopeWriter } from "./sync";
 import { handleExternalMessage } from "./external";
+import { recoverInterruptedConnection } from "./connection";
 
 setEnvelopeWriter(applyEnvelope);
 
@@ -19,6 +20,7 @@ export async function ensureSyncAlarm(): Promise<void> {
 async function start(): Promise<void> {
   await configureTrustedStorage();
   await readLocalState();
+  await recoverInterruptedConnection();
   await recoverInterruptedWrite();
   await ensureSyncAlarm();
   await sync("startup");

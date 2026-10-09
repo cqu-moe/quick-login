@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { snapshot, response } from "../test/protocol-fixtures";
-import { updateLocalState } from "./storage";
+import { readLocalState, updateLocalState, updateLocalStateWith } from "./storage";
 import { installChromeFake } from "../test/chrome-fake";
 import { authorizedFetch, clearDeviceAuthorization, loginInteractive } from "./auth";
 
@@ -144,6 +144,44 @@ describe("device authorization", () => {
     });
     expect((await authorizedFetch("/probe")).status).toBe(200);
     expect(apiCalls).toBe(2);
+  });
+
+  it("does not replay an old report under a replacement authorization after a delayed 401", async () => {
+    const state = await readLocalState();
+    await chrome.storage.local.set({ "quicklogin.tokens": {
+      accessToken: "old-access", refreshToken: "old-refresh", expiresAt: Date.now() + 300_000,
+    } });
+    let release!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+    const request = authorizedFetch("/report", { method: "POST", body: "{}" });
+    const rejected = expect(request).rejects.toMatchObject({ code: "OPERATION_CANCELLED" });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    await updateLocalStateWith({ "quicklogin.tokens": {
+      accessToken: "new-access", refreshToken: "new-refresh", expiresAt: Date.now() + 300_000,
+    } }, current => ({ ...current, authGeneration: state.authGeneration + 1 }));
+    release(Response.json({ code: "AUTH_RECONNECT_REQUIRED" }, { status: 401 }));
+    await rejected;
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("does not attach an old token read to a replacement authorization generation", async () => {
+    await readLocalState();
+    await chrome.storage.local.set({ "quicklogin.tokens": { accessToken: "old-access", refreshToken: "old-refresh", expiresAt: 0 } });
+    const replacement = { accessToken: "replacement-access", refreshToken: "replacement-refresh", expiresAt: Date.now() + 300_000 };
+    const get = chrome.storage.local.get.bind(chrome.storage.local);
+    let replaced = false;
+    vi.spyOn(chrome.storage.local, "get").mockImplementation(async keys => {
+      const result = await get(keys);
+      if (keys === "quicklogin.tokens" && !replaced) {
+        replaced = true;
+        await updateLocalStateWith({ "quicklogin.tokens": replacement }, state => ({ ...state, authGeneration: state.authGeneration + 1 }));
+      }
+      return result;
+    });
+    vi.mocked(fetch).mockResolvedValue(Response.json({ access_token: "stale-refresh-access", refresh_token: "stale-refresh-token", expires_in: 300 }));
+    await expect(authorizedFetch("/probe")).rejects.toMatchObject({ code: "OPERATION_CANCELLED" });
+    expect((await get("quicklogin.tokens"))["quicklogin.tokens"]).toEqual(replacement);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("uses v1 OAuth endpoints and the stable resource for an authorization-code grant", async () => {
