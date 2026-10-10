@@ -35,17 +35,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessage, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
-  if (sender.tab) {
+  const senderUrl = sender.url ? new URL(sender.url) : null;
+  if (senderUrl?.protocol === "chrome-extension:" &&
+      senderUrl.hostname === chrome.runtime.id && senderUrl.pathname === "/popup.html") {
+    void handleMessage(message as BackgroundMessage).then(sendResponse,()=>sendResponse({accepted:false}));
+    return true;
+  }
+  if (sender.tab && senderUrl?.protocol === "https:" && senderUrl.hostname === "sso.cqu.edu.cn") {
     void handleContentMessage(message as ContentMessage,sender).then(sendResponse,()=>sendResponse({kind:"idle"}));
     return true;
   }
-  const senderUrl = sender.url ? new URL(sender.url) : null;
-  if (!senderUrl || senderUrl.protocol !== "chrome-extension:" ||
-      senderUrl.hostname !== chrome.runtime.id || senderUrl.pathname !== "/popup.html") {
-    return false;
-  }
-  void handleMessage(message as BackgroundMessage).then(sendResponse,()=>sendResponse({accepted:false}));
-  return true;
+  return false;
 });
 chrome.runtime.onMessageExternal.addListener((message,sender,sendResponse) => {
   void handleExternalMessage(message,sender).then(sendResponse,()=>sendResponse({accepted:false}));

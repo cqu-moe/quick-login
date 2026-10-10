@@ -26,7 +26,7 @@ for (const page of pages) {
   assert.ok(!source.includes("<!-- header -->"), `${page}: missing navigation`);
   for (const node of document.querySelectorAll("[href], [src]")) {
     const target = node.getAttribute("href") ?? node.getAttribute("src");
-    if (!target || /^(https?:|data:)/.test(target)) continue;
+    if (!target || /^(https?:|data:|mailto:)/.test(target)) continue;
     const url = new URL(target, `https://quicklogin.cqu.moe/${page}`);
     const path = resolve(
       root,

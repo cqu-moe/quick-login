@@ -2,7 +2,7 @@
 
 Chrome MV3 扩展，为每个安装实例维护独立的重庆大学统一认证会话。Auth 负责设备授权、额度、云端学校会话和撤销；扩展后台按版本同步限定于 `sso.cqu.edu.cn` 的 Cookie，不读取或保存学校密码。
 
-当前源码版本为 `0.4.0`（本地候选，尚未上线），使用协议 `3`。Auth 与插件共用状态契约，通过 reconcile 对账、持久恢复作业、带完整版本的 Cookie 导出和应用回执完成同步。网络失联、学校密码问题、设备退出和浏览器同步失败分别处理；只有当前会话已写入并确认后才显示“已就绪”。[完整设计](docs/superpowers/specs/2026-09-15-quicklogin-020-protocol-design.md)记录状态、恢复与升级规则。
+当前源码版本为 `0.4.3`，使用协议 `3`；各渠道发布状态见 [发布记录](docs/operations/quicklogin-release.md)。Auth 与插件共用状态契约，通过 reconcile 对账、持久恢复作业、带完整版本的 Cookie 导出和应用回执完成同步。网络失联、学校密码问题、设备退出和浏览器同步失败分别处理；只有当前会话已写入并确认后才显示“已就绪”。[完整设计](docs/superpowers/specs/2026-09-15-quicklogin-020-protocol-design.md)记录状态、恢复与升级规则。
 
 本仓库是正式扩展源码；`experiment/` 仅保留早期验证材料，不能作为 Chrome 加载目录。
 
@@ -30,7 +30,7 @@ npm run check:package
 - scope 为 `openid offline_access cqu:quicklogin:device`；
 - CORS Origin 为精确的 `chrome-extension://<extension-id>`。
 
-当前 canary 使用固定扩展 ID `igfidegfgfoofnoncpmbcokbffjmmook` 和 public clientId `cqu-quicklogin-chrome`，均已在 Auth 生产环境读回。Chrome Web Store 正式 ID 仍需发布前另行核对。
+当前 canary 使用固定扩展 ID `igfidegfgfoofnoncpmbcokbffjmmook` 和 public clientId `cqu-quicklogin-chrome`。Chrome Web Store 条目 ID 为 `ainapeknaclcpoioimonkodmoakhacjd`，两个回调已登记；Origin 配套与提交状态见 [商店材料](CHROMEWEBSTORE.md)。
 
 ## 开关和所有权
 
