@@ -1,3 +1,22 @@
+# 2026-10-10 0.4.3 商店送审与官网 canary
+
+- 扩展 [PR #11](https://github.com/cqu-moe/quick-login/pull/11) 已 squash 合并；源码 / `v0.4.3`：`ec565f422cb81cdf29e8efc0e1f84de44f46548f`。
+- 正式官网包：`cqu-quicklogin-0.4.3-canary.zip`，127149 bytes；SHA-256：`010839a52d837002fdfd15afb2d4e4b60b4498244f5f2a2999a7e37f30f5b36e`。
+- [Publish canary 38023555881](https://github.com/cqu-moe/quick-login/actions/runs/38023555881) 成功；实际 Auth 浏览器读回 0.4.3 元数据并受控下载 200。下载 ZIP 的 SHA、CRC、12 个 dist 文件、manifest 版本和 build-info 源码均匹配；早期本地候选 archive 未覆盖。
+- 商店最终包：`cqu-quicklogin-0.4.3-webstore.zip`，126779 bytes；SHA-256：`991b8ab6100ec0b643c6c8ccbafa9850c089294b11b96cd3c2d9d7a803b27342`。从上述正式 canary 内容生成，仅删除 manifest 的 canary 公钥字段，其他运行文件逐字节一致。Google 草稿 CRX 回读也确认同一 sourceCommit 与运行文件；原始 canary ID 保留。
+- 官网生产 Worker：`bba72ea7-5434-4666-95ed-5e5bf58d6faa`，100% 流量。隐私页浏览器读回 2026 年 10 月 10 日、支持邮箱和 Cloudflare/PostHog、保存与删除说明。
+- Auth [PR #53](https://github.com/cqu-moe/auth/pull/53) 全绿后 squash 合并：`8e24696a364b627a9432c06719892a29350fbb57`；自动 [Workers Build](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/cqu-moe-auth/production/builds/39c6e4f0-2fb5-4d50-ab4f-a7f4b9d8abe9) 成功，生产版本 `5c7d560d-271f-4047-b42b-5d3507c46e51`，100% 流量。保留 public client/PKCE/scopes，登记两个精确回调；store 与 canary Origin 共存，不使用通配扩展来源。
+- 同一生产 Worker 的 workers.dev 协议验收：两个精确 Origin 的 registrations OPTIONS 204 / 匿名 POST 401 均精确回显 ACAO；伪造后缀来源 403、无 ACAO。无效 token grant 返回 400 invalid_grant，并只给接受的 Origin 精确 ACAO；无凭据 CORS。自定义域 CLI 被 Cloudflare challenge 拦截，不能算接口结果。
+- 真实 Ego canary 页读 capabilities 200；浏览器协议层临时 Origin 复核自定义域对 canary/store 回显精确 ACAO，伪造来源的公开能力接口不回显 ACAO（公开响应仍为 200），临时请求头已清除。协议测试不等于商店签名安装验收。
+- 修复安全退出普通用户模拟会话：仅 stop-impersonating 交给原生 signed admin-session Cookie / impersonatedBy / 原管理员会话归属校验，其余管理接口继续强认证。实际浏览器退出预览 200，恢复原管理员会话。
+- 扩展：typecheck、124 tests、build、12-file package check、8 release-script tests、官网 typecheck/build/check 全部通过；Auth：892 单元、387 Workers/DO、两套 typecheck、API 生成/检查、边界与 lint 通过。两个仓库独立审核无阻塞发现，PR CI 全绿。
+- Ego 原 canary 加载目录已先备份再覆盖正式 0.4.3 并 reload，保留设备与浏览器存储；实际弹窗正常显示“需要重新连接 Auth”。未操作无关 HTTPS 验收扩展，未重新授权用户设备或宣称学校 SSO 成功。
+- Chrome Web Store 条目：`ainapeknaclcpoioimonkodmoakhacjd`，公钥推导 ID 已核对。免费、Unlisted（不公开），保留所有地区。图标、真实恢复截图、RGB 宣传图、权限/隐私申报与测试说明均已提交。
+- Google 于 2026-10-10 显示“已将您的扩展程序提交送审”；选择审核通过后自动发布。当前未获批、未上架；[查看审核状态](https://chrome.google.com/webstore/devconsole/49da818d-a01c-4995-a0cd-f0f3f2535c71/ainapeknaclcpoioimonkodmoakhacjd/edit/status)。
+- 专用普通 Auth 审核账号已验证密码登录，额度 2 台、无管理权限、无学校绑定；凭据已在 Google 保密测试字段持久读回，仅保留于该后台。审核说明明确完整学校 SSO 需要审核员自己的合法重庆大学账号；本次未提供学校测试账号，也未验证商店签名安装或真实学校业务登录。
+
+---
+
 # 0.4.1 已发布（2026-10-09）
 
 - 发布源码/标签：`e36312d3a314e405409ac06dba2ff8fd4286a175` / `v0.4.1`。

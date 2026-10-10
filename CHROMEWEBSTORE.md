@@ -1,14 +1,14 @@
 # CQU 快捷登录 · Chrome Web Store 提交材料
 
-更新日期：2026-10-10（Asia/Shanghai）。状态：商店草稿已创建并上传 0.4.3 候选包；最终包替换、提交审核和发布待完成。
+更新日期：2026-10-10（Asia/Shanghai）。状态：0.4.3 最终包已于 2026-10-10 提交 Google 审核，选择审核通过后自动发布；当前尚未获批或上架。
 
-本文件集中维护商店文案、权限说明、数据申报和待办；版本更新说明仍以 `docs/releases/X.Y.Z.md` 为准。以下内容依据当前 0.4.3 候选源码和官方文档整理，待确认项不能当作已满足的承诺。
+本文件集中维护商店文案、权限说明、数据申报和待办；版本更新说明仍以 `docs/releases/X.Y.Z.md` 为准。以下内容依据已发布 0.4.3 源码、正式包及官方文档整理，待确认项不能当作已满足的承诺。
 
 ## 当前判断
 
-0.4.3 已补齐品牌 PNG 图标、manifest 简介、440×280 RGB 宣传图及 1280×800 真实授权恢复截图，并修复独立标签页打开弹窗时的消息路由。官网隐私页源码已更新，生产发布随 main 合并执行。当前为 Manifest V3，四项浏览器权限和三个精确站点，无 `<all_urls>`。
+0.4.3 已补齐品牌 PNG 图标、manifest 简介、440×280 RGB 宣传图及 1280×800 真实授权恢复截图，并修复独立标签页打开弹窗时的消息路由。官网隐私页已发布，浏览器读回更新日期为 2026 年 10 月 10 日。当前为 Manifest V3，四项浏览器权限和三个精确站点，无 `<all_urls>`。
 
-商店 Item ID：`ainapeknaclcpoioimonkodmoakhacjd`。草稿已保存商品详情、隐私申报、普通审核账号及不公开分发；账号密码只填 Google 保密测试字段。最终源提交、包摘要和发布证据统一记录到 `docs/operations/quicklogin-release.md` 与 `quicklogin-handoff.md`。
+商店 Item ID：`ainapeknaclcpoioimonkodmoakhacjd`。已提交商品详情、隐私申报、普通审核账号及不公开分发；账号密码只填 Google 保密测试字段。最终源提交、包摘要和发布证据统一记录到 `docs/operations/quicklogin-release.md` 与 `quicklogin-handoff.md`。
 
 本地和实际 Ego 浏览器已验证授权恢复弹窗，不代表学校 SSO 或商店签名安装验收。审核账号没有学校绑定，用户明确要求只提供普通测试账号；如审核需要完整学校登录，需要审核员自己的合法重庆大学账号。
 
@@ -96,7 +96,7 @@ CQU 快捷登录为重庆大学统一认证同步登录状态，减少打开学�
 | Financial information | 否 | 当前功能不处理该类数据。 |
 | Personal communications | 否 | 当前功能不读取个人通信内容。 |
 
-隐私页：[https://quicklogin.cqu.moe/privacy/](https://quicklogin.cqu.moe/privacy/)。源码已补充 CQU.MOE 运营与支持邮箱、Cloudflare 与 PostHog、清理后的错误信息及环境数据、保存与删除方式。没有统一自动删除承诺，撤销授权不表示所有历史记录立即删除。发布后另验收公开 URL。
+隐私页：[https://quicklogin.cqu.moe/privacy/](https://quicklogin.cqu.moe/privacy/)。源码已补充 CQU.MOE 运营与支持邮箱、Cloudflare 与 PostHog、清理后的错误信息及环境数据、保存与删除方式。没有统一自动删除承诺，撤销授权不表示所有历史记录立即删除。生产 URL 已在本次通过实际浏览器读取验证。
 
 三项有限使用认证已按当前项目用途填写：不出售用户数据、不用于与单一用途无关的目的、不用于信用或借贷评估。未来运营或代码改变时需要同步修订政策及申报。
 
@@ -117,7 +117,7 @@ CQU 快捷登录为重庆大学统一认证同步登录状态，减少打开学�
 - `https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org/`
 - `https://ainapeknaclcpoioimonkodmoakhacjd.chromiumapp.org/`
 
-Auth 配套修改同时接受上述两个 ID 的精确 `chrome-extension://` Origin，保留已有 canary、PKCE S256 与 `openid offline_access cqu:quicklogin:device` scopes；不使用通配 Origin。后端部署证据独立记录。正式商店安装可能产生新设备，不能承诺 unpacked 授权自动迁移。
+Auth 配套修改已部署，同时接受上述两个 ID 的精确 `chrome-extension://` Origin，保留已有 canary、PKCE S256 与 `openid offline_access cqu:quicklogin:device` scopes；不使用通配 Origin。后端部署证据独立记录。正式商店安装可能产生新设备，不能承诺 unpacked 授权自动迁移。
 
 Chrome Web Store 拒绝 ZIP 中的 manifest.key；源清单与 canary 保留原公钥，商店打包脚本只从该发行包移除 key，不提交私钥或改变 canary ID。
 
@@ -138,30 +138,31 @@ Chrome Web Store 拒绝 ZIP 中的 manifest.key；源清单与 canary 保留原�
 3. 版本变更检查通过并合入 main 后，让现有发布工作流完成官网 canary；构建 `releases/cqu-quicklogin-<version>-canary.zip`，仅含 dist 的内容，根目录直接放 manifest.json，禁止覆盖旧包。
 4. 核验 ZIP 清单、CRC、manifest 版本、build-info 和 SHA-256；记录扩展提交、包名、摘要和必要的 Auth 提交/Worker 版本。正式商店最终 ZIP 若不同，单独记录摘要，不能套用 canary 摘要。
 5. 获得明确商店上传授权后，Dashboard → Add new item → 上传 ZIP。填 Store Listing、Privacy practices、Distribution、Test instructions；核对商店 ID 后完成上面的 Auth 与 Chrome 验收。
-6. 获得明确提交/发布授权后 Submit for Review。建议选择审核通过后手动发布；官方说明通过后有 30 天可发布，超时回草稿需要重新送审。
+6. 获得明确提交/发布授权后 Submit for Review。本次按用户“其余上架流程自行完成”的指示选择审核通过后自动发布，并保持 Unlisted；手动分阶段发布的条目通过后有 30 天可发布。
 7. 审核通过后按授权发布，记录条目 ID、商店 URL、版本、日期与审核反馈；官网安装入口再指向真实商店地址。
 
 初审通常数日，也可能数周；官方建议超过三周联系开发者支持。本站构建/部署、canary 下载、商店上传、提交审核、审核通过和商店发布分别记录。
 
 ## 提交门禁
 
-- [ ] 发布者账号、注册费、两步验证、联系邮箱验证完成。
+- [x] 发布者账号已有注册记录、联系邮箱已验证；Google 已接受本次审核提交。
 - [x] 128 PNG 图标入包，manifest 引用正确；真实截图与 440×280 小宣传图齐全。
 - [x] 商店文案准确表达内测资格及非学校官方身份，支持联系方式已确认。
-- [ ] 隐私页补齐运营者、实际服务商、保存期限与删除路径；申报与正式包一致。
+- [x] 隐私页补齐运营者、实际服务商、保存与删除路径；生产 URL 已回读，申报与正式包一致。
 - [x] 普通审核账号密码登录可用、额度 2 台，凭据与学校绑定限制已填写；完整学校 SSO 未提供。
-- [ ] 商店 Item ID、公钥与 Auth callback/Origin/clientId 完成核对。
-- [ ] 最终包通过本地门禁、ZIP 核验及真实 Google Chrome 授权/学校页面验收。
-- [ ] 涉及版本变更时官网 canary 已发布，提交与包摘要已记录。
-- [ ] 上传、提交审核及发布各动作具备明确授权。
+- [x] 商店 Item ID、公钥与 Auth callback/Origin/clientId 完成核对；两个精确回调及 Origin 共存。
+- [x] 最终包通过本地门禁、ZIP 核验及 Google 草稿 CRX 回读；正式 canary 在 Ego 显示正常恢复界面。
+- [ ] 商店签名安装后的完整学校 SSO 验收；审核账号无学校绑定，未声明通过。
+- [x] 官网 canary 已发布，受控下载 200；提交与两个渠道的包摘要已记录。
+- [x] 用户已交办谷歌商城上架及其余操作；最终包已提交审核并选择自动发布。
 
 ## 商店版本记录
 
 | 版本 | 日期 | 商店状态 | 说明 |
 | --- | --- | --- | --- |
-| 0.4.3 | 2026-10-10 | 草稿已上传，最终包待替换，未提交审核 | 更新说明见 `docs/releases/0.4.3.md` |
+| 0.4.3 | 2026-10-10 | 已提交审核，获批后自动发布；当前未上架 | 更新说明见 `docs/releases/0.4.3.md` |
 
-审核反馈：尚无；没有提交记录。
+审核反馈：尚无。Google 已显示“已将您的扩展程序提交送审”；提交、包、Auth 部署与验收边界见 [发布证据](docs/operations/quicklogin-release.md)。
 
 ## 官方依据
 
