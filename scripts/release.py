@@ -68,6 +68,32 @@ def write_immutable(path, content):
             raise ValueError(f'Refusing to overwrite {path.name}')
 
 
+def archive_directory(root):
+    files = sorted(root.rglob('*'))
+    if any(path.is_symlink() for path in files):
+        raise ValueError('Symlinks are not allowed in the archive')
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for path in files:
+            if not path.is_file():
+                continue
+            entry = zipfile.ZipInfo(path.relative_to(root).as_posix(), date_time=(1980, 1, 1, 0, 0, 0))
+            entry.create_system = 3
+            entry.external_attr = 0o100644 << 16
+            entry.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(entry, path.read_bytes(), compresslevel=9)
+    return buffer.getvalue()
+
+
+def verify_directory_archive(payload, root):
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        if archive.testzip() is not None:
+            raise ValueError('ZIP CRC check failed')
+        for entry in archive.namelist():
+            if archive.read(entry) != (root / entry).read_bytes():
+                raise ValueError('ZIP contents do not match build output')
+
+
 def build_release(repo, tag, notes, output):
     if not tag.startswith('v'):
         raise ValueError('Release tag must be vX.Y.Z')
@@ -82,26 +108,8 @@ def build_release(repo, tag, notes, output):
         raise ValueError('Tag, source and built versions differ')
     if info['sourceCommit'] != git(repo, 'rev-parse', 'HEAD'):
         raise ValueError('Built source commit does not equal HEAD')
-    files = sorted((repo / 'dist').rglob('*'))
-    if any(p.is_symlink() for p in files):
-        raise ValueError('Symlinks are not allowed in the archive')
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-        for path in files:
-            if not path.is_file():
-                continue
-            entry = zipfile.ZipInfo(path.relative_to(repo / 'dist').as_posix(), date_time=(1980, 1, 1, 0, 0, 0))
-            entry.create_system = 3
-            entry.external_attr = 0o100644 << 16
-            entry.compress_type = zipfile.ZIP_DEFLATED
-            archive.writestr(entry, path.read_bytes(), compresslevel=9)
-    payload = buffer.getvalue()
-    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        if archive.testzip() is not None:
-            raise ValueError('ZIP CRC check failed')
-        for entry in archive.namelist():
-            if archive.read(entry) != (repo / 'dist' / entry).read_bytes():
-                raise ValueError('ZIP contents do not match dist')
+    payload = archive_directory(repo / 'dist')
+    verify_directory_archive(payload, repo / 'dist')
     filename = f'cqu-quicklogin-{version}-canary.zip'
     record = validate_record({
         'schemaVersion': 1, 'channel': 'canary', 'version': version, 'filename': filename,
