@@ -1,3 +1,13 @@
+# 2026-10-10 0.4.3 已送审
+
+扩展源码 `ec565f422cb81cdf29e8efc0e1f84de44f46548f` 已合并，官网 canary 已发布；`cqu-quicklogin-0.4.3-canary.zip`（127149 bytes），SHA-256 `010839a52d837002fdfd15afb2d4e4b60b4498244f5f2a2999a7e37f30f5b36e`。商店最终 `cqu-quicklogin-0.4.3-webstore.zip`（126779 bytes），SHA-256 `991b8ab6100ec0b643c6c8ccbafa9850c089294b11b96cd3c2d9d7a803b27342`；Google 草稿 CRX 与源提交/运行文件匹配。
+
+Auth `8e24696a364b627a9432c06719892a29350fbb57` 已由自动构建部署，生产 Worker `5c7d560d-271f-4047-b42b-5d3507c46e51`（100%）。store/canary 精确回调及 Origin 共存，原管理员会话已恢复。
+
+商店条目 `ainapeknaclcpoioimonkodmoakhacjd` 已提交审核，免费、不公开，获批后自动发布；尚未上架。普通审核账号额度 2 台，无学校绑定，凭据只在 Google 保密审核字段。完整学校 SSO 与商店签名安装验收未执行，不以源码检查或协议测试替代。各渠道完整证据见 [发布记录](quicklogin-release.md)，商店字段见 [CHROMEWEBSTORE.md](../../CHROMEWEBSTORE.md)。
+
+---
+
 # 0.4.1 已发布（2026-10-09）
 
 - 发布源码/标签：`e36312d3a314e405409ac06dba2ff8fd4286a175` / `v0.4.1`。
