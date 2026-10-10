@@ -1,3 +1,7 @@
+# QuickLogin 发布操作与历史记录
+
+发布规则见 [发布约定](../agents/release.md)。以下按历次工作追加，顶部不是最新状态；按版本标题查找证据，历史“待部署”等措辞只适用于对应记录。当前源码版本查 package.json，线上版本需实际读回。
+
 # 2026-10-10 0.4.3 商店送审与官网 canary
 
 - 扩展 [PR #11](https://github.com/cqu-moe/quick-login/pull/11) 已 squash 合并；源码 / `v0.4.3`：`ec565f422cb81cdf29e8efc0e1f84de44f46548f`。

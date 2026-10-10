@@ -2,7 +2,7 @@
 
 Chrome MV3 扩展，为每个安装实例维护独立的重庆大学统一认证会话。Auth 负责设备授权、额度、云端学校会话和撤销；扩展后台按版本同步限定于 `sso.cqu.edu.cn` 的 Cookie，不读取或保存学校密码。
 
-当前源码版本为 `0.4.3`，使用协议 `3`；各渠道发布状态见 [发布记录](docs/operations/quicklogin-release.md)。Auth 与插件共用状态契约，通过 reconcile 对账、持久恢复作业、带完整版本的 Cookie 导出和应用回执完成同步。网络失联、学校密码问题、设备退出和浏览器同步失败分别处理；只有当前会话已写入并确认后才显示“已就绪”。[完整设计](docs/superpowers/specs/2026-09-15-quicklogin-020-protocol-design.md)记录状态、恢复与升级规则。
+源码版本以 `package.json` 为准，协议以 `src/shared/config.ts` 为准；发布及线上读回证据见 [发布记录](docs/operations/quicklogin-release.md)。Auth 与插件共用状态契约，通过 reconcile 对账、持久恢复作业、带完整版本的 Cookie 导出和应用回执完成同步。网络失联、学校密码问题、设备退出和浏览器同步失败分别处理；只有当前会话已写入并确认后才显示“已就绪”。[完整设计](docs/superpowers/specs/2026-09-15-quicklogin-020-protocol-design.md)记录状态、恢复与升级规则。
 
 本仓库是正式扩展源码；`experiment/` 仅保留早期验证材料，不能作为 Chrome 加载目录。
 
@@ -47,8 +47,10 @@ npm run check:package
 
 官网源码位于 `website/`，使用 `npm run dev:website` 预览；生产构建为 `npm run build:website`，检查为 `npm run typecheck:website` 和 `npm run check:website`。输出 `website/dist/` 不进入扩展 ZIP。
 
-发布到私有 R2 由 `vX.Y.Z` 标签触发，要求版本一致且提交已属于 main。CI 先通过门禁，校验版本化 ZIP 后上传并切换当前版本；Auth 每次下载校验会话和内测资格。初次需要配置 R2、Auth binding 与 GitHub 环境，详见 [官网验收记录](docs/acceptance/quicklogin-website.md)。
+发布入口及版本门禁见 [发布约定](docs/agents/release.md) 和仓库 release 工作流。Auth 每次下载校验会话和内测资格；初次配置见 [官网验收记录](docs/acceptance/quicklogin-website.md)。
 
-官网通过 Cloudflare Workers Builds 连接 main 部署，Worker 名称为 `quick-login-website`；GitHub Actions 只做检查和标签触发的插件包发布。
+官网通过 Cloudflare Workers Builds 连接 main 部署，Worker 名称为 `quick-login-website`；插件包发布以 GitHub Actions 工作流为准。
 
 Cloudflare 的根目录保持仓库根目录。根级 `wrangler.jsonc` 是官网唯一部署配置，`assets.directory` 指向 `website/dist`，`previews: {}` 支持默认 `npx wrangler preview`；扩展构建目录 `dist` 不会作为网站资源发布。
+
+开发约定见 [AGENTS.md](AGENTS.md)。
