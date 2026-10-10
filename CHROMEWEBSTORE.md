@@ -1,16 +1,16 @@
 # CQU 快捷登录 · Chrome Web Store 提交材料
 
-更新日期：2026-10-10（Asia/Shanghai）。状态：准备中，未上传、未提交审核、未发布。
+更新日期：2026-10-10（Asia/Shanghai）。状态：商店草稿已创建并上传 0.4.3 候选包；最终包替换、提交审核和发布待完成。
 
 本文件集中维护商店文案、权限说明、数据申报和待办；版本更新说明仍以 `docs/releases/X.Y.Z.md` 为准。以下内容依据当前 0.4.3 候选源码和官方文档整理，待确认项不能当作已满足的承诺。
 
 ## 当前判断
 
-0.4.3 候选已补齐品牌图标、manifest 简介及 440×280 小宣传图。当前为 Manifest V3，权限限定为四项浏览器权限和三个站点，没有 `<all_urls>`。官网隐私页已于本次通过网页读取确认可公开访问。截图、商店条目及正式扩展 ID 对应的 OAuth 验收仍待完成。
+0.4.3 已补齐品牌 PNG 图标、manifest 简介、440×280 RGB 宣传图及 1280×800 真实授权恢复截图，并修复独立标签页打开弹窗时的消息路由。官网隐私页源码已更新，生产发布随 main 合并执行。当前为 Manifest V3，四项浏览器权限和三个精确站点，无 `<all_urls>`。
 
-现有官网 canary 发布记录见 `docs/operations/quicklogin-release.md` 的“0.4.2 官网 canary 正式发布”：源码 `6c9cdc2d2ae83f9a127e38cd743556a07dbb6064`；包 `cqu-quicklogin-0.4.2-canary.zip`，122983 bytes；SHA-256 `ecfa184b81466f53ddad72a1c51e5051f98450f04819a6769118af4949624cec`。这些是仓库既有发布证据，本次未重新下载核验该包。该版本缺少商店图标，不能直接视为商店就绪包。
+商店 Item ID：`ainapeknaclcpoioimonkodmoakhacjd`。草稿已保存商品详情、隐私申报、普通审核账号及不公开分发；账号密码只填 Google 保密测试字段。最终源提交、包摘要和发布证据统一记录到 `docs/operations/quicklogin-release.md` 与 `quicklogin-handoff.md`。
 
-本次本地验证：在 `f4f2ce8` worktree 恢复锁定依赖后，typecheck、21 个文件 / 111 项测试、build、check:package 全部通过，包检查确认 8 个文件。测试有上游 PostHog source map 警告。未主动注入 CI 诊断 token，未生成或核验送审 ZIP；本地检查不代表商店审批或当前版本真实学校页面验收。本次仅修改上架文档和检查清单。
+本地和实际 Ego 浏览器已验证授权恢复弹窗，不代表学校 SSO 或商店签名安装验收。审核账号没有学校绑定，用户明确要求只提供普通测试账号；如审核需要完整学校登录，需要审核员自己的合法重庆大学账号。
 
 ## 商店文案（可复制草稿）
 
@@ -18,7 +18,7 @@
 
 简短描述（132 字符以内）：为重庆大学统一认证同步登录状态，减少重复登录；支持设备管理、手动登录和授权恢复。需要 CQU.MOE Auth 账号及 QuickLogin 使用资格。
 
-分类建议：Productivity（以 Dashboard 当前分类为准）。主要语言：简体中文。
+后台类别：工具（效率分类下）。主要语言：中文（中国）。
 
 单一用途：为有使用资格的重庆大学用户在当前浏览器维护统一认证登录状态，减少访问学校服务时的重复登录。
 
@@ -54,11 +54,11 @@ CQU 快捷登录为重庆大学统一认证同步登录状态，减少打开学�
 | --- | --- | --- |
 | 扩展及商店图标 | 128×128 PNG，放入 ZIP 并在 manifest 的 icons 中引用 | 已生成 public/icons/icon-128.png，manifest 已引用 |
 | 工具栏等尺寸图标 | 建议另提供 16、32、48 像素 PNG | 已分别生成 16、32、48 PNG |
-| 截图 | 至少 1 张、最多 5 张，1280×800 或 640×400 | 未准备当前版本合格截图 |
-| 小宣传图 | 440×280 PNG/JPEG | 已生成 store-assets/promo-small.png，尺寸已核验 |
+| 截图 | 至少 1 张、最多 5 张，1280×800 或 640×400 | 已准备 store-assets/screenshot-reconnect.png，1280×800 RGB，无 alpha |
+| 小宣传图 | 440×280 PNG/JPEG | 已生成 store-assets/promo-small.png，440×280 RGB，无 alpha |
 | 大宣传图 | 1400×560 PNG/JPEG | 可选 |
 
-截图建议：真实已就绪弹窗与学校服务入口；设备连接/授权步骤；已有学校登录时的明确切换提示。只能使用实际功能画面，去除个人信息、凭据与令牌；`docs/acceptance/quicklogin-home.png` 不能直接当作当前商店截图。使用 CQU.MOE 自有标识；学校校徽或其他授权状态不明的标识不作为默认素材。
+截图使用真实“需要重新连接 Auth”弹窗，配以授权恢复说明。只能使用实际功能画面，去除个人信息、凭据与令牌；`docs/acceptance/quicklogin-home.png` 不能直接当作当前商店截图。使用 CQU.MOE 自有标识；学校校徽或其他授权状态不明的标识不作为默认素材。
 
 0.4.3 manifest 已设置 description，与上面的简短描述一致。
 
@@ -78,32 +78,27 @@ CQU 快捷登录为重庆大学统一认证同步登录状态，减少打开学�
 
 远程代码字段草稿：No. All executable JavaScript, including the analytics library, is bundled in the extension package. Remote requests exchange authorization/session data and diagnostics, not executable scripts. Remote dependency loading, surveys, session recording and remote feature flags are disabled in the analytics configuration.
 
-最终 ZIP 仍须检查，不能只依据源码申报“无远程代码”。
+商店包通过 scripts/package-webstore.py 从 dist 生成，仅移除 canary 公钥字段；ZIP 内容、版本、来源提交和 CRC 在上传前核验。
 
 ## 隐私与数据申报
 
-必须申报数据处理。官方明确：仅在本地处理的数据也要披露。以下是源码支持的草稿分类，提交前按正式包配置和实际 Auth/诊断服务核对。
+必须申报数据处理。官方明确：仅在本地处理的数据也要披露。以下分类已按 Dashboard 定义填写；正式包沿用 canary 的诊断配置。
 
-| Dashboard 数据类型 | 草稿选择 | 实际范围与用途 |
+| Dashboard 数据类型 | 后台选择 | 实际范围与用途 |
 | --- | --- | --- |
 | Personally identifiable information | 是 | 账号关联的设备/安装标识、设备名称与浏览器元数据；Auth 账号流程处理账号信息。随机标识不能作为“不收集”的理由。 |
 | Authentication information | 是 | OAuth 授权令牌、统一认证 Cookie；Auth 还处理学校账号绑定凭据。扩展本地 Cookie 回滚快照不会作为诊断上传。 |
 | User activity | 是（诊断启用时） | connect/sync/cookie_apply/enable/disable/resume/switch_managed 的结果和异常，含版本、错误码及随机安装标识。正式 canary 的 CI 可注入诊断配置。 |
 | Website content | 是，限定本地 DOM 检测 | 仅检测统一认证登录页表单结构以展示提示；不读取输入值、不上传页面内容。 |
-| Web history | 提交前核对限定访问是否应勾选 | 内容脚本检查当前 SSO URL 和登录表单是否可见，不读取浏览历史列表、不记录其他站点浏览轨迹；需按 Dashboard 定义如实披露限定的站点交互。 |
-| Location | 待服务核对 | 服务端请求处理涉及来源 IP；诊断 SDK 配置 ip:false。不能据此推断代理访问日志或服务端地理解析完全不存在。 |
+| Web history | 否 | 内容脚本检查当前 SSO URL 和登录表单是否可见，不读取浏览历史列表、不记录其他站点浏览轨迹；Dashboard 将此项定义为访问的网站列表；此扩展不收集该列表。 |
+| Location | 是 | 服务端请求处理涉及来源 IP；诊断 SDK 配置 ip:false。不能据此推断代理访问日志或服务端地理解析完全不存在。 |
 | Health information | 否 | 当前功能不处理该类数据。 |
 | Financial information | 否 | 当前功能不处理该类数据。 |
 | Personal communications | 否 | 当前功能不读取个人通信内容。 |
 
-隐私页：[https://quicklogin.cqu.moe/privacy/](https://quicklogin.cqu.moe/privacy/)，本次读取成功。现有说明覆盖权限、Auth 与诊断边界，仍需补充：
+隐私页：[https://quicklogin.cqu.moe/privacy/](https://quicklogin.cqu.moe/privacy/)。源码已补充 CQU.MOE 运营与支持邮箱、Cloudflare 与 PostHog、清理后的错误信息及环境数据、保存与删除方式。没有统一自动删除承诺，撤销授权不表示所有历史记录立即删除。发布后另验收公开 URL。
 
-- 实际运营主体和隐私联系邮箱/支持路径。
-- 诊断代理实际转发至 PostHog 的处理关系；Cloudflare 等实际服务商、数据处理地点和用途按服务配置核对。
-- 授权、设备记录、诊断和访问日志各自的保存期限、删除方式；撤销设备授权不能表述为所有历史数据立刻删除。
-- 错误诊断可能含清理后的异常信息/堆栈及 SDK 附带的环境信息，不能只列出手写事件属性。
-
-数据使用声明的三项认证（不出售数据、不用于无关目的、不用于信用或借贷评估）必须由实际运营者确认。源码中的脱敏和开关只能证明部分技术行为，不能替代运营事实确认。
+三项有限使用认证已按当前项目用途填写：不出售用户数据、不用于与单一用途无关的目的、不用于信用或借贷评估。未来运营或代码改变时需要同步修订政策及申报。
 
 ## 账号与分发
 
@@ -111,37 +106,29 @@ CQU 快捷登录为重庆大学统一认证同步登录状态，减少打开学�
 
 在 [Developer Dashboard](https://chrome.google.com/webstore/devconsole/) 注册，支付一次性注册费（金额以后台为准），启用 Google 账号两步验证，填写并验证发布者联系邮箱。交易者身份、地址等字段按后台实际要求和运营事实填写。
 
-分发建议：先 Unlisted，供有使用资格的人通过直链安装；准备全面开放后再选 Public。Unlisted 仍允许知道链接的人安装，使用资格继续由 Auth 控制；如需限定 Google 账号安装，用 Private / trusted testers。所有模式都需要审核。地区选择由运营者确认。
+分发已设置 Unlisted（不公开），免费，保留所有地区默认选择，供有使用资格的人通过直链安装。Unlisted 仍允许知道链接的人安装，使用资格继续由 Auth 控制；如需限定 Google 账号安装，用 Private / trusted testers。所有模式都需要审核。地区选择由运营者确认。
 
 ## 扩展 ID 与 Auth 门禁
 
 当前 manifest.key 对应 canary ID `igfidegfgfoofnoncpmbcokbffjmmook`，公开 clientId 为 `cqu-quicklogin-chrome`。**不能假定商店 ID 与 canary ID 相同。**
 
-1. 获得明确上传授权后创建商店草稿条目，记录实际 Item ID；上传不等于发布。
-2. 在 Package → View public key 读取商店公钥。按官方方法用于开发构建，比较本地扩展 ID 和 Dashboard Item ID。manifest.key 是公钥，不应索取或提交私钥。
-3. 若 ID 不同，先规划正式客户端与 canary 共存，避免替换配置导致旧安装失效。核对或登记精确回调 `https://<store-id>.chromiumapp.org/`、Origin `chrome-extension://<store-id>`、public client、PKCE S256 和 `openid offline_access cqu:quicklogin:device` scopes；不要用通配 Origin 绕过问题。
-4. Auth 登记或部署属于后端工作，需要任务明确包括后端后再执行。当前文档没有修改 Auth。
-5. 用匹配商店 ID 的 Chrome 构建完成授权、同步、真实学校服务页面、暂停、撤销和重连验收。不能直接承诺从 unpacked 迁移到商店安装保留设备授权；应验证是否产生新安装及额度影响。
+商店 ID 与 canary ID 不同。已在现有 public client 上登记两个精确回调：
 
-## 审核测试说明（需补齐账号后提交）
+- `https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org/`
+- `https://ainapeknaclcpoioimonkodmoakhacjd.chromiumapp.org/`
+
+Auth 配套修改同时接受上述两个 ID 的精确 `chrome-extension://` Origin，保留已有 canary、PKCE S256 与 `openid offline_access cqu:quicklogin:device` scopes；不使用通配 Origin。后端部署证据独立记录。正式商店安装可能产生新设备，不能承诺 unpacked 授权自动迁移。
+
+Chrome Web Store 拒绝 ZIP 中的 manifest.key；源清单与 canary 保留原公钥，商店打包脚本只从该发行包移除 key，不提交私钥或改变 canary ID。
+
+## 审核测试说明（已保存普通账号）
 
 审核员通常不具备学校账号、CQU.MOE 内测资格或实时验证码。若无法验证核心功能，只有演示视频和截图不能保证审核通过。
 
 已按用户要求创建普通 Auth 专用审核账号，设置两台设备额度，密码登录验证成功；没有学校绑定，也不具备管理权限。审核员可体验 Auth 与 QuickLogin 界面，但验证实际学校 SSO 仍需要其自己的合法学校账号及绑定。审核说明必须披露这个限制，不能声称已提供全功能学校测试账号。禁止把个人日常账号、Cookie 或长期令牌写进仓库。凭据仅填 Dashboard 的 Test instructions，说明有效期和必要的验证步骤。
 
 ```text
-This extension is intended for Chongqing University users and requires a CQU.MOE Auth account with QuickLogin access and an authorized university account binding.
-
-Test account and any required verification steps: [enter the dedicated test details in the Dashboard only].
-
-1. Install the extension and open its toolbar popup.
-2. Follow the prompt to CQU.MOE Auth and sign in using the dedicated test account. Authorize this installation.
-3. Return to the popup and wait for the ready state. The test account must have QuickLogin enabled and an available device slot.
-4. Open the supplied university service entry: [insert a tested service URL]. Verify that the SSO flow reaches the actual service page.
-5. Pause quick login and verify the popup state. If an existing SSO login is detected, confirm that replacement requires an explicit user choice.
-6. In Auth settings, revoke this test device and verify that further synchronization stops. Existing university service sessions may remain valid until the service logs them out.
-
-Support contact for review: [insert confirmed contact].
+普通 Auth 审核账号，已验证邮箱、QuickLogin 额度 2 台，无学校绑定，也没有管理员权限。打开扩展并前往 https://auth.cqu.moe 登录；在“CQU 集成”页体验设备管理、开关与授权流程。真实学校 SSO 需要审核员自己的合法重庆大学账号，在该页面“绑定 CQU 账户”后完成学校要求的验证码；我们不是学校官方，无法提供学校测试账号。因此未绑定时不会进入已就绪状态。可验证重新连接提示、暂停及手动登录入口。支持：uu@401.moe
 ```
 
 ## 打包与提交流程
@@ -159,10 +146,10 @@ Support contact for review: [insert confirmed contact].
 ## 提交门禁
 
 - [ ] 发布者账号、注册费、两步验证、联系邮箱验证完成。
-- [ ] 128 PNG 图标入包，manifest 引用正确；截图与 440×280 小宣传图齐全。
-- [ ] 商店文案准确表达内测资格及非学校官方身份，支持联系方式已确认。
+- [x] 128 PNG 图标入包，manifest 引用正确；真实截图与 440×280 小宣传图齐全。
+- [x] 商店文案准确表达内测资格及非学校官方身份，支持联系方式已确认。
 - [ ] 隐私页补齐运营者、实际服务商、保存期限与删除路径；申报与正式包一致。
-- [ ] 审核测试账号、权限与验证步骤实际可用。
+- [x] 普通审核账号密码登录可用、额度 2 台，凭据与学校绑定限制已填写；完整学校 SSO 未提供。
 - [ ] 商店 Item ID、公钥与 Auth callback/Origin/clientId 完成核对。
 - [ ] 最终包通过本地门禁、ZIP 核验及真实 Google Chrome 授权/学校页面验收。
 - [ ] 涉及版本变更时官网 canary 已发布，提交与包摘要已记录。
@@ -172,7 +159,7 @@ Support contact for review: [insert confirmed contact].
 
 | 版本 | 日期 | 商店状态 | 说明 |
 | --- | --- | --- | --- |
-| 0.4.3 | 2026-10-10 | 准备中，未上传 | 候选版已补图标及隐私说明；更新说明见 `docs/releases/0.4.3.md` |
+| 0.4.3 | 2026-10-10 | 草稿已上传，最终包待替换，未提交审核 | 更新说明见 `docs/releases/0.4.3.md` |
 
 审核反馈：尚无；没有提交记录。
 

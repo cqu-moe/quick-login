@@ -20,3 +20,4 @@ experiment/**/.dev.vars
 scripts/__pycache__/
 
 releases/*.json
+/releases/webstore/
