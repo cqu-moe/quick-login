@@ -1,8 +1,30 @@
-import { readFile, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 const root = resolve("website/dist");
+
+async function publicFiles(directory, prefix = "") {
+  const result = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const relative = join(prefix, entry.name);
+    if (entry.isSymbolicLink()) throw new Error(`website output contains symlink: ${relative}`);
+    if (entry.isDirectory()) result.push(...await publicFiles(new URL(`${entry.name}/`, directory), relative));
+    else result.push(relative);
+  }
+  return result;
+}
+
+for (const name of await publicFiles(new URL("../website/dist/", import.meta.url))) {
+  if (/\.map$|(^|\/)\.env|\.pem$|\.key$/i.test(name)) {
+    throw new Error(`forbidden website artifact file: ${name}`);
+  }
+  const content = await readFile(new URL(name, new URL("../website/dist/", import.meta.url)));
+  if (/BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|client_secret|sourceMappingURL=/i.test(content)) {
+    throw new Error(`forbidden website artifact content: ${name}`);
+  }
+}
+
 const pages = [
   "index.html",
   "download/index.html",

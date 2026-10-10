@@ -51,6 +51,8 @@ npm run check:package
 
 官网通过 Cloudflare Workers Builds 连接 main 部署，Worker 名称为 `quick-login-website`；插件包发布以 GitHub Actions 工作流为准。
 
+CI、官网构建门禁和 artifact 校验命令见 [CI/CD](docs/ci-cd.md)。
+
 Cloudflare 的根目录保持仓库根目录。根级 `wrangler.jsonc` 是官网唯一部署配置，`assets.directory` 指向 `website/dist`，`previews: {}` 支持默认 `npx wrangler preview`；扩展构建目录 `dist` 不会作为网站资源发布。
 
 开发约定见 [AGENTS.md](AGENTS.md)。

@@ -12,6 +12,10 @@ SPEC = importlib.util.spec_from_file_location('release', Path(__file__).with_nam
 release = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(release)
 
+ARTIFACT_SPEC = importlib.util.spec_from_file_location('package_ci', Path(__file__).with_name('package_ci.py'))
+package_ci = importlib.util.module_from_spec(ARTIFACT_SPEC)
+ARTIFACT_SPEC.loader.exec_module(package_ci)
+
 
 class PackageTests(unittest.TestCase):
     def setUp(self):
@@ -30,6 +34,9 @@ class PackageTests(unittest.TestCase):
         self.git = patch.object(release, 'git', side_effect=lambda root, *args: '1700000000' if args[0] == 'show' else 'a' * 40)
         self.git.start()
         self.addCleanup(self.git.stop)
+        self.artifact_git = patch.object(package_ci.release, 'git', side_effect=lambda root, *args: 'a' * 40)
+        self.artifact_git.start()
+        self.addCleanup(self.artifact_git.stop)
 
     def write(self, name, value):
         (self.root / name).write_text(json.dumps(value))
@@ -186,6 +193,57 @@ class AwsBoundaryTests(unittest.TestCase):
                 self.assertIsNone(release.s3_get('bucket', 'endpoint', 'key', path))
             with patch.object(release.subprocess, 'run', return_value=CompletedProcess([], 254, '', 'An error occurred (AccessDenied) when calling GetObject')):
                 with self.assertRaises(RuntimeError): release.s3_get('bucket', 'endpoint', 'key', path)
+
+
+class CiArtifactTests(unittest.TestCase):
+    write = PackageTests.write
+
+    def setUp(self):
+        PackageTests.setUp(self)
+        (self.root / 'website' / 'dist').mkdir(parents=True)
+        (self.root / 'website' / 'dist' / 'index.html').write_text('<!doctype html><html lang="zh-CN"><body></body></html>')
+
+    def test_builds_deterministic_archives_and_checksums_without_release_notes(self):
+        first = package_ci.build_ci_artifacts(self.root, self.root / 'out')
+        self.assertEqual(first['sourceCommit'], 'a' * 40)
+        self.assertEqual(
+            sorted(name for name in os.listdir(self.root / 'out')),
+            ['SHA256SUMS', 'build.json',
+             f'cqu-quicklogin-0.4.0-ci-{"a" * 40}.zip',
+             f'quicklogin-website-0.4.0-{"a" * 40}.zip'])
+        with zipfile.ZipFile(self.root / 'out' / first['extension']['filename']) as archive:
+            self.assertEqual(archive.namelist(), ['background.js', 'build-info.json', 'manifest.json'])
+            self.assertIsNone(archive.testzip())
+        with zipfile.ZipFile(self.root / 'out' / first['website']['filename']) as archive:
+            self.assertEqual(archive.namelist(), ['index.html'])
+            self.assertIsNone(archive.testzip())
+        expected = ''.join(f'{hashlib.sha256((self.root / "out" / name).read_bytes()).hexdigest()}  {name}\n' for name in (
+            first['extension']['filename'], first['website']['filename'], 'build.json'))
+        self.assertEqual((self.root / 'out' / 'SHA256SUMS').read_text(), expected)
+
+        os.utime(self.root / 'dist/background.js', (1800000000, 1800000000))
+        second = package_ci.build_ci_artifacts(self.root, self.root / 'other')
+        self.assertEqual(second, first)
+        self.assertEqual((self.root / 'other' / first['extension']['filename']).read_bytes(),
+                         (self.root / 'out' / first['extension']['filename']).read_bytes())
+        self.assertEqual((self.root / 'other' / first['website']['filename']).read_bytes(),
+                         (self.root / 'out' / first['website']['filename']).read_bytes())
+
+    def test_ci_metadata_is_not_a_release_record_and_public_output_is_scanned(self):
+        record = package_ci.build_ci_artifacts(self.root, self.root / 'out')
+        with self.assertRaises(ValueError):
+            release.validate_record(record['extension'])
+        (self.root / 'website' / 'dist' / 'source.js.map').write_text('{}')
+        with self.assertRaises(ValueError):
+            package_ci.build_ci_artifacts(self.root, self.root / 'rejected')
+        (self.root / 'website' / 'dist' / 'source.js.map').unlink()
+        (self.root / 'website' / 'dist' / 'app.js').write_text('//# sourceMappingURL=app.js.map')
+        with self.assertRaises(ValueError):
+            package_ci.build_ci_artifacts(self.root, self.root / 'rejected')
+        (self.root / 'website' / 'dist' / 'app.js').unlink()
+        (self.root / 'website' / 'dist' / 'private.pem').write_bytes(b'key')
+        with self.assertRaises(ValueError):
+            package_ci.build_ci_artifacts(self.root, self.root / 'rejected')
 
 
 if __name__ == '__main__':
