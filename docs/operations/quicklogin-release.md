@@ -331,3 +331,11 @@ ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；�
 - 四种宽度、双主题和暖橙色对比度已核对；弹窗使用构建产物与合成 chrome.runtime 状态，未加载真实扩展后台、未写 Cookie。官网验收阻断生产 API，不代表真实下载流程通过。
 - Auth 配套仅为黑白品牌标识接入（源码 `acbd6f8`）；未部署 Worker。
 - 官网 canary、官网生产部署、unpacked 扩展升级与真实学校 SSO 均未执行；Chrome Web Store 未上传、未送审。`release.py build` 生成的 publishedAt 字段是候选记录格式，不是线上发布证据。
+
+# 2026-10-13 0.4.5 动效与响应候选（本地，未发布）
+
+- 当前任务独立工作区基于 `767146b`，0.4.5 修改尚未提交；该基线不是候选修改的发布 commit。
+- 版本已同步到 package、lockfile 和 manifest，用户说明见 `docs/releases/0.4.5.md`。
+- 本地生成 `dist/` 和 `website/dist/` 供验证。尚未创建不可变 canary ZIP，包名待发布为 `cqu-quicklogin-0.4.5-canary.zip`，SHA-256 待正式包生成后记录；不把未提交工作区的 build-info 当作发布源码证据。
+- 已复现的问题及合成状态浏览器验收见 `docs/acceptance/2026-10-13-motion-responsiveness.md`。
+- 尚未推送、运行远端 CI、部署官网、重载用户已安装扩展或发布商店；Auth 无改动。正式合并发布时仍需按发布约定生成 ZIP、核验 SHA 并读回 canary。
