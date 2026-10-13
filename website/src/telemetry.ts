@@ -75,7 +75,7 @@ export function initializeWebsiteTelemetry(
     save_referrer: false,
     save_campaign_params: false,
     disable_scroll_properties: true,
-    advanced_disable_flags: true,
+    advanced_disable_feature_flags: true,
     person_profiles: "never",
     capture_exceptions: false,
     ip: false,
