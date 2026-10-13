@@ -46,3 +46,7 @@
 共享 UI 消息模块会被普通多入口打包提取为 ES chunk，因此学校页内容脚本独立构建为 IIFE，构建同时要求只生成一个入口文件且无静态／动态 chunk 依赖。`check:package` 使用经典脚本解析验证最终 manifest 引用，避免 Chrome 内容脚本出现 import 语法错误；此检查已在修复前失败、修复后通过。
 
 自动化、构建和本地浏览器测试不等于已加载 Chrome 扩展、完成真实学校 SSO、通过 CI、发布官网 canary 或上传 Chrome Web Store。发布状态见运维记录。
+
+## 发布后补验
+
+0.4.5 已经 PR #15 合并、主分支 CI、自动 canary 发布及官网生产构建，并完成公开元数据、认证下载字节、匿名拒绝和官网更新记录的浏览器读回。正式 commit/SHA 和验证边界见 [发布记录](../operations/quicklogin-release.md#2026-10-13-045-canary-与官网已发布)。未执行已安装扩展与真实学校 SSO 验收，未操作 Chrome Web Store。

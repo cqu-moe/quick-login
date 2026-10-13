@@ -339,3 +339,13 @@ ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；�
 - 本地生成 `dist/` 和 `website/dist/` 供验证。尚未创建不可变 canary ZIP，包名待发布为 `cqu-quicklogin-0.4.5-canary.zip`，SHA-256 待正式包生成后记录；不把未提交工作区的 build-info 当作发布源码证据。
 - 已复现的问题及合成状态浏览器验收见 `docs/acceptance/2026-10-13-motion-responsiveness.md`。
 - 尚未推送、运行远端 CI、部署官网、重载用户已安装扩展或发布商店；Auth 无改动。正式合并发布时仍需按发布约定生成 ZIP、核验 SHA 并读回 canary。
+
+# 2026-10-13 0.4.5 canary 与官网已发布
+
+- [PR #15](https://github.com/cqu-moe/quick-login/pull/15) 在检查全绿后 squash 合并；发布源码与 `v0.4.5` 标签均为 `d4638e8c56b7b1f731336fb285d492ddc93343c7`。
+- 正式包：`releases/cqu-quicklogin-0.4.5-canary.zip`，140464 bytes；SHA-256：`9230d2c344659c846501aa87dfcc73c30a938974d86addad378e3ebb8bfd4991`。
+- [PR CI](https://github.com/cqu-moe/quick-login/actions/runs/38346063058)、[主分支 CI](https://github.com/cqu-moe/quick-login/actions/runs/38346178701) 和 [Publish canary](https://github.com/cqu-moe/quick-login/actions/runs/38346178672) 全部成功；142 项应用测试、10 项发布测试、类型检查、构建及包/网站检查通过。发布流程完成不可变包上传、R2 回读及 canary 从 0.4.4 晋级 0.4.5。
+- 官网 `quick-login-website` [生产构建 d87dadb3-ac60-4d20-9d9a-34f5a7e8ec41](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/d87dadb3-ac60-4d20-9d9a-34f5a7e8ec41) 成功；真实浏览器已读回下载页版本/文件名/SHA 和 0.4.5 更新记录，线上引用本次 CI 的 `main-DvUMvUf9.js`、`main-CNhbyHtI.css`。
+- CI 的公开 HTTP 验收遇到 Cloudflare challenge，已在真实浏览器补验：公开元数据为 0.4.5；携带现有登录会话的下载接口返回 HTTP 200 ZIP，保存后的字节与正式包完全一致，CRC、manifest、build-info 的版本/提交/协议指纹均通过；省略凭据时返回 HTTP 401，未遇到 challenge。浏览器点击下载的自动化事件未捕获到文件，实际字节验证使用同源会话 fetch，不将其表述为点击流程验收。
+- 主分支 CI 产物与正式 canary 字节一致，已保存上述不可变本地包及 `releases/0.4.5.json`；未重新构造一个不同的本地候选包。
+- 本轮动效/故障回归详见 [验收记录](../acceptance/2026-10-13-motion-responsiveness.md)。真实 Chrome 已安装扩展重载、学校 SSO 尚未验收；Auth 源码与 Worker 未修改。Chrome Web Store 未操作、未上传、未送审。
