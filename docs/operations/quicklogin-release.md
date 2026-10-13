@@ -2,6 +2,17 @@
 
 发布规则见 [发布约定](../agents/release.md)。以下按历次工作追加，顶部不是最新状态；按版本标题查找证据，历史“待部署”等措辞只适用于对应记录。当前源码版本查 package.json，线上版本需实际读回。
 
+# 2026-10-14 0.4.6 遥测 v2 与商店送审
+
+- 扩展 PR #17 合并、标签 `v0.4.6`，源码 `1f9130b9438715c230294bff08b25665b88f32a2`。CI 与 canary 发布成功。
+- 真实 Auth 受控下载取得 `cqu-quicklogin-0.4.6-canary.zip`：141876 bytes，SHA-256 `62b45dcb09d1275ab0cd2c074dbb86fcdd3d2af2d6f13baaf7be4e0da8e46681`。CRC、14文件、版本、build-info 与源码一致。
+- 商店包 `cqu-quicklogin-0.4.6-webstore.zip`：141509 bytes，SHA-256 `5795c1fd66537b407e52f78517bf27803fb31c4f012c5493d8664b0e2448278f`。13个运行文件与实际 canary 逐字节相同，manifest 只删除 canary 公钥。
+- 用户明确授权上传、提交审核、通过后自动发布。Google 后台读回草稿0.4.6、状态待审核；确认勾选自动发布。当前已发布0.4.4，不把送审当作0.4.6已上架。保持Unlisted和既有权限。
+- 商店说明同步中央内部账号标识/未连接独立安装标识、结果/耗时/有限错误分类，不上传 Cookie、账号凭据、输入内容。扩展无录制；自己的官网100%范围受控遮蔽录制，新PostHog项目662666，GeoIP关闭。
+- Auth配套生产提交 `6aa18abfa01f8c128724ed7ddd95986cb3ec064e`，Worker `b8b25624-c507-4731-a9d1-c88f931f6e20`；RELEASE/QUICKLOGIN_SERVER_BUILD均实际读回匹配。官网Worker `6419558e-94bf-4189-a023-7cbecd5bb313`，页面下载链接实际显示0.4.6。
+- 待完成：0.4.6商店审核与安装渠道升级、真实扩展遥测接收验收。学校目标站登录仍记未验证，不额外请求学校接口只为遥测。旧PostHog608620在全量迁移验收前保留。
+
+
 # 2026-10-10 0.4.3 商店送审与官网 canary
 
 - 扩展 [PR #11](https://github.com/cqu-moe/quick-login/pull/11) 已 squash 合并；源码 / `v0.4.3`：`ec565f422cb81cdf29e8efc0e1f84de44f46548f`。
