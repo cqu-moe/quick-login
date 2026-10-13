@@ -16,8 +16,8 @@ import { recordFailure } from "./sync";
 import type { PopupInput } from "../popup/view-model";
 import { derivePresentation } from "../shared/protocol-v3.generated";
 import {
-  captureQuickloginException,
   captureQuickloginOperation,
+  durationFrom,
   telemetryErrorCode,
   type QuickLoginOperation,
 } from "../shared/posthog";
@@ -115,29 +115,53 @@ export function handleContentMessage(
 }
 
 export async function handleMessage(message: BackgroundMessage) {
-  const tracked = async (name: QuickLoginOperation, operation: () => Promise<unknown>) => {
+  const tracked = async (
+    name: QuickLoginOperation,
+    operation: () => Promise<unknown>,
+    noOp?: (result: unknown) => boolean
+  ) => {
+    const startedAt = Date.now();
     try {
       const result = await operation();
-      await captureQuickloginOperation(name, "success");
+      captureQuickloginOperation(name, {
+        outcome: "success",
+        trigger: "user",
+        durationMs: durationFrom(startedAt),
+        ...(noOp?.(result) ? { noOp: true } : {}),
+      });
       return result;
     } catch (error) {
-      await captureQuickloginOperation(name, "failure", telemetryErrorCode(error));
-      await captureQuickloginException(error, name);
+      captureQuickloginOperation(name, {
+        outcome: "failure",
+        trigger: "user",
+        durationMs: durationFrom(startedAt),
+        errorCode: telemetryErrorCode(error),
+      });
       throw error;
     }
   };
-  const launch = (name: QuickLoginOperation, operation: () => Promise<unknown>) => {
-    void tracked(name, operation).catch(recordFailure);
+  const launch = (
+    name: QuickLoginOperation,
+    operation: () => Promise<unknown>,
+    noOp?: (result: unknown) => boolean
+  ) => {
+    void tracked(name, operation, noOp).catch(recordFailure);
     return { accepted:true };
   };
   switch (message.type) {
     case "LOGIN": return requestConnection();
     case "SET_ENABLED":
       if (typeof message.enabled !== "boolean") throw new Error("INVALID_REQUEST");
-      return launch(message.enabled ? "enable" : "disable", () => setEnabled(message.enabled));
+      return launch(
+        message.enabled ? "enable" : "disable",
+        () => setEnabled(message.enabled),
+        result => result === false
+      );
     case "ENTER_MANUAL": await enterManualMode(); return { ok: true };
-    case "RESUME": await tracked("resume", resumeAutomaticMode); return { ok: true };
-    case "SWITCH_TO_MANAGED": await tracked("switch_managed", switchToManagedOnce); return { ok: true };
+    case "RESUME": await tracked("resume", resumeAutomaticMode, result => result === false); return { ok: true };
+    case "SWITCH_TO_MANAGED":
+      await tracked("switch_managed", switchToManagedOnce, result => result === false);
+      return { ok: true };
     case "OPEN_SETTINGS": {
       const state = await readLocalState();
       const url = new URL("/settings", config.authOrigin);
@@ -156,9 +180,22 @@ export async function handleMessage(message: BackgroundMessage) {
     case "OPEN_SCHOOL_MANUAL":
       await enterManualMode();
       await chrome.tabs.create({url:"https://sso.cqu.edu.cn/login"}); return {ok:true};
-    case "SYNC": return launch("sync", retryAutomaticNow);
+    case "SYNC": {
+      const startedAt = Date.now();
+      void retryAutomaticNow().then(started => {
+        if (!started) {
+          captureQuickloginOperation("sync", {
+            outcome: "success",
+            trigger: "user",
+            durationMs: durationFrom(startedAt),
+            noOp: true,
+          });
+        }
+      }).catch(recordFailure);
+      return { accepted: true };
+    }
     case "CHECK_STATE": { void sync("popup").catch(recordFailure); return { accepted:true }; }
-    case "RETRY_LOCAL": return launch("sync", () => sync("popup"));
+    case "RETRY_LOCAL": void sync("popup").catch(recordFailure); return { accepted: true };
     case "GET_UI_STATE": {
       const state = await readLocalState();
       return { deviceId:state.deviceId,snapshot:state.snapshot,

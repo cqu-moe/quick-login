@@ -4,7 +4,7 @@ import { handleExternalMessage } from "./external";
 import * as auth from "./auth";
 import * as sync from "./sync";
 
-beforeEach(() => { installChromeFake(); vi.spyOn(auth,"loginInteractive").mockResolvedValue(); vi.spyOn(sync,"setEnabled").mockResolvedValue(); });
+beforeEach(() => { installChromeFake(); vi.spyOn(auth,"loginInteractive").mockResolvedValue(); vi.spyOn(sync,"setEnabled").mockResolvedValue(true); });
 const message=()=>({type:"RESUME_DEVICE",deviceId:"device-a",resumeTicket:"synthetic-resume-ticket",expiresAt:Date.now()+300_000});
 it("rejects messages from other origins and frames",async()=>{
   await expect(handleExternalMessage(message(),{url:"https://attacker.example/settings",frameId:0})).rejects.toThrow("FORBIDDEN");
