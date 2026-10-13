@@ -1,5 +1,9 @@
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import { loadDownloadState, mountDownloads } from "./download";
+import {
+  loadDownloadState,
+  mountCopyButtons,
+  mountDownloads,
+} from "./download";
 const record = {
   version: "0.4.0",
   filename: "cqu-quicklogin-0.4.0-canary.zip",
@@ -17,6 +21,7 @@ afterEach(() => {
   cleanup?.();
   cleanup = undefined;
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 function respond(state: "signedOut" | "eligible" | "ineligible") {
   vi.stubGlobal(
@@ -30,6 +35,129 @@ function respond(state: "signedOut" | "eligible" | "ineligible") {
     ),
   );
 }
+
+function deferredVoid() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((finish) => {
+    resolve = finish;
+  });
+  return { promise, resolve };
+}
+
+it("restores the idle copy label after a repeated copy click", async () => {
+  vi.useFakeTimers();
+  document.body.innerHTML =
+    '<button data-copy="chrome://extensions" type="button">复制扩展管理页地址</button>';
+  const firstWrite = deferredVoid();
+  const secondWrite = deferredVoid();
+  const writeText = vi
+    .fn()
+    .mockReturnValueOnce(firstWrite.promise)
+    .mockReturnValueOnce(secondWrite.promise);
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  cleanup = mountCopyButtons(document);
+  const button = document.querySelector<HTMLButtonElement>("[data-copy]")!;
+
+  button.click();
+  firstWrite.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(button.textContent).toBe("已复制");
+
+  await vi.advanceTimersByTimeAsync(1000);
+  button.click();
+  secondWrite.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(button.textContent).toBe("已复制");
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(button.textContent).toBe("复制扩展管理页地址");
+});
+
+it("shows an error when download checks never settle", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise<Response>(() => {})),
+  );
+  cleanup = mountDownloads(document);
+
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(
+    document.querySelector<HTMLButtonElement>("[data-download-retry]")!.hidden,
+  ).toBe(false);
+  expect(document.querySelector("[data-download-link]")?.textContent).toBe(
+    "暂时无法下载",
+  );
+});
+
+it("cancels download deadlines and listeners when unmounted", async () => {
+  vi.useFakeTimers();
+  const signals: AbortSignal[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((_url: string, init: RequestInit) => {
+      signals.push(init.signal!);
+      return new Promise<Response>(() => {});
+    }),
+  );
+  const dispose = mountDownloads(document);
+  expect(vi.getTimerCount()).toBe(1);
+
+  dispose();
+  expect(signals.every((signal) => signal.aborted)).toBe(true);
+  expect(vi.getTimerCount()).toBe(0);
+  window.dispatchEvent(new Event("focus"));
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it("times out a clipboard write that never settles", async () => {
+  vi.useFakeTimers();
+  document.body.innerHTML =
+    '<button data-copy="chrome://extensions" type="button">复制扩展管理页地址</button>';
+  vi.stubGlobal("navigator", {
+    clipboard: { writeText: vi.fn(() => new Promise<void>(() => {})) },
+  });
+  const dispose = mountCopyButtons(document);
+  const button = document.querySelector<HTMLButtonElement>("[data-copy]")!;
+
+  button.click();
+  await vi.advanceTimersByTimeAsync(4_999);
+  expect(button.getAttribute("aria-busy")).toBe("true");
+  expect(button.textContent).toBe("复制中…");
+
+  await vi.advanceTimersByTimeAsync(1);
+  expect(button.getAttribute("aria-busy")).toBe("false");
+  expect(button.textContent).toBe("复制失败，请手动选择");
+
+  await vi.advanceTimersByTimeAsync(2_000);
+  expect(button.textContent).toBe("复制扩展管理页地址");
+  dispose();
+});
+
+it("ignores a clipboard result that settles after unmount", async () => {
+  vi.useFakeTimers();
+  document.body.innerHTML =
+    '<button data-copy="chrome://extensions" type="button">复制扩展管理页地址</button>';
+  const write = deferredVoid();
+  vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn(() => write.promise) } });
+  const dispose = mountCopyButtons(document);
+  const button = document.querySelector<HTMLButtonElement>("[data-copy]")!;
+
+  button.click();
+  expect(button.getAttribute("aria-busy")).toBe("true");
+  dispose();
+  expect(button.getAttribute("aria-busy")).toBe(null);
+  expect(button.textContent).toBe("复制扩展管理页地址");
+
+  write.resolve();
+  await vi.advanceTimersByTimeAsync(7_000);
+  expect(button.textContent).toBe("复制扩展管理页地址");
+  expect(button.getAttribute("aria-busy")).toBe(null);
+});
+
 it.each([
   ["signedOut", "请登录后下载"],
   ["eligible", "下载"],
@@ -98,10 +226,17 @@ it("refreshes on focus and ignores responses from an earlier query", async () =>
     }),
   );
   cleanup = mountDownloads(document);
-  window.dispatchEvent(new Event("focus"));
+  expect(fetch).toHaveBeenCalledTimes(2);
+  for (let index = 0; index < 3; index += 1)
+    window.dispatchEvent(new Event("focus"));
+  expect(fetch).toHaveBeenCalledTimes(2);
+
+  finish(Response.json({ data: { eligible: false } }));
   await vi.waitFor(() =>
     expect(document.body.textContent).toContain("内测中，暂未开放"),
   );
+  expect(fetch).toHaveBeenCalledTimes(4);
+
   finish(Response.json({ data: { eligible: true } }));
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(

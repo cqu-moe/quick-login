@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { Script } from "node:vm";
 
 const root = new URL("../dist/", import.meta.url);
 const manifest = JSON.parse(await readFile(new URL("manifest.json", root), "utf8"));
@@ -47,6 +48,12 @@ const referenced = [
 ].filter(Boolean);
 for (const file of referenced) {
   try { await stat(new URL(file, root)); } catch { failures.push(`missing manifest file: ${file}`); }
+}
+
+// Manifest content scripts are classic scripts, even when the worker is a module.
+for (const file of (manifest.content_scripts ?? []).flatMap(entry => entry.js ?? [])) {
+  try { new Script(await readFile(new URL(file, root), "utf8"), { filename: file }); }
+  catch { failures.push(`content script must use classic script syntax: ${file}`); }
 }
 
 async function files(directory, prefix = "") {

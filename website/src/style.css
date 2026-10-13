@@ -16,6 +16,8 @@
   --soft: light-dark(oklch(0.955 0.018 39.30284), oklch(0.31 0.035 39.30284));
   --disabled: light-dark(oklch(0.51 0.015 240), oklch(0.76 0.012 70));
   --disabled-surface: light-dark(oklch(0.925 0.008 240), oklch(0.31 0.012 60));
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --press-scale: 0.97;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
@@ -203,8 +205,9 @@ nav a[aria-current="page"] {
   font-size: 14px;
   font-weight: 550;
   transition:
-    background-color 140ms ease,
-    transform 140ms ease;
+    background-color 120ms ease,
+    opacity 120ms ease,
+    transform 150ms var(--ease-out-quad);
 }
 .button[aria-disabled="true"] {
   background: var(--disabled-surface);
@@ -212,7 +215,11 @@ nav a[aria-current="page"] {
   cursor: default;
 }
 .button:not([aria-disabled="true"]):active {
-  transform: scale(0.98);
+  transform: scale(var(--press-scale));
+}
+
+[data-download][aria-busy="true"] .button {
+  opacity: 0.78;
 }
 .button.secondary {
   background: transparent;
@@ -252,6 +259,10 @@ nav a[aria-current="page"] {
   text-decoration: underline;
   text-underline-offset: 4px;
   font-size: 13px;
+  transition:
+    color 120ms ease,
+    opacity 120ms ease,
+    transform 150ms var(--ease-out-quad);
 }
 .micro {
   font-size: 11px !important;
@@ -507,6 +518,32 @@ nav a[aria-current="page"] {
   font: 12px inherit;
   min-height: 44px;
   padding: 6px 0;
+  transition:
+    color 120ms ease,
+    opacity 120ms ease,
+    transform 150ms var(--ease-out-quad);
+}
+
+.copy[aria-busy="true"] {
+  opacity: 0.72;
+}
+
+.copy:active,
+.retry:active {
+  transform: scale(var(--press-scale));
+}
+
+/* Keyboard activation changes state immediately rather than easing into it. */
+.button:focus-visible,
+.copy:focus-visible,
+.retry:focus-visible {
+  transform: none;
+  transition: none;
+}
+.button:focus-visible:active,
+.copy:focus-visible:active,
+.retry:focus-visible:active {
+  transform: none;
 }
 .aside-note {
   background: var(--wash);
@@ -683,7 +720,7 @@ nav a[aria-current="page"] {
 [hidden] {
   display: none !important;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   nav a:hover,
   .text-link:hover,
   .article a:hover {
@@ -886,12 +923,17 @@ nav a[aria-current="page"] {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition: none !important;
+  .button,
+  .copy,
+  .retry {
+    transition:
+      background-color 100ms ease,
+      color 100ms ease,
+      opacity 100ms ease;
   }
-  .button:not([aria-disabled="true"]):active {
+  .button:not([aria-disabled="true"]):active,
+  .copy:active,
+  .retry:active {
     transform: none;
   }
 }

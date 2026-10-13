@@ -16,6 +16,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { width: 390px; margin: 0; background: var(--surface); -webkit-font-smoothing: antialiased; }
 main {
   display: grid;
@@ -130,7 +131,7 @@ h1 {
   padding: 4px;
   border-radius: 999px;
   background: light-dark(#d4d0cd, #4a4745);
-  transition: background-color 150ms ease;
+  transition: background-color 120ms ease, opacity 120ms ease;
 }
 .switch-track span {
   display: block;
@@ -139,7 +140,7 @@ h1 {
   border-radius: 50%;
   background: light-dark(#ffffff, #f3f2f1);
   box-shadow: 0 1px 3px rgb(0 0 0 / .22);
-  transition: transform 180ms cubic-bezier(.19, 1, .22, 1);
+  transition: transform 180ms cubic-bezier(.19, 1, .22, 1), background-color 120ms ease;
 }
 .switch-control input:checked + .switch-track { background: var(--action); }
 .switch-control input:checked + .switch-track span {
@@ -147,7 +148,7 @@ h1 {
   transform: translateX(28px);
 }
 .switch-control input:focus-visible + .switch-track { outline: 2px solid var(--focus); outline-offset: 3px; }
-.switch-control input:disabled + .switch-track { opacity: .45; cursor: not-allowed; }
+.switch-control input[aria-disabled="true"] + .switch-track { opacity: .55; cursor: wait; }
 .sr-only {
   position: absolute;
   width: 1px;
@@ -179,8 +180,19 @@ button:active { transform: scale(.97); }
 @media (hover: hover) and (pointer: fine) {
   button:hover { background: var(--action-hover); }
 }
+/* Keyboard operations are immediate, including the switch thumb. */
+button:focus-visible, .switch-control input:focus-visible + .switch-track,
+.switch-control input:focus-visible + .switch-track span { transition: none; }
+button:focus-visible:active { transform: none; }
+button[aria-disabled="true"], button[aria-busy="true"] { cursor: wait; opacity: .65; }
+button[aria-disabled="true"]:active { transform: none; }
+main[data-hidden="true"] .status-icon { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
   button:active { transform: none; }
-  button, .status, .status-icon, .switch-track span { animation: none; transition: none; }
+  .status-icon { animation: none !important; }
+  .switch-track span { transition: background-color 120ms ease; }
+  button { transition: background-color 120ms ease; }
+  button:focus-visible, .switch-control input:focus-visible + .switch-track,
+  .switch-control input:focus-visible + .switch-track span { transition: none; }
 }
 @keyframes spin { to { transform: rotate(1turn); } }

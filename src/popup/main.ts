@@ -1,157 +1,198 @@
 import "./style.css";
-import {
-  derivePopupView,
-  type PopupAction,
-  type PopupInput,
-  type PopupView,
-} from "./view-model";
+import { sendUiMessage } from "../shared/ui-message";
+import { derivePopupView, type PopupAction, type PopupInput, type PopupView } from "./view-model";
 
 const app = document.querySelector<HTMLElement>("#app")!;
 const labels: Record<PopupAction, string> = {
-  login: "连接 Auth",
-  open_settings: "前往 Auth",
-  resume: "恢复快捷登录",
-  switch_managed: "切换到快捷登录",
-  retry: "重试",
-  retry_local: "重新同步",
-  update: "更新插件",
-  fix_permissions: "检查浏览器权限",
-  manual_login: "手动登录",
+  login: "连接 Auth", open_settings: "前往 Auth", resume: "恢复快捷登录",
+  switch_managed: "切换到快捷登录", retry: "重试", retry_local: "重新同步",
+  update: "更新插件", fix_permissions: "检查浏览器权限", manual_login: "手动登录",
+};
+const messages: Record<PopupAction, string> = {
+  login: "LOGIN", open_settings: "OPEN_SETTINGS", resume: "RESUME",
+  switch_managed: "SWITCH_TO_MANAGED", retry: "SYNC", retry_local: "RETRY_LOCAL",
+  update: "OPEN_EXTENSION_SETTINGS", fix_permissions: "OPEN_EXTENSION_SETTINGS", manual_login: "OPEN_SCHOOL_MANUAL",
 };
 
-async function send(message: Record<string, unknown>) {
-  return chrome.runtime.sendMessage(message);
+// Mount once: refreshing state must not replace the focused control or restart a spinner.
+app.innerHTML = `
+  <header class="brand"><picture class="brand-mark">
+    <source srcset="/brand/logo-dark.svg" media="(prefers-color-scheme: dark)">
+    <img class="brand-mark-image" src="/brand/logo.svg" width="28" height="28" alt="">
+  </picture><strong>QuickLogin</strong></header>
+  <section class="status" role="status" aria-live="polite" aria-atomic="true">
+    <span class="status-icon" aria-hidden="true"></span>
+    <p class="status-kicker">当前状态</p><h1></h1><p class="status-description" hidden></p>
+  </section>
+  <footer class="controls">
+    <button type="button" data-control="primary" hidden></button>
+    <label class="switch-control" hidden><span class="sr-only">开启 QuickLogin</span>
+      <input type="checkbox" data-control="switch">
+      <span class="switch-track" aria-hidden="true"><span></span></span>
+    </label>
+  </footer>`;
+app.removeAttribute("aria-live");
+const status = app.querySelector<HTMLElement>(".status")!;
+const title = app.querySelector("h1")!;
+const description = app.querySelector<HTMLElement>(".status-description")!;
+const button = app.querySelector<HTMLButtonElement>("button")!;
+const control = app.querySelector<HTMLElement>(".switch-control")!;
+const checkbox = app.querySelector<HTMLInputElement>("input")!;
+let view: PopupView;
+let readRetry = false;
+let actionPending = false;
+let revision = 0;
+let active = false;
+let lifetime = new AbortController();
+let readPending = false;
+let readAgain = false;
+let readTimer = 0;
+let checkPending = false;
+let foregroundTimer = 0;
+
+function setText(element: HTMLElement, value: string): void {
+  if (element.textContent !== value) element.textContent = value;
+}
+function renderView(next: PopupView): void {
+  const focused = document.activeElement;
+  view = next;
+  status.dataset.tone = next.tone;
+  setText(title, next.heading);
+  setText(description, next.description);
+  description.hidden = !next.description;
+  const action = next.actions[0];
+  button.hidden = !action && !readRetry;
+  setText(button, readRetry ? "重新检查" : action ? labels[action] : "");
+  button.setAttribute("aria-disabled", String(actionPending));
+  control.hidden = !(next.switchVisible ?? !action);
+  checkbox.checked = next.switchChecked;
+  checkbox.setAttribute("aria-disabled", String(!next.switchEnabled || actionPending));
+  if (focused === checkbox && control.hidden && !button.hidden) button.focus({ preventScroll: true });
+  if (focused === button && button.hidden && !control.hidden) checkbox.focus({ preventScroll: true });
+}
+function pendingView(heading: string, checked: boolean): PopupView {
+  return { heading, description: "", tone: "busy", switchEnabled: false, switchChecked: checked,
+    switchVisible: view?.switchVisible ?? false, actions: view?.actions ?? [] };
+}
+function showError(action: boolean): void {
+  readRetry = true;
+  renderView({ heading: action ? "操作暂未确认" : "暂时无法读取状态",
+    description: action ? "操作可能仍在后台进行，请重新检查状态。" : "请重新检查；若仍无响应，请重新打开插件。",
+    tone: "attention", switchEnabled: false, switchChecked: view.switchChecked, switchVisible: false, actions: [] });
 }
 
-async function act(action: PopupAction): Promise<void> {
-  if (action === "login") await send({ type: "LOGIN" });
-  if (action === "open_settings") await send({ type: "OPEN_SETTINGS" });
-  if (action === "resume") await send({ type: "RESUME" });
-  if (action === "switch_managed") await send({ type: "SWITCH_TO_MANAGED" });
-  if (action === "retry") await send({ type: "SYNC" });
-  if (action === "retry_local") await send({ type: "RETRY_LOCAL" });
-  if (action === "update" || action === "fix_permissions") await send({ type: "OPEN_EXTENSION_SETTINGS" });
-  if (action === "manual_login") await send({ type:"OPEN_SCHOOL_MANUAL" });
-  await render();
-}
-
-function pendingView(heading: string, switchChecked: boolean): PopupView {
-  return {
-    heading,
-    description: "",
-    tone: "busy",
-    switchEnabled: false,
-    switchChecked,
-    actions: [],
-  };
-}
-
-function renderView(view: PopupView): void {
-  const signature=JSON.stringify(view);
-  if (app.dataset.view === signature) return;
-  const focused=(document.activeElement as HTMLElement | null)?.dataset.control;
-  app.dataset.view=signature;
-  app.replaceChildren();
-
-  const header = document.createElement("header");
-  header.className = "brand";
-  const mark = document.createElement("picture");
-  mark.className = "brand-mark";
-  const darkLogo = document.createElement("source");
-  darkLogo.srcset = "/brand/logo-dark.svg";
-  darkLogo.media = "(prefers-color-scheme: dark)";
-  const logo = document.createElement("img");
-  logo.className = "brand-mark-image";
-  logo.src = "/brand/logo.svg";
-  logo.width = 28;
-  logo.height = 28;
-  logo.alt = "";
-  mark.append(darkLogo, logo);
-  const brand = document.createElement("strong");
-  brand.textContent = "QuickLogin";
-  header.append(mark, brand);
-
-  const status = document.createElement("section");
-  status.className = "status";
-  status.dataset.tone = view.tone;
-  const statusIcon = document.createElement("span");
-  statusIcon.className = "status-icon";
-  statusIcon.setAttribute("aria-hidden", "true");
-  const kicker = document.createElement("p");
-  kicker.className = "status-kicker";
-  kicker.textContent = "当前状态";
-  const heading = document.createElement("h1");
-  heading.textContent = view.heading;
-  status.append(statusIcon, kicker, heading);
-  if (view.description) {
-    const description = document.createElement("p");
-    description.className = "status-description";
-    description.textContent = view.description;
-    status.append(description);
+async function refresh(): Promise<void> {
+  if (!active || document.hidden) return;
+  if (readPending || actionPending) { readAgain = true; return; }
+  window.clearTimeout(readTimer);
+  readTimer = 0;
+  readPending = true;
+  readAgain = false;
+  if (readRetry) { setText(button, "正在检查…"); button.setAttribute("aria-busy", "true"); }
+  const current = revision;
+  const signal = lifetime.signal;
+  try {
+    const input = await sendUiMessage<PopupInput>({ type: "GET_UI_STATE" }, signal);
+    if (signal.aborted || current !== revision) return;
+    const next = derivePopupView(input);
+    readRetry = false;
+    renderView(next);
+  } catch {
+    if (!signal.aborted && current === revision) showError(false);
+  } finally {
+    if (!signal.aborted) {
+      readPending = false;
+      button.removeAttribute("aria-busy");
+      if (readAgain && !actionPending) scheduleRefresh();
+    }
   }
-
-  const controls = document.createElement("footer");
-  controls.className = "controls";
+}
+function scheduleRefresh(): void {
+  if (!active || document.hidden) return;
+  if (readPending || actionPending) { readAgain = true; return; }
+  if (!readTimer) readTimer = window.setTimeout(() => { readTimer = 0; void refresh(); }, 100);
+}
+async function checkState(): Promise<void> {
+  if (!active || document.hidden || checkPending || actionPending || readRetry) return;
+  checkPending = true;
+  const signal = lifetime.signal;
+  try { await sendUiMessage({ type: "CHECK_STATE" }, signal); }
+  catch { /* The next state read exposes worker failure without replacing useful state. */ }
+  finally { if (!signal.aborted) checkPending = false; }
+}
+async function runAction(message: Record<string, unknown>, heading: string, checked = view.switchChecked): Promise<void> {
+  if (!active || actionPending) return;
+  actionPending = true;
+  readRetry = false;
+  revision++;
+  window.clearTimeout(readTimer);
+  readTimer = 0;
+  const signal = lifetime.signal;
+  renderView(pendingView(heading, checked));
+  try {
+    const response = await sendUiMessage<{ accepted?: boolean; ok?: boolean } | undefined>(message, signal);
+    if (signal.aborted) return;
+    if (response?.accepted !== true && response?.ok !== true) throw new Error("ACTION_NOT_ACCEPTED");
+    actionPending = false;
+    await refresh();
+  } catch {
+    if (!signal.aborted) {
+      actionPending = false;
+      readAgain = false;
+      showError(true);
+    }
+  }
+}
+button.addEventListener("click", () => {
+  if (button.getAttribute("aria-disabled") === "true" || (readRetry && readPending)) return;
+  if (readRetry) { void refresh().then(checkState); return; }
   const action = view.actions[0];
-  if (action) {
-    const button = document.createElement("button");
-    button.dataset.control="primary";
-    button.type = "button";
-    button.textContent = labels[action];
-    button.addEventListener("click", async () => {
-      const heading = action === "login" ? "正在连接" :
-        action === "open_settings" ? "正在打开 Auth" : "正在同步";
-      renderView(pendingView(heading, view.switchChecked));
-      try { await act(action); } catch { await render(); }
-    });
-    controls.append(button);
-  }
-  if (view.switchVisible ?? !action) {
-    const control = document.createElement("label");
-    control.className = "switch-control";
-    const label = document.createElement("span");
-    label.className = "sr-only";
-    label.textContent = "开启 QuickLogin";
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.dataset.control="switch";
-    checkbox.checked = view.switchChecked;
-    checkbox.disabled = !view.switchEnabled;
-    checkbox.addEventListener("change", async () => {
-      const enabled = checkbox.checked;
-      renderView(pendingView(enabled ? "正在同步" : "正在关闭", enabled));
-      try {
-        await send({ type: "SET_ENABLED", enabled });
-      } finally {
-        await render();
-      }
-    });
-    const track = document.createElement("span");
-    track.className = "switch-track";
-    track.setAttribute("aria-hidden", "true");
-    track.append(document.createElement("span"));
-    control.append(label, checkbox, track);
-    controls.append(control);
-  }
-
-  app.append(header, status, controls);
-  if (focused) app.querySelector<HTMLElement>(`[data-control="${focused}"]`)?.focus();
-}
-
-let renderSequence=0;
-async function render(): Promise<void> {
-  const sequence=++renderSequence;
-  const input = await send({ type: "GET_UI_STATE" }) as PopupInput;
-  if (sequence !== renderSequence) return;
-  renderView(derivePopupView(input));
-}
-
-renderView(pendingView("正在检查", false));
-void render().then(() => send({type:"CHECK_STATE"}));
-chrome.storage.onChanged.addListener((_changes,areaName) => {
-  if (areaName === "local") void render();
+  if (!action) return;
+  const heading = action === "login" ? "正在连接" : action === "open_settings" ? "正在打开 Auth" :
+    action === "update" || action === "fix_permissions" ? "正在打开扩展设置" :
+    action === "manual_login" ? "正在打开学校登录" : "正在同步";
+  void runAction({ type: messages[action] }, heading);
 });
-const foregroundTimer=window.setInterval(() => {
-  if (document.visibilityState === "visible") void send({type:"CHECK_STATE"});
-},5_000);
-window.addEventListener("pagehide",() => window.clearInterval(foregroundTimer),{once:true});
+checkbox.addEventListener("click", event => {
+  if (actionPending || !view.switchEnabled) event.preventDefault();
+});
+checkbox.addEventListener("change", () => {
+  const enabled = checkbox.checked;
+  void runAction({ type: "SET_ENABLED", enabled }, enabled ? "正在同步" : "正在关闭", enabled);
+});
+function onStorage(_changes: Record<string, chrome.storage.StorageChange>, area: string): void {
+  if (area === "local") scheduleRefresh();
+}
+function onVisibility(): void {
+  app.dataset.hidden = String(document.hidden);
+  if (!document.hidden) { void refresh(); void checkState(); }
+}
+function start(): void {
+  if (active) return;
+  active = true;
+  lifetime = new AbortController();
+  chrome.storage.onChanged.addListener(onStorage);
+  document.addEventListener("visibilitychange", onVisibility);
+  void refresh().then(checkState);
+  foregroundTimer = window.setInterval(() => { void checkState(); }, 5_000);
+}
+function stop(event: PageTransitionEvent): void {
+  active = false;
+  revision++;
+  lifetime.abort();
+  readPending = readAgain = actionPending = checkPending = false;
+  window.clearTimeout(readTimer);
+  readTimer = 0;
+  window.clearInterval(foregroundTimer);
+  chrome.storage.onChanged.removeListener(onStorage);
+  document.removeEventListener("visibilitychange", onVisibility);
+  if (!event.persisted) {
+    window.removeEventListener("pagehide", stop);
+    window.removeEventListener("pageshow", onPageShow);
+  }
+}
+function onPageShow(event: PageTransitionEvent): void { if (event.persisted) start(); }
+renderView(pendingView("正在检查", false));
+window.addEventListener("pagehide", stop);
+window.addEventListener("pageshow", onPageShow);
+start();

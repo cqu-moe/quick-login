@@ -14,6 +14,9 @@ const api =
     : `${auth}/api/v1/cqu/quicklogin`;
 const versionPattern =
   /^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$/;
+const REQUEST_TIMEOUT_MS = 10_000;
+const COPY_TIMEOUT_MS = 5_000;
+const COPY_FEEDBACK_MS = 2_000;
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
@@ -90,6 +93,10 @@ export function mountDownloads(root: ParentNode): () => void {
   let controller: AbortController | undefined;
   let generation = 0;
   let lastRelease: PublicRelease | undefined;
+  let refreshQueued = false;
+  let refreshing = false;
+  let disposed = false;
+  let cancelRequestDeadline: (() => void) | undefined;
   const display = (
     state: DownloadState | "loading" | "error",
     release?: PublicRelease,
@@ -160,30 +167,55 @@ export function mountDownloads(root: ParentNode): () => void {
     }
   };
   const refresh = async () => {
-    controller?.abort();
-    const current = ++generation;
-    controller = new AbortController();
-    const request = controller;
-    const timeout = window.setTimeout(() => request.abort(), 10_000);
-    display("loading");
-    const [state, release] = await Promise.allSettled([
-      loadDownloadState(request.signal),
-      loadRelease(request.signal),
-    ]);
-    window.clearTimeout(timeout);
-    if (current !== generation) return;
-    if (state.status === "rejected") {
-      display("error", undefined, "暂时无法确认下载资格，请重试。");
+    if (refreshing) {
+      refreshQueued = true;
       return;
     }
-    const metadata = release.status === "fulfilled" ? release.value : undefined;
-    display(
-      state.value,
-      metadata,
-      state.value === "eligible" && !metadata
-        ? "安装包暂不可用，请稍后重试。"
-        : "",
-    );
+    refreshing = true;
+    const current = ++generation;
+    const request = new AbortController();
+    controller = request;
+    let timeoutId: number | undefined;
+    let rejectDeadline!: (reason: Error) => void;
+    const requestDeadline = new Promise<never>((_, reject) => {
+      rejectDeadline = reject;
+      timeoutId = window.setTimeout(() => {
+        request.abort();
+        reject(new Error("Download checks timed out."));
+      }, REQUEST_TIMEOUT_MS);
+    });
+    cancelRequestDeadline = () => {
+      window.clearTimeout(timeoutId);
+      rejectDeadline(new Error("Download checks canceled."));
+    };
+    display("loading");
+    try {
+      const [state, release] = await Promise.allSettled([
+        Promise.race([loadDownloadState(request.signal), requestDeadline]),
+        Promise.race([loadRelease(request.signal), requestDeadline]),
+      ]);
+      if (current !== generation) return;
+      if (state.status === "rejected") {
+        display("error", undefined, "暂时无法确认下载资格，请重试。");
+        return;
+      }
+      const metadata = release.status === "fulfilled" ? release.value : undefined;
+      display(
+        state.value,
+        metadata,
+        state.value === "eligible" && !metadata
+          ? "安装包暂不可用，请稍后重试。"
+          : "",
+      );
+    } finally {
+      cancelRequestDeadline();
+      cancelRequestDeadline = undefined;
+      refreshing = false;
+      if (refreshQueued && !disposed) {
+        refreshQueued = false;
+        void refresh();
+      }
+    }
   };
   const onRefresh = () => {
     void refresh();
@@ -194,13 +226,84 @@ export function mountDownloads(root: ParentNode): () => void {
   );
   retries.forEach((button) => button.addEventListener("click", onRefresh));
   window.addEventListener("focus", onRefresh);
-  window.addEventListener("pageshow", onRefresh);
   onRefresh();
   return () => {
+    if (disposed) return;
+    disposed = true;
+    refreshQueued = false;
     generation++;
     controller?.abort();
+    cancelRequestDeadline?.();
     retries.forEach((button) => button.removeEventListener("click", onRefresh));
     window.removeEventListener("focus", onRefresh);
-    window.removeEventListener("pageshow", onRefresh);
   };
+}
+
+export function mountCopyButtons(root: ParentNode): () => void {
+  const cleanups: (() => void)[] = [];
+  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+    let idleLabel = button.textContent ?? "";
+    let restoreTimer: number | undefined;
+    let copyTimeoutTimer: number | undefined;
+    let clickGeneration = 0;
+    let disposed = false;
+    let cancelCopyDeadline: (() => void) | undefined;
+    const onClick = async () => {
+      if (button.getAttribute("aria-busy") === "true") return;
+      const click = ++clickGeneration;
+      const value =
+        button.dataset.copy === "checksum"
+          ? document.querySelector("[data-release-sha256]")?.textContent?.trim()
+          : button.dataset.copy?.trim();
+      if (!value) return;
+      window.clearTimeout(restoreTimer);
+      button.setAttribute("aria-busy", "true");
+      button.dataset.copyState = "copying";
+      button.textContent = "复制中…";
+      let rejectCopyDeadline!: (reason: Error) => void;
+      const copyTimeout = new Promise<never>((_, reject) => {
+        rejectCopyDeadline = reject;
+        copyTimeoutTimer = window.setTimeout(() => {
+          reject(new Error("Clipboard write timed out."));
+        }, COPY_TIMEOUT_MS);
+      });
+      cancelCopyDeadline = () => {
+        window.clearTimeout(copyTimeoutTimer);
+        rejectCopyDeadline(new Error("Clipboard write canceled."));
+      };
+      try {
+        await Promise.race([navigator.clipboard.writeText(value), copyTimeout]);
+        if (disposed || click !== clickGeneration) return;
+        button.textContent = "已复制";
+        button.dataset.copyState = "copied";
+      } catch {
+        if (disposed || click !== clickGeneration) return;
+        button.textContent = "复制失败，请手动选择";
+        button.dataset.copyState = "error";
+      } finally {
+        cancelCopyDeadline();
+        cancelCopyDeadline = undefined;
+      }
+      if (disposed || click !== clickGeneration) return;
+      button.setAttribute("aria-busy", "false");
+      restoreTimer = window.setTimeout(() => {
+        if (disposed || click !== clickGeneration) return;
+        button.textContent = idleLabel;
+        button.dataset.copyState = "idle";
+      }, COPY_FEEDBACK_MS);
+    };
+    button.addEventListener("click", onClick);
+    cleanups.push(() => {
+      if (disposed) return;
+      disposed = true;
+      clickGeneration++;
+      window.clearTimeout(restoreTimer);
+      cancelCopyDeadline?.();
+      button.removeEventListener("click", onClick);
+      button.textContent = idleLabel;
+      button.dataset.copyState = "idle";
+      button.removeAttribute("aria-busy");
+    });
+  }
+  return () => cleanups.forEach((cleanup) => cleanup());
 }
