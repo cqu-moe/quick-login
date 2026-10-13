@@ -86,11 +86,12 @@ export function sanitizePostHogEvent<T extends EventLike>(event: T | null, surfa
       new Set([...PAGEVIEW_KEYS])
     );
   }
+  allowedProperties.$geoip_disable = true;
   return {
     event: event.event,
     ...(event.uuid !== undefined ? { uuid: event.uuid } : {}),
     ...(event.timestamp !== undefined ? { timestamp: event.timestamp } : {}),
-    properties: { ...allowedProperties, $geoip_disable: true },
+    properties: allowedProperties,
   } as T;
 }
 
