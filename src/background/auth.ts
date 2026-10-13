@@ -4,8 +4,8 @@ import { clientMetadata } from "../shared/client-metadata";
 import { parseApiResponse, parseRegistrationResponse, type ReasonCode } from "../shared/protocol-v3.generated";
 import { readLocalState, updateLocalState, updateLocalStateWith } from "./storage";
 import {
-  captureQuickloginException,
   captureQuickloginOperation,
+  durationFrom,
   telemetryErrorCode,
 } from "../shared/posthog";
 
@@ -191,7 +191,7 @@ async function registerSavedAuthorization(resume?: ResumeContext): Promise<boole
   await updateLocalState((local) => {
     if (local.localGeneration !== localGeneration) throw new AuthorizationError("AUTH_RECONNECT_REQUIRED");
     return { ...local,deviceId:result.deviceId,serverGeneration:result.snapshot.versions.generation,
-      snapshot:result.snapshot,authorization:"authorized",observation:"fresh",localError:null,
+      centralUserId:result.centralUserId,snapshot:result.snapshot,authorization:"authorized",observation:"fresh",localError:null,
       receipt:null,pendingAck:false,lastConfirmedAt:Date.now(),lastError:null };
   });
   await chrome.storage.session.remove(RESUME_KEY);
@@ -255,6 +255,7 @@ async function performInteractiveLogin(resume?: ResumeContext): Promise<void> {
 export function loginInteractive(resume?: ResumeContext): Promise<void> {
   if (loginFlight) return loginFlight;
   loginFlight = (async () => {
+    const startedAt = Date.now();
     try {
       if (resume) {
         if (resume.expiresAt <= Date.now() || resume.resumeTicket.length > 4096 || !resume.deviceId) throw new AuthorizationError("INVALID_REQUEST");
@@ -262,10 +263,18 @@ export function loginInteractive(resume?: ResumeContext): Promise<void> {
       }
       const pendingResume=(await chrome.storage.session.get(RESUME_KEY))[RESUME_KEY] as ResumeContext | undefined;
       await performInteractiveLogin(pendingResume && pendingResume.expiresAt > Date.now() ? pendingResume : undefined);
-      await captureQuickloginOperation("connect", "success");
+      captureQuickloginOperation("connect", {
+        outcome: "success",
+        trigger: "user",
+        durationMs: durationFrom(startedAt),
+      });
     } catch (error) {
-      await captureQuickloginOperation("connect", "failure", telemetryErrorCode(error));
-      await captureQuickloginException(error, "connect");
+      captureQuickloginOperation("connect", {
+        outcome: "failure",
+        trigger: "user",
+        durationMs: durationFrom(startedAt),
+        errorCode: telemetryErrorCode(error),
+      });
       throw error;
     }
   })().finally(() => { loginFlight=null; });
@@ -278,6 +287,7 @@ export async function clearDeviceAuthorization(): Promise<void> {
     localGeneration: state.localGeneration + 1,
     authGeneration: state.authGeneration + 1,
     deviceId: null,
+    centralUserId: null,
     serverGeneration: null,
     snapshot: null,
     receipt: null,

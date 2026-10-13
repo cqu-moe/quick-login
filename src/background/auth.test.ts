@@ -6,7 +6,7 @@ import { authorizedFetch, clearDeviceAuthorization, loginInteractive } from "./a
 
 const stableResource = "https://auth.cqu.moe/api/auth";
 
-const deviceStatus = { deviceId: "device-a", snapshot: snapshot() };
+const deviceStatus = { centralUserId: "central-user-a", deviceId: "device-a", snapshot: snapshot() };
 
 
 beforeEach(() => {
@@ -230,6 +230,7 @@ describe("device authorization", () => {
     });
     const launch = vi.spyOn(chrome.identity, "launchWebAuthFlow");
     vi.mocked(fetch).mockResolvedValue(Response.json(response({
+      centralUserId: "central-user-a",
       deviceId: "device-from-saved-grant",
       snapshot: { ...snapshot(), identity: { ...snapshot().identity, deviceId: "device-from-saved-grant" } },
     })));
@@ -247,7 +248,7 @@ describe("device authorization", () => {
     });
     await expect(chrome.storage.local.get("quicklogin.state.v2")).resolves
       .toMatchObject({
-        "quicklogin.state.v2": { deviceId: "device-from-saved-grant" },
+        "quicklogin.state.v2": { deviceId: "device-from-saved-grant", centralUserId: "central-user-a" },
       });
   });
 });

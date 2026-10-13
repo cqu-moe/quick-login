@@ -1,5 +1,8 @@
 import "./style.css";
 import { mountCopyButtons, mountDownloads } from "./download";
+import { initializeWebsiteTelemetry } from "./telemetry";
+
+initializeWebsiteTelemetry();
 
 let cleanupDownloads = () => {};
 let cleanupCopyButtons = () => {};

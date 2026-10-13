@@ -77,6 +77,7 @@ export interface LocalState {
     generation: number; bindingEpoch: number; credentialRevision: number; expiresAt: number;
   } | null;
   installationId: string;
+  centralUserId: string | null;
   registrationId: string;
   reportEpoch: string;
   clientReportSeq: number;

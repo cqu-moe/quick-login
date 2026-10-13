@@ -6,12 +6,18 @@ import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
 import { clearOwnedCookies, verifyManagedCookies } from "./cookie-store";
 import {
-  captureQuickloginException,
   captureQuickloginOperation,
+  durationFrom,
+  telemetryTrigger,
   telemetryErrorCode,
 } from "../shared/posthog";
 
 export type SyncReason = "alarm" | "startup" | "network" | "enable" | "login_form" | "user_retry" | "popup";
+type SyncRunResult = {
+  outcome: "success" | "failure" | "partial" | "canceled" | "needs_input";
+  noOp?: boolean;
+  suppressSyncEvent?: boolean;
+};
 export type EnvelopeWriter = (envelope: ExportEnvelope,
   options: { localGeneration: number; allowForeignOnce: boolean }) => Promise<"applied" | "foreign_session" | "cancelled">;
 let writer: EnvelopeWriter = async () => { throw new api.ApiFailure("LOCAL_WRITE_FAILED"); };
@@ -39,7 +45,7 @@ export async function recordFailure(error: unknown): Promise<void> {
       candidate === "COOKIE_WRITE_TRANSIENT" ? "LOCAL_WRITE_FAILED" : "INTERNAL_STATE_UNAVAILABLE";
   if (code === "DEVICE_REVOKED") {
     await updateLocalState((state) => ({ ...state, localGeneration:state.localGeneration+1,
-      authorization:"revoked", enabledIntent:false, receipt:null, pendingAck:false, localError:code }));
+      authorization:"revoked", enabledIntent:false, centralUserId:null, receipt:null, pendingAck:false, localError:code }));
     await clearOwnedCookies();
     await clearDeviceAuthorization();
     await updateLocalState((state) => ({ ...state, authorization:"revoked", localError:code }));
@@ -60,7 +66,7 @@ export async function recordFailure(error: unknown): Promise<void> {
   else await schedule(state.nextAttemptAt);
 }
 
-async function adopt(snapshot: DeviceSnapshot, fence: number): Promise<LocalState> {
+async function adopt(snapshot: DeviceSnapshot, fence: number, centralUserId?: string): Promise<LocalState> {
   return updateLocalState((current) => {
     if (current.localGeneration !== fence || current.deviceId !== snapshot.identity.deviceId) return current;
     const old = current.snapshot;
@@ -80,7 +86,7 @@ async function adopt(snapshot: DeviceSnapshot, fence: number): Promise<LocalStat
       current.managedSwitch.credentialRevision === snapshot.versions.credentialRevision &&
       snapshot.authorization.state === "authorized" && snapshot.authorization.policy === "enabled"
       ? { ...current.managedSwitch, localGeneration: current.localGeneration + (invalidated ? 1 : 0) } : null;
-    return { ...current, managedSwitch, snapshot, serverGeneration:snapshot.versions.generation,
+    return { ...current, ...(centralUserId !== undefined ? { centralUserId } : {}), managedSwitch, snapshot, serverGeneration:snapshot.versions.generation,
       localGeneration: current.localGeneration + (invalidated ? 1 : 0),
       authorization:snapshot.authorization.state, observation:snapshot.observation,
       lastConfirmedAt:Date.now(), networkFailures:0, nextAttemptAt:null, localError:null,
@@ -108,21 +114,27 @@ async function ackCurrent(local: LocalState): Promise<void> {
   await updateLocalState((state) => sameTuple(state.receipt,receipt) ? { ...state,pendingAck:false } : state);
 }
 
-async function runSync(reason: SyncReason): Promise<void> {
+async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
   let local = await readLocalState();
-  if (!local.deviceId || local.authorization === "authorizing" || local.authorization === "revoked" || local.authorization === "reconnect_required") return;
-  if (reason === "alarm" && local.nextAttemptAt !== null && Date.now() < local.nextAttemptAt) return;
+  if (!local.deviceId || local.authorization === "authorizing" || local.authorization === "revoked" || local.authorization === "reconnect_required") {
+    return { outcome: "success", noOp: true };
+  }
+  if (reason === "alarm" && local.nextAttemptAt !== null && Date.now() < local.nextAttemptAt) {
+    return { outcome: "success", noOp: true };
+  }
   if (local.managedSwitch && !hasManagedSwitch(local)) {
     local = await updateLocalState(state => state.managedSwitch?.id === local.managedSwitch?.id
       ? { ...state, managedSwitch: null, localWriteState: state.localWriteState === "idle" ? "foreign_session" : state.localWriteState } : state);
   }
   const fence = local.localGeneration;
+  let activeApply: { envelope: ExportEnvelope; startedAt: number } | null = null;
   try {
     if (reason === "startup" || local.protocolSupport !== "supported" || !local.snapshot) {
       const capabilities = await api.capabilities();
       if (!capabilities.supportedProtocolVersions.includes(3) || !capabilities.features.reconcile || !capabilities.features.receipts) {
         await updateLocalState((state) => ({ ...state,protocolSupport:"service_upgrading",observation:"stale" }));
-        await schedule(Date.now()+60_000); return;
+        await schedule(Date.now()+60_000);
+        return { outcome: "partial" };
       }
       await updateLocalState((state) => ({ ...state,protocolSupport:"supported" }));
     }
@@ -137,9 +149,11 @@ async function runSync(reason: SyncReason): Promise<void> {
       });
     }
     const result = await api.reconcile();
-    if ((await readLocalState()).localGeneration !== fence) return;
-    local = await adopt(result.snapshot,fence);
-    if (local.snapshot !== null && local.snapshot.snapshotId !== result.snapshot.snapshotId) return;
+    if ((await readLocalState()).localGeneration !== fence) return { outcome: "canceled" };
+    local = await adopt(result.snapshot,fence,result.centralUserId);
+    if (local.snapshot !== null && local.snapshot.snapshotId !== result.snapshot.snapshotId) {
+      return { outcome: "canceled" };
+    }
     const ack = result.receiptAck;
     if (ack && local.receipt && ack.exportId === local.receipt.exportId &&
         ack.reportEpoch === local.reportEpoch && ack.clientReportSeq === local.clientReportSeq) {
@@ -151,7 +165,7 @@ async function runSync(reason: SyncReason): Promise<void> {
       });
     }
     let remote = local.snapshot;
-    if (!remote) return;
+    if (!remote) return { outcome: "success", noOp: true };
     if (local.pendingCommand) {
       const command = local.pendingCommand;
       const update = await api.operate("set_enabled",remote,command.id,command.enabled);
@@ -164,10 +178,14 @@ async function runSync(reason: SyncReason): Promise<void> {
     if (remote.authorization.policy !== "enabled" || !local.enabledIntent) {
       await clearOwnedCookies();
       await updateLocalState((state) => ({ ...state,receipt:null,pendingAck:false,localWriteState:"idle" }));
-      return;
+      return { outcome: "success", noOp: true };
     }
-    if (local.manualOverride || remote.observation !== "fresh" || remote.freshUntil <= Date.now()) return;
-    if (local.localWriteState === "foreign_session" && !hasManagedSwitch(local)) return;
+    if (local.manualOverride || remote.observation !== "fresh" || remote.freshUntil <= Date.now()) {
+      return { outcome: "success", noOp: true };
+    }
+    if (local.localWriteState === "foreign_session" && !hasManagedSwitch(local)) {
+      return { outcome: "needs_input" };
+    }
     const userRecovery = !hasManagedSwitch(local) && ((reason === "login_form" && currentCookiesVerified) ||
       (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen")));
     const waiting = remote.cloud.retryAt !== null && Date.now() < remote.cloud.retryAt;
@@ -187,11 +205,12 @@ async function runSync(reason: SyncReason): Promise<void> {
       remote = local.snapshot!;
     }
     if (!remote.capabilities.canExport || remote.cloud.state !== "ready") {
-      await schedule(remote.presentation.nextCheckAt ?? Date.now()+PREPARING_SYNC_DELAY_MS); return;
+      await schedule(remote.presentation.nextCheckAt ?? Date.now()+PREPARING_SYNC_DELAY_MS);
+      return { outcome: "partial" };
     }
     if (local.receipt && sameTuple(local.receipt,tupleForSnapshot(remote)) && local.localWriteState === "ready") {
       if (local.pendingAck) await ackCurrent(local);
-      return;
+      return { outcome: "success", noOp: true };
     }
     const generationFence = local.localGeneration;
     const round: RecoveryRound = { id:crypto.randomUUID(),generation:remote.versions.generation,
@@ -201,19 +220,43 @@ async function runSync(reason: SyncReason): Promise<void> {
     const envelope = await api.exportSession(remote);
     if (!sameTuple(envelope,tupleForSnapshot(remote)) || envelope.deviceId !== local.deviceId) throw new api.ApiFailure("SESSION_CHANGED");
     if (envelope.applyBefore <= Date.now()) throw new api.ApiFailure("STALE_SNAPSHOT");
-    if ((await readLocalState()).localGeneration !== generationFence) return;
+    if ((await readLocalState()).localGeneration !== generationFence) return { outcome: "canceled" };
     await updateLocalState((state) => ({ ...state,localWriteState:"writing" }));
+    activeApply = {
+      envelope,
+      startedAt: Date.now(),
+    };
     const applied = await writer(envelope,{ localGeneration:generationFence,
       allowForeignOnce:hasManagedSwitch(await readLocalState()) });
+    const applyTelemetry = activeApply;
+    activeApply = null;
     if (applied === "cancelled") {
       await updateLocalState((state) => state.localWriteState === "writing" ? { ...state,localWriteState:"idle" } : state);
-      return;
+      captureQuickloginOperation("cookie_apply", {
+        outcome: "canceled",
+        trigger: telemetryTrigger(reason),
+        durationMs: durationFrom(applyTelemetry.startedAt),
+        operationId: applyTelemetry.envelope.exportId,
+      });
+      return { outcome: "canceled", suppressSyncEvent: true };
     }
     if (applied === "foreign_session") {
       await updateLocalState((state) => ({ ...state,managedSwitch:null,localWriteState:"foreign_session",receipt:null,pendingAck:false }));
-      return;
+      captureQuickloginOperation("cookie_apply", {
+        outcome: "needs_input",
+        trigger: telemetryTrigger(reason),
+        durationMs: durationFrom(applyTelemetry.startedAt),
+        operationId: applyTelemetry.envelope.exportId,
+      });
+      return { outcome: "needs_input", suppressSyncEvent: true };
     }
-    await captureQuickloginOperation("cookie_apply", "success");
+    captureQuickloginOperation("cookie_apply", {
+      outcome: "success",
+      trigger: telemetryTrigger(reason),
+      durationMs: durationFrom(applyTelemetry.startedAt),
+      operationId: applyTelemetry.envelope.exportId,
+      verification: "unverified",
+    });
     local = await updateLocalState((state) => {
       if (state.localGeneration !== generationFence || !state.enabledIntent || state.manualOverride) return state;
       return { ...state,managedSwitch:null,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
@@ -223,13 +266,46 @@ async function runSync(reason: SyncReason): Promise<void> {
         recovery:{ ...round,phase:"finished" } };
     });
     if (local.localGeneration === generationFence) await ackCurrent(local);
+    return { outcome: "success", suppressSyncEvent: true };
   } catch (error) {
     const current=await readLocalState();
     if (current.deviceId !== local.deviceId || current.localGeneration !== local.localGeneration ||
-        current.authGeneration !== local.authGeneration || current.authorization === "authorizing") return;
+        current.authGeneration !== local.authGeneration || current.authorization === "authorizing") {
+      return { outcome: "canceled" };
+    }
     await recordFailure(error);
-    await captureQuickloginOperation("sync", "failure", telemetryErrorCode(error));
-    await captureQuickloginException(error, "sync");
+    if (activeApply !== null) {
+      captureQuickloginOperation("cookie_apply", {
+        outcome: "failure",
+        trigger: telemetryTrigger(reason),
+        durationMs: durationFrom(activeApply.startedAt),
+        operationId: activeApply.envelope.exportId,
+        errorCode: telemetryErrorCode(error),
+      });
+      return { outcome: "failure", suppressSyncEvent: true };
+    }
+    throw error;
+  }
+}
+
+async function runSync(reason: SyncReason): Promise<void> {
+  const startedAt = Date.now();
+  try {
+    const result = await runSyncInner(reason);
+    if (result.suppressSyncEvent) return;
+    captureQuickloginOperation("sync", {
+      outcome: result.outcome,
+      trigger: telemetryTrigger(reason),
+      durationMs: durationFrom(startedAt),
+      ...(result.noOp ? { noOp: true } : {}),
+    });
+  } catch (error) {
+    captureQuickloginOperation("sync", {
+      outcome: "failure",
+      trigger: telemetryTrigger(reason),
+      durationMs: durationFrom(startedAt),
+      errorCode: telemetryErrorCode(error),
+    });
   }
 }
 
@@ -248,7 +324,7 @@ export function sync(reason: SyncReason): Promise<void> {
   return syncFlight;
 }
 
-export async function setEnabled(enabled: boolean,expectedConnectIntentId?:string): Promise<void> {
+export async function setEnabled(enabled: boolean,expectedConnectIntentId?:string): Promise<boolean> {
   let accepted=false;
   const local = await updateLocalState((state) => {
     if (expectedConnectIntentId !== undefined && state.connectIntentId !== expectedConnectIntentId) return state;
@@ -259,9 +335,10 @@ export async function setEnabled(enabled: boolean,expectedConnectIntentId?:strin
     pendingOperation:enabled ? null : "disable",receipt:null,pendingAck:false,recovery:null,
     localWriteState:"idle",localError:null };
   });
-  if (!accepted) return;
+  if (!accepted) return false;
   if (!enabled) await clearOwnedCookies();
   if (local.deviceId) await sync("enable");
+  return true;
 }
 export async function enterManualMode(): Promise<void> {
   await updateLocalState((state) => ({ ...state,manualOverride:true,localGeneration:state.localGeneration+1,
@@ -269,25 +346,34 @@ export async function enterManualMode(): Promise<void> {
     receipt:null,pendingAck:false,recovery:state.recovery ? { ...state.recovery,phase:"manual_required" } : null }));
   void sync("popup");
 }
-export async function resumeAutomaticMode(): Promise<void> {
+export async function resumeAutomaticMode(): Promise<boolean> {
   await updateLocalState((state) => ({ ...state,manualOverride:false,recovery:null,localError:null,nextAttemptAt:null }));
   await sync("user_retry");
+  return true;
 }
-export async function retryAutomaticNow(): Promise<void> {
+export async function retryAutomaticNow(): Promise<boolean> {
   const state=await updateLocalState((current) => ({ ...current,nextAttemptAt:null,localError:null }));
-  if (!state.manualOverride) await sync("user_retry");
+  if (!state.manualOverride) {
+    await sync("user_retry");
+    return true;
+  }
+  return false;
 }
-export async function switchToManagedOnce(): Promise<void> {
+export async function switchToManagedOnce(): Promise<boolean> {
+  let accepted = false;
   await updateLocalState(state => {
     const versions = state.snapshot?.versions;
     if (!state.deviceId || !versions || versions.bindingEpoch === null || versions.credentialRevision === null ||
         !state.enabledIntent || state.manualOverride || state.authorization !== "authorized") return state;
+    accepted = true;
     return { ...state, managedSwitch: { id:crypto.randomUUID(), deviceId:state.deviceId,
       authGeneration:state.authGeneration, localGeneration:state.localGeneration, generation:versions.generation,
       bindingEpoch:versions.bindingEpoch, credentialRevision:versions.credentialRevision, expiresAt:Date.now()+15*60_000 },
       localError:null, nextAttemptAt:null, localWriteState:"idle" };
   });
+  if (!accepted) return false;
   await sync("user_retry");
+  return true;
 }
 export async function markManualRequired(): Promise<void> {
   await updateLocalState((state) => ({ ...state,schoolAccess:"login_form_seen",

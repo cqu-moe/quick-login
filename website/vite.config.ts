@@ -1,11 +1,14 @@
 import { defineConfig } from "vite";
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { releaseContent } from "./releases.ts";
 const root = import.meta.dirname;
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 const releases = releaseContent(resolve(root, "../docs/releases"), JSON.parse(readFileSync(resolve(root, "../package.json"), "utf8")).version);
 export default defineConfig({
   root,
+  define: { __QUICKLOGIN_WEBSITE_RELEASE__: JSON.stringify(`${JSON.parse(readFileSync(resolve(root, "../package.json"), "utf8")).version}+${sourceCommit}`) },
   appType: "mpa",
   plugins: [
     {

@@ -10,6 +10,7 @@ export const initialLocalState = (): LocalState => ({
   connectIntentId: null,
   managedSwitch: null,
   installationId: crypto.randomUUID(),
+  centralUserId: null,
   registrationId: crypto.randomUUID(),
   reportEpoch: crypto.randomUUID(),
   clientReportSeq: 0,
@@ -55,7 +56,7 @@ async function load(): Promise<LocalState> {
     if (current.schemaVersion !== 2) throw new Error("QUICKLOGIN_UPDATE_REQUIRED");
     if (!Number.isSafeInteger(current.localGeneration) || typeof current.installationId !== "string" ||
         typeof current.reportEpoch !== "string" || !Array.isArray(current.managed)) throw new Error("INVALID_LOCAL_STATE");
-    return structuredClone(current) as LocalState;
+    return structuredClone({ ...current, centralUserId: current.centralUserId ?? null }) as LocalState;
   }
   const legacy = stored[LEGACY_STATE_KEY] as (Partial<Omit<LocalState, "schemaVersion">> & { schemaVersion?: number }) | undefined;
   if (legacy?.schemaVersion !== undefined && legacy.schemaVersion > 1) throw new Error("QUICKLOGIN_UPDATE_REQUIRED");

@@ -4,6 +4,8 @@ import { handleMessage } from "./messages";
 import { readLocalState, updateLocalState } from "./storage";
 import { setEnabled } from "./sync";
 import * as auth from "./auth";
+import * as sync from "./sync";
+import * as telemetry from "../shared/posthog";
 beforeEach(()=>installChromeFake());
 it("does not enable after the user closes while login is still pending",async()=>{
   let finish!:()=>void;
@@ -24,6 +26,18 @@ it("stops automatic writes before opening the school manual-login page",async()=
   await handleMessage({type:"OPEN_SCHOOL_MANUAL"});
   expect((await readLocalState()).manualOverride).toBe(true);
   expect(open).toHaveBeenCalledWith({url:"https://sso.cqu.edu.cn/login"});
+});
+
+it("returns the resume message while telemetry sending remains pending", async () => {
+  vi.spyOn(sync, "resumeAutomaticMode").mockResolvedValue(true);
+  vi.spyOn(telemetry, "captureQuickloginOperation").mockImplementation(() => new Promise<void>(() => undefined));
+
+  await expect(handleMessage({ type: "RESUME" })).resolves.toEqual({ ok: true });
+  expect(telemetry.captureQuickloginOperation).toHaveBeenCalledWith("resume", {
+    outcome: "success",
+    trigger: "user",
+    durationMs: expect.any(Number),
+  });
 });
 it.each([false, true])("offers reconnection after failed authorization, disabled meanwhile: %s", async disabled => {
   await updateLocalState(state => ({ ...state, deviceId: "device-a", authorization: "reconnect_required" }));

@@ -32,7 +32,7 @@ it("recovers an installed device's rejected report epoch without replacing its a
     if (reports.length === 1) return Response.json({ type: "about:blank", title: "INVALID_REQUEST",
       status: 422, detail: "INVALID_REQUEST", code: "INVALID_REQUEST", requestId: report.requestId,
       retryAt: null, action: "reconcile" }, { status: 422 });
-    return Response.json(response({ snapshot: { ...remote, reportedLocal: { ...remote.reportedLocal,
+    return Response.json(response({ centralUserId: "central-user-a", snapshot: { ...remote, reportedLocal: { ...remote.reportedLocal,
       ...report.local, reportEpoch: report.reportEpoch, clientReportSeq: report.clientReportSeq } }, receiptAck: null }));
   }));
 
@@ -60,7 +60,7 @@ it.each(["same epoch", "other installation", "other device", "rejected candidate
     } });
     const fetcher = vi.fn(async () => {
       if (scenario === "unconfirmed candidate" && fetcher.mock.calls.length === 2) {
-        return Response.json(response({ snapshot: remote, receiptAck: null }));
+        return Response.json(response({ centralUserId: "central-user-a", snapshot: remote, receiptAck: null }));
       }
       return Response.json({ type: "about:blank", title: "INVALID_REQUEST", status: 422,
         detail: "INVALID_REQUEST", code: "INVALID_REQUEST", requestId: "request-a",
@@ -96,7 +96,7 @@ it("preserves the report epoch and sequence when the updated background starts",
     if (!String(input).endsWith("/reconcile")) throw new Error("Unexpected request");
     const report = JSON.parse(String(init?.body));
     reports.push(report);
-    return Response.json(response({ snapshot: remote, receiptAck: null }));
+    return Response.json(response({ centralUserId: "central-user-a", snapshot: remote, receiptAck: null }));
   }));
   await import("./index");
   await vi.waitFor(async () => expect((await readLocalState()).lastConfirmedAt).not.toBeNull());
@@ -152,11 +152,11 @@ it("resumes the original device and allows sync after fresh authorization", asyn
       expect(registering.clientReportSeq).toBe(0);
       await sync("alarm");
       registrationFinished = true;
-      return Response.json(response({deviceId:"device-a",snapshot:remote}));
+      return Response.json(response({centralUserId:"central-user-a",deviceId:"device-a",snapshot:remote}));
     }
     if (url.endsWith("/reconcile")) {
       if (!registrationFinished) prematureReports.push(JSON.parse(String(_init?.body)).reportEpoch);
-      return Response.json(response({snapshot:remote,receiptAck:null}));
+      return Response.json(response({ centralUserId: "central-user-a", snapshot:remote,receiptAck:null}));
     }
     if (url.endsWith("/capabilities")) return Response.json(response({ protocolVersion: 3,
       supportedProtocolVersions: [3], minExtensionVersion: "0.2.0", serverBuild: "test",

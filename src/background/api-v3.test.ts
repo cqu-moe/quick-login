@@ -14,7 +14,7 @@ beforeEach(async () => {
 });
 
 it("uses v3 reconcile and validates its response at the network boundary", async () => {
-  vi.mocked(fetch).mockResolvedValue(Response.json(response({ snapshot: snapshot(), receiptAck: null })));
+  vi.mocked(fetch).mockResolvedValue(Response.json(response({ centralUserId: "central-user-a", snapshot: snapshot(), receiptAck: null })));
   const result = await api.reconcile();
   expect(result.snapshot.identity.deviceId).toBe("device-a");
   expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain("/devices/device-a/reconcile");
@@ -23,7 +23,7 @@ it("uses v3 reconcile and validates its response at the network boundary", async
 });
 
 it("rejects malformed successful payloads instead of storing them as status", async () => {
-  vi.mocked(fetch).mockResolvedValue(Response.json(response({ snapshot: { state: "ready" }, receiptAck: null })));
+  vi.mocked(fetch).mockResolvedValue(Response.json(response({ centralUserId: "central-user-a", snapshot: { state: "ready" }, receiptAck: null })));
   await expect(api.reconcile()).rejects.toMatchObject({ code: "CONTRACT_INVALID" });
 });
 
@@ -52,7 +52,7 @@ it("does not commit epoch recovery over a concurrent disable", async () => {
   vi.mocked(fetch).mockImplementationOnce(async (_input, init) => {
     const request = JSON.parse(String(init?.body));
     await updateLocalState(state => ({ ...state, enabledIntent: false, localGeneration: state.localGeneration + 1 }));
-    return Response.json(response({ snapshot: { ...remote, reportedLocal: { ...remote.reportedLocal!,
+    return Response.json(response({ centralUserId: "central-user-a", snapshot: { ...remote, reportedLocal: { ...remote.reportedLocal!,
       reportEpoch: request.reportEpoch, clientReportSeq: request.clientReportSeq } }, receiptAck: null }));
   });
   await expect(api.reconcile()).rejects.toMatchObject({ code: "OPERATION_CANCELLED" });
