@@ -27,5 +27,8 @@ runs:
       shell: bash
     - run: npm run build:website
       shell: bash
+      env:
+        VITE_POSTHOG_PROJECT_TOKEN: ${{ inputs.posthog-project-token }}
+        VITE_POSTHOG_HOST: https://p.cqu.moe
     - run: npm run check:website
       shell: bash
