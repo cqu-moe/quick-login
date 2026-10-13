@@ -55,9 +55,18 @@ function renderView(view: PopupView): void {
 
   const header = document.createElement("header");
   header.className = "brand";
-  const mark = document.createElement("span");
+  const mark = document.createElement("picture");
   mark.className = "brand-mark";
-  mark.setAttribute("aria-hidden", "true");
+  const darkLogo = document.createElement("source");
+  darkLogo.srcset = "/brand/logo-dark.svg";
+  darkLogo.media = "(prefers-color-scheme: dark)";
+  const logo = document.createElement("img");
+  logo.className = "brand-mark-image";
+  logo.src = "/brand/logo.svg";
+  logo.width = 28;
+  logo.height = 28;
+  logo.alt = "";
+  mark.append(darkLogo, logo);
   const brand = document.createElement("strong");
   brand.textContent = "QuickLogin";
   header.append(mark, brand);

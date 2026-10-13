@@ -320,3 +320,14 @@ ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；�
 - 官网生产构建 `ae34aff9-9729-4fdb-a1ae-a84cefa11902` 成功；浏览器访问 [下载页](https://quicklogin.cqu.moe/download/) 已显示 v0.4.2、正式包名与上述 SHA-256。
 - 命令行公开 HTTP 验收被 Cloudflare challenge 拦截；官网下载页公开元数据已通过浏览器读回。登录后实际下载、覆盖安装及学校页面验收仍待验证。
 - Auth 源码和 Worker 未变更。Chrome Web Store 未上传、未发布。
+
+# 2026-10-13 0.4.4 品牌与暖橙主题候选（本地，未发布）
+
+- 扩展源码：`ca2ca90ed0791146985b99ec38ffc1ca879c70fe`。
+- 本地候选包：`releases/cqu-quicklogin-0.4.4-canary.zip`，138767 bytes。
+- SHA-256：`bdc1d68ffc3f1896499f2c0dda2015f0818c63e763757a98e9774cc0e1eea813`。
+- ZIP 完整性、仅包含 dist、manifest 0.4.4、build-info 提交和逐文件字节比对通过。此 ZIP 保留为本地候选；合并后的正式 canary 由工作流按合并提交重新构建，不覆盖此候选。
+- 扩展 typecheck、124 项测试、build、check:package、10 项发布工具测试及官网 typecheck/build/6 页资源检查通过。
+- 四种宽度、双主题和暖橙色对比度已核对；弹窗使用构建产物与合成 chrome.runtime 状态，未加载真实扩展后台、未写 Cookie。官网验收阻断生产 API，不代表真实下载流程通过。
+- Auth 配套仅为黑白品牌标识接入（源码 `acbd6f8`）；未部署 Worker。
+- 官网 canary、官网生产部署、unpacked 扩展升级与真实学校 SSO 均未执行；Chrome Web Store 未上传、未送审。`release.py build` 生成的 publishedAt 字段是候选记录格式，不是线上发布证据。
