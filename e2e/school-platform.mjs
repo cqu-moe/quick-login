@@ -27,7 +27,12 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
     const response = await ns.get(instanceId).fetch(`http://fixture/__fixture/${path}`, body === undefined ? {} : {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`School fixture transport failed (${response.status})`);
+    if (!response.ok) {
+      let detail = (await response.text()).split('\n')[0].slice(0, 1000);
+      for (const value of sensitive) if (value) detail = detail.replaceAll(value, '[redacted]');
+      detail = detail.replace(/https?:\/\/\S+/g, '[endpoint]').replace(/[A-Za-z0-9_-]{20,}/g, '[opaque-redacted]');
+      throw new Error(`School fixture transport failed (${response.status}, ${path}): ${detail}`);
+    }
     return response.json();
   }
   return {
