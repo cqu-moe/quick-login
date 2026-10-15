@@ -1,17 +1,23 @@
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
+import { assertRunEvidence, viewport } from "./run-evidence.mjs";
+import assert from "node:assert/strict";
 
 const source = resolve(".e2e");
 const destination = resolve(process.env.QUICKLOGIN_E2E_PUBLISH_DIR || "ci-e2e-artifacts");
 if (!destination.startsWith(process.cwd() + "/")) throw new Error("Artifact destination must be in this worktree");
 const requiredRuns = process.argv.length > 2 ? process.argv.slice(2) : ["ci-run-1", "ci-run-2"];
-if (requiredRuns.length !== 2 || requiredRuns.some(name => !/^[a-zA-Z0-9_-]+$/.test(name))) {
+if (requiredRuns.length !== 2 || new Set(requiredRuns).size !== 2 || requiredRuns.some(name => !/^[a-zA-Z0-9_-]+$/.test(name))) {
   throw new Error("Specify exactly two independent run names below .e2e");
 }
 await mkdir(dirname(destination), { recursive: true });
 await mkdir(destination);
 const problems = [];
 let expectedSource;
+let expectedTests;
+const runIds = new Set();
+const suite = process.env.QUICKLOGIN_E2E_SUITE;
+if (process.env.CI === 'true' && !suite) problems.push('CI artifact admission requires an explicit core/devices/all suite');
 let requireDeviceControls = false;
 const copiedPaths = [];
 const redactedPaths = [];
@@ -73,7 +79,8 @@ function sourceOf(runtime) {
 }
 
 function sameSource(runtime) {
-  return !expectedSource || (sourceOf(runtime) === expectedSource && runtime.sourceDirty === false);
+  return (!expectedSource || (sourceOf(runtime) === expectedSource && runtime.sourceDirty === false)) &&
+    JSON.stringify(runtime.viewport) === JSON.stringify(viewport);
 }
 
 async function findControl(prefix, valid) {
@@ -98,13 +105,33 @@ for (const name of requiredRuns) {
   const path = join(source, name);
   try {
     const { runtime, report } = await readRun(path);
+    const discovery = JSON.parse(await readFile(join(path, 'discovery.json'), 'utf8'));
+    const actualTests = assertRunEvidence(runtime, report, discovery, suite);
+    const groups = runtime.groups ?? [{ ...runtime, group: '' }];
+    const actualObservations = [];
+    for (const group of groups) {
+      const groupPath = group.group ? join(path, group.group) : path;
+      const child = group.group ? await readRun(groupPath) : { runtime, report };
+      const childDiscovery = JSON.parse(await readFile(join(groupPath, 'discovery.json'), 'utf8'));
+      assertRunEvidence(child.runtime, child.report, childDiscovery);
+      assert.equal(sourceOf(child.runtime), sourceOf(runtime), 'Actual group source differs from aggregate');
+      const raw = (await readFile(join(groupPath, 'artifacts/viewports.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+      assert.deepEqual(raw, child.runtime.viewportObservations, 'Raw page dimensions differ from runtime evidence');
+      actualObservations.push(...raw);
+    }
+    assert.deepEqual(actualObservations, runtime.viewportObservations, 'Aggregate page dimensions differ from actual groups');
+    if (expectedTests && JSON.stringify(actualTests) !== JSON.stringify(expectedTests)) problems.push('Independent rounds executed different actual test IDs');
+    expectedTests ??= actualTests;
+    if (!report.run.id || runIds.has(report.run.id)) problems.push('Independent rounds reused a framework run identity');
+    runIds.add(report.run.id);
     requireDeviceControls ||= report.run.results.some(test => test.selected && test.titlePath?.join(' ').startsWith('QUICKLOGIN-03 '));
     if (runtime.sourceDirty !== false || runtime.build?.sourceCommit !== runtime.extensionCommit || !runtime.backgroundSha256) {
       problems.push(name + " did not use a clean fixed build");
     }
     if (expectedSource && !sameSource(runtime)) problems.push("Independent runs used different source or build identities");
     expectedSource ??= sourceOf(runtime);
-    if (runtime.groups?.some(group => group.sourceDirty !== false || sourceOf(group) !== sourceOf(runtime) || group.cleanup !== 'passed')) problems.push(name + ' has inconsistent or dirty isolated runtime evidence');
+    if (runtime.groups?.some(group => group.sourceDirty !== false || sourceOf(group) !== sourceOf(runtime) || group.cleanup !== 'passed' ||
+        JSON.stringify(group.viewport) !== JSON.stringify(viewport))) problems.push(name + ' has inconsistent or dirty isolated runtime evidence');
     if (runtime.groups?.some(group => group.school && (group.school.proxyObjectsRemoved !== true || !group.school.removedProxyIds?.length))) problems.push(name + ' lacks actual isolated school proxy cleanup evidence');
     const summary = report.run.summary;
     if (runtime.cleanup !== "passed" || report.run.status !== "passed" ||
@@ -112,8 +139,8 @@ for (const name of requiredRuns) {
         summary.failed || summary.skipped || summary.interrupted || report.run.errors.length) {
       problems.push(name + " was not a clean passing run");
     }
-  } catch {
-    problems.push(name + " has incomplete run evidence");
+  } catch (error) {
+    problems.push(name + " has invalid or incomplete run evidence: " + error.message);
   }
   try { await copySafe(path); }
   catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -166,6 +193,7 @@ await writeFile(join(destination, "sanitization.json"), JSON.stringify({
   copiedFiles: copiedPaths.length,
   filesChangedByRedaction: redactedPaths,
   requestedRuns: requiredRuns,
+  viewport, suite: suite ?? 'explicit local selection', actualTests: expectedTests ?? [],
   negativeControl: negative ? relative(source, negative) : "missing",
   zeroControl: zero ? relative(source, zero) : "missing",
   lifecycleControl: lifecycle ? relative(source, lifecycle) : "missing",

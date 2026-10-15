@@ -15,6 +15,7 @@ const child = spawn(process.execPath, [
     CI: process.env.CI,
     PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || "",
     QUICKLOGIN_E2E_AUTH_PATH: process.env.QUICKLOGIN_E2E_AUTH_PATH || join(process.cwd(), "..", "QUICKLOGIN-03-deps", "auth"),
+    QUICKLOGIN_E2E_VIEWPORT: process.env.QUICKLOGIN_E2E_VIEWPORT || "desktop",
     QUICKLOGIN_E2E_AUTH_COMMIT: process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "870933794326b9d280dcf07f392c80c127fd7233",
     QUICKLOGIN_E2E_BROWSERS_PATH: process.env.QUICKLOGIN_E2E_BROWSERS_PATH || "",
     QUICKLOGIN_E2E_BREAK_ASSERTION: "1",

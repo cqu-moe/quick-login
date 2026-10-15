@@ -8,6 +8,8 @@ import { chromium } from 'playwright-core';
 import { extensionBrowser } from './browser.ts';
 import { extensionOrigin } from './helpers.ts';
 import { authorize, revoke } from './device-helpers.ts';
+import { popupViewport } from './viewport.ts';
+import { observeWebViewport } from './web-viewport.ts';
 
 test('QUICKLOGIN-03 native alarm wakes a stopped MV3 worker after token transport 503 and rotates the real Auth refresh token', { timeout: 180_000 }, async ({ app }) => {
   const { popup, context, identity } = await connectDevice(app, 'alarm-refresh');
@@ -99,6 +101,8 @@ test('QUICKLOGIN-03 actual Auth device revocation rejects old resource and refre
     const otherContext = browser.contexts()[0]!;
     const other = await otherContext.newPage();
     await other.goto(`${extensionOrigin}/popup.html`);
+    await other.setViewportSize(popupViewport);
+    await observeWebViewport(other);
     await authorize(other, otherContext, 'revoke-device');
     const second = await localState(other);
     expect(second.deviceId !== before.deviceId).toBe(true);

@@ -1,3 +1,4 @@
+import { openWebPage } from "./web-viewport.ts";
 import { expect } from 'e2e';
 import type { BrowserContext, Page } from 'playwright-core';
 import { account, beginConnection, completeLogin, connectExtensionBrowser, extensionOrigin, openPopup, recordEvent, requiredControl, waitForUiState } from './helpers.ts';
@@ -16,8 +17,7 @@ export async function connectDevice(app: { open(path: string): Promise<unknown> 
   const { context } = await connectExtensionBrowser();
   const popup = await openPopup(context);
   await authorize(popup, context, key);
-  const settings = await context.newPage();
-  await settings.goto('https://auth.cqu.moe/settings');
+  const settings = await openWebPage(context, 'https://auth.cqu.moe/settings');
   return { popup, context, settings, identity };
 }
 

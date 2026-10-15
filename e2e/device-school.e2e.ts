@@ -1,3 +1,4 @@
+import { openWebPage } from "./web-viewport.ts";
 import { test } from '@e2e-dev/web';
 import { expect } from 'e2e';
 import { captureArtifacts, extensionOrigin, networkEvents, recordEvent } from './helpers.ts';
@@ -41,7 +42,7 @@ test('QUICKLOGIN-03 real pending Cookie journal survives worker kill and alarm r
     await popup.goto(`${extensionOrigin}/popup.html`);
     await popup.getByRole('button', { name: '切换到快捷登录', exact: true }).click();
     await until(() => localState(popup), state => !!state.receipt && !state.pendingAck && state.localWriteState === 'ready');
-    const page = await context.newPage(); await page.goto(schoolUrl('journal-alarm-recovery'));
+    const page = await openWebPage(context, schoolUrl('journal-alarm-recovery'));
     await page.getByRole('heading', { name: '已进入学校合成业务' }).waitFor();
     await recordEvent('journal-native-alarm', { ...native, realUncompletedEntry: true, manualCookiePreserved: preserved, noFalseReceipt: true, explicitFreshRecovery: true });
     await captureArtifacts('journal-alarm-recovered', [page, popup]);
@@ -121,7 +122,7 @@ test('QUICKLOGIN-03 real pending ACK resumes only after exact Cookie readback on
     const remote = (await overview(settings)).devices[0];
     expect(remote.reportedLocal.receipt.exportId).toBe(pending.receipt!.exportId);
     expect(typeof remote.reportedLocal.acknowledgedAt).toBe('number');
-    const page = await context.newPage(); await page.goto(schoolUrl('pending-ack-restart'));
+    const page = await openWebPage(context, schoolUrl('pending-ack-restart'));
     await page.getByRole('heading', { name: '已进入学校合成业务' }).waitFor();
     await recordEvent('pending-ack-native-alarm', { ...native, actualPendingAck: true, exportRetained: true, noDownloadReplay: true });
   } finally { await relay({ hold: false }); }

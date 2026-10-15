@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { viewport } from './run-evidence.mjs';
 
 const startedAt = new Date().toISOString();
 const args = process.argv.slice(2);
@@ -73,7 +74,10 @@ else {
     const report = { ...(reports[0] ?? {}), run: { ...(reports[0]?.run ?? {}), startedAt, finishedAt: new Date().toISOString(), exitCode: failures.length ? 1 : 0, status: failures.length ? 'failed' : 'passed', summary, results, errors: failures.map(message => ({ message })) } };
     await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
     await writeFile(join(output, 'runner.log'), logs.join('\n'));
-    const runtime = { ...(runtimes[0] ?? {}), output, groups: runtimes, completedGroups: runtimes.length, expectedGroups: groups.length, cleanup: runtimes.length && runtimes.every(value => value.cleanup === 'passed') ? 'passed' : 'incomplete-or-failed', primaryFailures: failures, cleanupFailures: runtimes.flatMap(value => value.cleanupFailures ?? []) };
+    const runtime = { ...(runtimes[0] ?? {}), output, viewport,
+      selection: runtimes.flatMap(value => value.selection ?? []).sort((a, b) => a.id.localeCompare(b.id)),
+      viewportObservations: runtimes.flatMap(value => value.viewportObservations ?? []),
+      groups: runtimes, completedGroups: runtimes.length, expectedGroups: groups.length, cleanup: runtimes.length && runtimes.every(value => value.cleanup === 'passed') ? 'passed' : 'incomplete-or-failed', primaryFailures: failures, cleanupFailures: runtimes.flatMap(value => value.cleanupFailures ?? []) };
     await writeFile(join(output, 'runtime.json'), JSON.stringify(runtime, null, 2) + '\n');
     console.log(`[quicklogin-e2e] ${summary.passed}/${pairs.length} independent runtime tests passed; cleanup ${runtime.cleanup}`);
     process.exitCode = failures.length ? 1 : 0;

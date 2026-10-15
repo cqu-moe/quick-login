@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { startPinnedAuth } from "./auth-runtime.mjs";
 import { createAuthTls, createEgressProxy } from "./network.mjs";
 import { failureMessage } from "./lifecycle.mjs";
+import { assertViewportEvidence, selectionOf, viewport } from "./run-evidence.mjs";
 
 const root = process.cwd();
 const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || join(root, `.e2e/run-${Date.now()}`));
@@ -31,7 +32,7 @@ const chromiumServiceOrigins = new Set([
   "http://update.googleapis.com",
 ]);
 const expectedDeniedCallback = "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org";
-const evidence = { authCommit: expectedCommit, output, extensionPath: "dist", cleanup: "pending" };
+const evidence = { authCommit: expectedCommit, output, extensionPath: "dist", viewport, cleanup: "pending" };
 
 function stopChild() {
   interrupted = true;
@@ -69,6 +70,7 @@ try {
       NODE_EXTRA_CA_CERTS: tls.certificate,
       PLAYWRIGHT_BROWSERS_PATH: process.env.QUICKLOGIN_E2E_BROWSERS_PATH || process.env.PLAYWRIGHT_BROWSERS_PATH || "",
       QUICKLOGIN_E2E_AUTH_PATH: authPath,
+      QUICKLOGIN_E2E_VIEWPORT: process.env.QUICKLOGIN_E2E_VIEWPORT || "desktop",
       QUICKLOGIN_E2E_CONTROL: runtime.controlOrigin,
       QUICKLOGIN_E2E_TLS_SPKI: tls.spkiPin,
       QUICKLOGIN_E2E_PROXY: `http://127.0.0.1:${egress.port}`,
@@ -106,6 +108,17 @@ try {
   await writeFile(join(output, "runner.log"), log);
 
   const report = JSON.parse(await readFile(join(output, "report.json"), "utf8"));
+  const discovered = await execute(process.execPath, ["node_modules/e2e/dist/cli/bin.js", "list", "--config", "e2e.config.ts",
+    "--reporter", "json", ...process.argv.slice(2)], { env: { ...process.env, E2E_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" } });
+  await writeFile(join(output, "discovery.json"), discovered.stdout);
+  report.run.viewport = viewport;
+  evidence.selection = selectionOf(report);
+  evidence.viewportObservations = await readFile(join(output, "artifacts/viewports.jsonl"), "utf8")
+    .then(text => text.trim().split("\n").filter(Boolean).map(line => JSON.parse(line)), error => {
+      if (error.code === "ENOENT") return []; throw error;
+    });
+  await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2) + "\n");
+  if (process.exitCode === 0) assertViewportEvidence(report, evidence.viewportObservations);
   if (!report.run.summary.executed || report.run.summary.skipped || report.run.summary.interrupted) {
     throw new Error("Required E2E suite was empty, skipped or interrupted");
   }

@@ -1,6 +1,8 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium, type BrowserContext, type Page } from "playwright-core";
+import { observeWebViewport, prepareWebViewport } from "./web-viewport.ts";
+import { popupViewport } from "./viewport.ts";
 
 export const extensionId = "igfidegfgfoofnoncpmbcokbffjmmook";
 export const extensionOrigin = `chrome-extension://${extensionId}`;
@@ -113,7 +115,9 @@ export async function openPopup(context: BrowserContext) {
   const page = context.pages().find(candidate => /^http:\/\/127\.0\.0\.1:\d+\/$/.test(candidate.url()));
   if (!page) throw new Error("The tester-army active app page is missing");
   await page.goto(`${extensionOrigin}/popup.html`);
+  await page.setViewportSize(popupViewport);
   await page.getByRole("button", { name: "连接 Auth" }).waitFor({ state: "visible" });
+  await observeWebViewport(page);
   return page;
 }
 
@@ -170,6 +174,7 @@ export async function beginConnection(page: Page, context: BrowserContext, click
     throw new Error("Real Auth interaction window was not opened");
   }
   await authPage.waitForURL(url => url.origin === authOrigin, { timeout: 20_000 });
+  await prepareWebViewport(authPage);
   await recordEvent("oauth-window", { distinctFromPopup: authPage !== page });
   return { authPage };
 }
@@ -211,6 +216,7 @@ export async function captureArtifacts(name: string, pages: Array<Page | undefin
   const active = pages.filter((page): page is Page => Boolean(page));
   const lines = [`${new Date().toISOString()} ${name}`];
   for (const [index, page] of active.entries()) {
+    await observeWebViewport(page);
     const url = new URL(page.url());
     lines.push(`page ${index + 1}: ${url.origin}${url.pathname}`);
     try {

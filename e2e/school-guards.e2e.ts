@@ -1,3 +1,4 @@
+import { openWebPage } from "./web-viewport.ts";
 import { test } from '@e2e-dev/web';
 import { expect } from 'e2e';
 import { captureArtifacts, extensionOrigin, networkEvents, recordEvent } from './helpers.ts';
@@ -203,7 +204,7 @@ test('QUICKLOGIN-02 worker termination after the real Cookie API writes but befo
     expect(server.devices[0].reportedLocal?.acknowledgedAt ?? null).toBe(null);
     await relay({ hold: false });
     await until(() => localState(next), state => state.localWriteState === 'ready' && !!state.receipt && !state.pendingAck);
-    const allowed = await context.newPage(); await allowed.goto(schoolUrl('after-interruption'));
+    const allowed = await openWebPage(context, schoolUrl('after-interruption'));
     await allowed.getByRole('heading', { name: '已进入学校合成业务' }).waitFor();
     await recordEvent('worker-stop-journal-recovered', { previousTimeOrigin, freshTimeOrigin, publicPopupWake: true, realIncompleteJournal: true, rolledBackCookie: true, noFalseReceipt: true, businessRecovered: true });
     await captureArtifacts('interrupted-write-recovered', [allowed, next]);

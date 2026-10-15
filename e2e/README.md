@@ -58,7 +58,7 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 ## QUICKLOGIN-02 的十个行为边界
 
-`run.mjs` 先通过固定框架的 JSON discovery 取得完整标题和 ID。六个授权场景共享原隔离 runtime；每个学校场景使用新的 Worker、D1/DO/Workflow、fixture 镜像、profile 和端口，防止批量合成注册消耗彼此的生产限频窗口。没有提高或清空限频。每组 exact title 选择与 selected/executed ID 集合一致；总报告再与发现集合核对。零选择仍实际经过单 runtime 的失败/清理路径。两个完整调用各执行 16 项，失败/跳过/中断或清理错误不能成为通过。
+`run.mjs` 先通过固定框架的 JSON discovery 取得完整标题和 ID。六个授权场景共享原隔离 runtime；每个学校场景使用新的 Worker、D1/DO/Workflow、fixture 镜像、profile 和端口，防止批量合成注册消耗彼此的生产限频窗口。没有提高或清空限频。每组 exact title 选择与 selected/executed ID 集合一致；总报告再与发现集合核对。零选择仍实际经过单 runtime 的失败/清理路径。01/02 的两个完整调用各执行 16 项；包含03的全量发现24项。失败/跳过/中断或清理错误不能成为通过。
 
 | 场景（学校用例按此契约归属） | 可信回归及真实断言 |
 | --- | --- |
@@ -121,3 +121,23 @@ QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-quick03 node e2e/prepare-ci-artifacts.
 原生权限 allow/deny 为独立 [人工待验清单](QUICKLOGIN-03-manual.md)，没有自动化通过声明。实际大学账号、日常浏览器、真实学校长时效和发布不在本票证明内。
 
 学校 fixture 在固定 Auth Dockerfile 最后仅覆盖 Chromium executable wrapper，强制 headless/basic/mock-keychain 并 unset DISPLAY；不修改生产 Python 或 Auth checkout。外部 fixture 从实际 /proc cmdline 只汇总各 Chromium 主进程 PID 与安全参数布尔值，不保存完整参数或 profile 路径。邮件 poll 期间观察，wrapper 要求非空真实 launch 记录及四项参数成立。preDisposeProfiles/preDisposeChromeProcesses 是 dispose 前的在途快照，允许真实后台 Workflow 尚在执行；最终清理由 dispose 后的业务容器/proxy 独立 absence、独占镜像删除及宿主临时目录删除证明，不能把该快照称为最终残留或最终零值。beforeClose 的 finally 在 dispose 前 capture 业务名称，覆盖生产直接启动后业务对象先消失的 proxy 清理边界。
+
+## Desktop / mobile viewport gate
+
+`QUICKLOGIN_E2E_VIEWPORT=desktop`（默认）令实际 Auth / 学校页面为1440×900；`mobile` 为390×844。两者都加载同一个真实 Chromium MV3 扩展、复用全部业务断言。popup 保留产品390px宽度，测试页viewport为390×720；手机视口只表示窄屏布局，不代表手机Chrome扩展支持、触摸设备或真机验收。原生 OAuth 窗口和额外标签不继承框架当前页的viewport，因此共享页面入口在导航/输入前调用真实 Playwright viewport API，再独立读取页面 `innerWidth/innerHeight` 及 visualViewport。没有mock尺寸、修改学校响应或产品源码。
+
+`artifacts/viewports.jsonl` 记录实际attempt ID、页面类型和无query的路径、预期/实际尺寸；不记录账号、Cookie或页面内容。runner将这些读回与真实selected attempts关联，缺少读回、错误target或尺寸均失败。每组保留框架JSON discovery，aggregate保留完整选择和各组读回。
+
+CI矩阵为 `core/devices × desktop/mobile` 四个独立job，各跑两轮新环境和既有失败控制。`QUICKLOGIN_E2E_SUITE` 固定所需分片，collector核对实际discovery/selected/executed IDs、attempt/cleanup、原始dimensions、同viewport/源码/构建、两轮相同testIDs和不同run IDs；CI缺少显式suite亦失败。artifact名含suite及viewport。仅发现测试或旧桌面证据不能满足手机门禁。
+
+```sh
+QUICKLOGIN_E2E_VIEWPORT=mobile QUICKLOGIN_E2E_OUTPUT=.e2e/mobile-round-1 node e2e/run.mjs
+QUICKLOGIN_E2E_VIEWPORT=mobile QUICKLOGIN_E2E_OUTPUT=.e2e/mobile-round-2 node e2e/run.mjs
+QUICKLOGIN_E2E_VIEWPORT=mobile node e2e/self-check.mjs
+QUICKLOGIN_E2E_VIEWPORT=mobile node e2e/zero-check.mjs
+QUICKLOGIN_E2E_VIEWPORT=mobile node e2e/lifecycle-check.mjs
+QUICKLOGIN_E2E_VIEWPORT=mobile node e2e/device-controls.mjs
+QUICKLOGIN_E2E_VIEWPORT=mobile QUICKLOGIN_E2E_SUITE=all QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-mobile node e2e/prepare-ci-artifacts.mjs mobile-round-1 mobile-round-2
+```
+
+将viewport改为desktop可运行相同桌面门禁。局部grep证明只属于其实际选择；CI collector要求完整分片。适用Web的Firefox/WebKit发布前补验、原生权限和独立live验收仍分别待验；本票不发布。

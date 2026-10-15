@@ -5,7 +5,7 @@ import type { BrowserProvider } from "@e2e-dev/web";
 import { chromium } from "playwright-core";
 
 const extensionPath = join(process.cwd(), "dist");
-const activeEndpoint = globalThis as typeof globalThis & { __QUICKLOGIN_CDP_ENDPOINT__?: string };
+const activeEndpoint = globalThis as typeof globalThis & { __QUICKLOGIN_CDP_ENDPOINT__?: string; __QUICKLOGIN_ATTEMPT_ID__?: string };
 
 async function stopChromium(child: ChildProcess, profile: string) {
   if (child.pid && child.exitCode === null && child.signalCode === null) {
@@ -121,6 +121,7 @@ export const extensionBrowser: BrowserProvider = {
       }
       request.signal.throwIfAborted();
       activeEndpoint.__QUICKLOGIN_CDP_ENDPOINT__ = endpoint;
+      if (request.attemptId) activeEndpoint.__QUICKLOGIN_ATTEMPT_ID__ = request.attemptId;
       handedOff = true;
       return { id: profile, cdpEndpoint: endpoint, child, profile };
     } catch (error) {

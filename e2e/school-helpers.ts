@@ -1,3 +1,4 @@
+import { openWebPage } from "./web-viewport.ts";
 import { expect } from 'e2e';
 import type { LocalState } from '../src/shared/contracts';
 import type { BrowserContext, Page } from 'playwright-core';
@@ -32,8 +33,7 @@ export async function connectSchool(app: { open(path: string): Promise<unknown> 
   await completeLogin(authPage, key);
   await waitForUiState(popup, state => state?.deviceId && state.local?.authorization === 'authorized', 120_000);
   await until(() => localState(popup), state => !state.connectIntentId && !state.pendingCommand);
-  const settings = await context.newPage();
-  await settings.goto('https://auth.cqu.moe/settings');
+  const settings = await openWebPage(context, 'https://auth.cqu.moe/settings');
   const result = await settings.evaluate(async () => {
     const response = await fetch('/api/v1/cqu/quicklogin', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) });
     return { status: response.status, masterEnabled: (await response.json()).data?.masterEnabled };
@@ -53,8 +53,7 @@ export function schoolUrl(caseId = 'business') {
   return `https://sso.cqu.edu.cn/login?service=${encodeURIComponent('https://sso.cqu.edu.cn/quicklogin-business')}&case=${caseId}`;
 }
 export async function openSchoolForm(context: BrowserContext, caseId: string) {
-  const page = await context.newPage();
-  await page.goto(schoolUrl(caseId));
+  const page = await openWebPage(context, schoolUrl(caseId));
   await page.getByLabel('学校账号').waitFor({ state: 'visible' });
   return page;
 }
