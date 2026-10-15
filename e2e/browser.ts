@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import type { BrowserProvider } from "@e2e-dev/web";
 import { chromium } from "playwright-core";
@@ -46,6 +46,13 @@ export const extensionBrowser: BrowserProvider = {
     let handedOff = false;
     let launchFailure: unknown;
     try {
+      // Linux Hunspell fetches dictionaries from redirector.gvt1.com even
+      // with component updates disabled. Configure only this new test profile.
+      await mkdir(join(profile, "Default"));
+      await writeFile(join(profile, "Default", "Preferences"), JSON.stringify({
+        browser: { enable_spellchecking: false },
+        spellcheck: { dictionary: "", dictionaries: [], use_spelling_service: false },
+      }));
       const arguments_ = [
         "--headless=new",
         "--password-store=basic",
