@@ -4,7 +4,7 @@ import { REASON_CODES, sameTuple, tupleForSnapshot, type DeviceSnapshot, type Ex
 import * as api from "./api-v3";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
-import { clearOwnedCookies, verifyManagedCookies } from "./cookie-store";
+import { clearOwnedCookies, verifyManagedCookies, inspectLocalTgc } from "./cookie-store";
 import {
   captureQuickloginOperation,
   durationFrom,
@@ -141,13 +141,14 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     let currentCookiesVerified = false;
     if (local.receipt) {
       currentCookiesVerified = await verifyManagedCookies();
+      const tgcMissing = !currentCookiesVerified && await inspectLocalTgc() === "missing";
       local = await updateLocalState((state) => {
         if (state.localGeneration !== fence) return state;
         return currentCookiesVerified && state.receipt
           ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() } }
           : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle",
             loginRecovery: state.loginRecovery && sameTuple(state.loginRecovery.rejectedTuple, state.receipt)
-              ? { ...state.loginRecovery, rejectedTuple:null, appliedExportId:null } : state.loginRecovery };
+              ? { ...state.loginRecovery, rejectedTuple:tgcMissing ? null : state.loginRecovery.rejectedTuple, appliedExportId:null } : state.loginRecovery };
       });
     }
     const result = await api.reconcile();

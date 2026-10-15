@@ -1,168 +1,79 @@
-import { execFile, spawn } from "node:child_process";
-import { createHash } from "node:crypto";
-import { chmod, mkdir, readFile, rmdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { promisify } from "node:util";
-import { startPinnedAuth } from "./auth-runtime.mjs";
-import { createAuthTls, createEgressProxy } from "./network.mjs";
-import { failureMessage } from "./lifecycle.mjs";
+import { spawn } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 
-const root = process.cwd();
-const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || join(root, `.e2e/run-${Date.now()}`));
-if (!output.startsWith(resolve(root, ".e2e") + "/")) throw new Error("E2E output must be a child of .e2e");
-const authPath = process.env.QUICKLOGIN_E2E_AUTH_PATH || join(root, "..", "AUTH-01");
-const expectedCommit = process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "d9bf0c5e6d5cc459029da6a345991b8d0f13f514";
-await mkdir(dirname(output), { recursive: true });
-await mkdir(output, { mode: 0o700 });
-
-let runtime;
-let tls;
-let egress;
-let child;
+const args = process.argv.slice(2);
+let active;
 let interrupted = false;
-let cleanupError = null;
-const primaryErrors = [];
-const chromiumServiceOrigins = new Set([
-  "http://clients2.google.com",
-  "https://clients2.google.com",
-  "https://accounts.google.com",
-  "https://www.google.com",
-  "https://update.googleapis.com",
-  "http://update.googleapis.com",
-]);
-const expectedDeniedCallback = "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org";
-const evidence = { authCommit: expectedCommit, output, extensionPath: "dist", cleanup: "pending" };
-
-function stopChild() {
-  interrupted = true;
-  process.exitCode = 1;
-  if (child?.exitCode === null) child.kill("SIGTERM");
+function stop() { interrupted = true; active?.kill('SIGINT'); }
+process.once('SIGINT', stop); process.once('SIGTERM', stop);
+async function command(argv, env = {}, quiet = false) {
+  active = spawn(process.execPath, argv, { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, E2E_TELEMETRY_DISABLED: '1', DO_NOT_TRACK: '1', ...env } });
+  let stdout = '', stderr = '';
+  active.stdout.on('data', data => { stdout += data; if (!quiet) process.stdout.write(data); });
+  active.stderr.on('data', data => { stderr += data; if (!quiet) process.stderr.write(data); });
+  const code = await new Promise((done, fail) => { active.once('error', fail); active.once('close', code => done(code ?? 1)); });
+  active = undefined;
+  return { code, stdout, stderr };
 }
-process.once("SIGINT", stopChild);
-process.once("SIGTERM", stopChild);
-
-try {
-  const execute = promisify(execFile);
-  evidence.extensionCommit = (await execute("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
-  evidence.sourceDirty = Boolean((await execute("git", ["status", "--porcelain"], { cwd: root })).stdout.trim());
-  evidence.build = JSON.parse(await readFile(join(root, "dist/build-info.json"), "utf8"));
-  if (evidence.build.sourceCommit !== evidence.extensionCommit) throw new Error("Extension build does not match HEAD; run npm run build");
-  evidence.backgroundSha256 = createHash("sha256").update(await readFile(join(root, "dist/background.js"))).digest("hex");
-  runtime = await startPinnedAuth({ authPath, outputDir: output, expectedCommit });
-  tls = await createAuthTls({ outputDir: output, workerPort: runtime.workerPort });
-  runtime.setNetworkReader(tls.readObservations);
-  await chmod(tls.certificate, 0o644);
-
-  egress = await createEgressProxy({ tlsPort: tls.port });
-  if (interrupted) throw new Error("E2E run interrupted before the runner started");
-
-  child = spawn(process.execPath, [
-    "node_modules/e2e/dist/cli/bin.js", "run", "--config", "e2e.config.ts",
-    "--reporter", "list", "--output", output, ...process.argv.slice(2),
-  ], {
-    cwd: root,
-    stdio: ["ignore", "pipe", "pipe"],
-    env: {
-      PATH: process.env.PATH,
-      TMPDIR: process.env.TMPDIR,
-      CI: process.env.CI,
-      NODE_EXTRA_CA_CERTS: tls.certificate,
-      PLAYWRIGHT_BROWSERS_PATH: process.env.QUICKLOGIN_E2E_BROWSERS_PATH || process.env.PLAYWRIGHT_BROWSERS_PATH || "",
-      QUICKLOGIN_E2E_AUTH_PATH: authPath,
-      QUICKLOGIN_E2E_CONTROL: runtime.controlOrigin,
-      QUICKLOGIN_E2E_TLS_SPKI: tls.spkiPin,
-      QUICKLOGIN_E2E_PROXY: `http://127.0.0.1:${egress.port}`,
-      QUICKLOGIN_E2E_ARTIFACTS: output,
-      QUICKLOGIN_E2E_BREAK_ASSERTION: process.env.QUICKLOGIN_E2E_BREAK_ASSERTION || "",
-      QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP: process.env.QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP || "",
-      E2E_TELEMETRY_DISABLED: "1",
-      DO_NOT_TRACK: "1",
-      WRANGLER_SEND_METRICS: "false",
-    },
-  });
-
-  let log = "";
-  for (const stream of [child.stdout, child.stderr]) {
-    stream.on("data", chunk => {
-      log += chunk;
-      process.stdout.write(chunk);
-    });
-  }
-  try {
-    process.exitCode = await new Promise((resolveExit, rejectExit) => {
-      child.once("error", rejectExit);
-      child.once("exit", code => resolveExit(code ?? 1));
-    });
-    if (interrupted) process.exitCode = 1;
-    evidence.runnerExitCode = process.exitCode;
-    if (process.exitCode) primaryErrors.push(`Runner exited with ${process.exitCode}`);
-    console.error(`[quicklogin-e2e] runner exited with ${process.exitCode}`);
-  } finally {
-    process.removeListener("SIGINT", stopChild);
-    process.removeListener("SIGTERM", stopChild);
-  }
-  await writeFile(join(output, "runner.log"), log);
-
-  const report = JSON.parse(await readFile(join(output, "report.json"), "utf8"));
-  if (!report.run.summary.executed || report.run.summary.skipped || report.run.summary.interrupted) {
-    throw new Error("Required E2E suite was empty, skipped or interrupted");
-  }
-  // e2e 0.21 can report passed/exit 0 while recording provider cleanup as a
-  // secondary attempt error. That is still a failed required gate.
-  if (report.run.results.some(result => result.selected && result.attempts?.some(attempt =>
-    attempt.cleanup === "failed" || attempt.secondaryErrors?.some(error => error.phase === "cleanup")))) {
-    throw new Error("Browser provider cleanup failed in framework attempt evidence");
-  }
-  if (process.exitCode === 0 && (report.run.summary.failed || report.run.status !== "passed")) {
-    throw new Error("Runner result mismatch");
-  }
-  evidence.deniedEgress = [...egress.denied];
-  evidence.identities = runtime.identityCount();
-  evidence.authNetwork = tls.readObservations();
-  if (process.exitCode === 0 && report.run.results.some(result => result.selected && result.tags.includes("auth-device-registration"))) {
-    evidence.oauth = tls.assertOAuthContracts();
-  }
-  await runtime.checkArtifacts(output, []);
-} catch (error) {
-  primaryErrors.push(failureMessage(error));
-  evidence.startupCleanupErrors = (error.cleanupErrors ?? []).map(failureMessage);
-  process.exitCode ||= 1;
-  console.error(failureMessage(error));
-} finally {
-  const tasks = [];
-  const deniedEgress = [...(egress?.denied ?? [])];
-  const unexpectedDeniedEgress = deniedEgress.filter(origin =>
-    !chromiumServiceOrigins.has(origin) && origin !== expectedDeniedCallback
-  );
-  evidence.deniedEgress = deniedEgress;
-  evidence.unexpectedDeniedEgress = unexpectedDeniedEgress;
-  if (egress) tasks.push(egress.close());
-  if (tls) tasks.push(tls.close());
-  if (runtime) tasks.push(runtime.close().then(() => {
-    if (unexpectedDeniedEgress.length) {
-      throw new Error(`Unexpected browser egress denied (${unexpectedDeniedEgress.join(", ")})`);
+const discovery = await command(['node_modules/e2e/dist/cli/bin.js', 'list', '--config', 'e2e.config.ts', '--reporter', 'json', ...args], {}, true);
+if (discovery.code) {
+  if (discovery.code === 2 && discovery.stderr.includes('NO_TESTS')) {
+    process.exitCode = (await command(['e2e/run-single.mjs', ...args], { QUICKLOGIN_E2E_SCHOOL: '' })).code;
+  } else { process.stderr.write(discovery.stderr); process.exitCode = discovery.code; }
+}
+else {
+  const pairs = JSON.parse(discovery.stdout).pairs.filter(pair => pair.kind === 'test' && pair.disposition === 'run');
+  const school = pairs.filter(pair => ['e2e/school.e2e.ts', 'e2e/school-guards.e2e.ts'].includes(pair.file));
+  if (!school.length || pairs.length === 1) {
+    const result = await command(['e2e/run-single.mjs', ...args], school.length ? { QUICKLOGIN_E2E_SCHOOL: '1' } : { QUICKLOGIN_E2E_SCHOOL: '' });
+    process.exitCode = interrupted ? 1 : result.code;
+  } else {
+    const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || `.e2e/run-${Date.now()}`);
+    if (!output.startsWith(resolve('.e2e') + '/')) throw new Error('E2E output must be a child of .e2e');
+    await mkdir(output);
+    await writeFile(join(output, 'discovery.json'), discovery.stdout);
+    const base = pairs.filter(pair => !school.includes(pair));
+    const groups = [...(base.length ? [{ name: 'authorization', pairs: base, school: false }] : []), ...school.map((pair, index) => ({ name: `school-${index + 1}-${pair.id.slice(0, 12)}`, pairs: [pair], school: true }))];
+    const executionArgs = args.filter((arg, index) => arg !== '--grep' && !arg.startsWith('--grep=') && args[index - 1] !== '--grep');
+    const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const reports = [], runtimes = [], logs = [], failures = [];
+    for (const group of groups) {
+      if (interrupted) { failures.push('Run interrupted'); break; }
+      const path = join(output, group.name);
+      const selected = group.pairs.flatMap(pair => ['--grep', `^${escape(pair.titlePath.join(' '))}$`]);
+      console.log(`[quicklogin-e2e] isolated runtime ${group.name} (${group.pairs.length} tests)`);
+      const result = await command(['e2e/run-single.mjs', ...executionArgs, ...selected], { QUICKLOGIN_E2E_OUTPUT: path, QUICKLOGIN_E2E_SCHOOL: group.school ? '1' : '' });
+      logs.push(result.stdout + result.stderr);
+      let runtime, report;
+      try {
+        runtime = JSON.parse(await readFile(join(path, 'runtime.json'), 'utf8'));
+        runtimes.push({ ...runtime, group: group.name });
+        report = JSON.parse(await readFile(join(path, 'report.json'), 'utf8'));
+        const selectedIds = report.run.results.filter(test => test.kind === 'test' && test.selected).map(test => test.id).sort();
+        const executedIds = report.run.results.filter(test => test.kind === 'test' && test.selected && test.status !== 'skipped').map(test => test.id).sort();
+        const expectedIds = group.pairs.map(pair => pair.id).sort();
+        if (JSON.stringify(expectedIds) !== JSON.stringify(selectedIds) || JSON.stringify(expectedIds) !== JSON.stringify(executedIds)) throw new Error('Framework discovered/selected/executed test IDs differ');
+        reports.push(report);
+        if (runtime.cleanup !== 'passed') failures.push(`${group.name}: cleanup failed`);
+      } catch (error) {
+        failures.push(`${group.name}: ${error.message}`);
+        if (!runtime) runtimes.push({ group: group.name, cleanup: 'evidence-missing', cleanupFailures: ['Runtime cleanup evidence unavailable'] });
+      }
+      if (result.code) failures.push(`${group.name}: wrapper exited ${result.code}`);
+      if (failures.length) break;
     }
-  }));
-  tasks.push(rmdir(join(output, "profiles")).catch(error => {
-    if (error.code !== "ENOENT") throw new Error("Browser profile cleanup failed: residual state remains");
-  }));
-  const results = await Promise.allSettled(tasks);
-  const cleanupFailures = [
-    ...(evidence.startupCleanupErrors ?? []),
-    ...results.filter(result => result.status === "rejected").map(result => failureMessage(result.reason)),
-  ];
-  cleanupError = cleanupFailures.length ? cleanupFailures.join("; ") : null;
-  if (cleanupError) process.exitCode = 1;
-  evidence.cleanup = cleanupError ? `failed: ${cleanupError}` : "passed";
-  console.error(`[quicklogin-e2e] cleanup ${evidence.cleanup}`);
-  evidence.primaryFailures = primaryErrors;
-  evidence.cleanupFailures = cleanupFailures;
-  if (primaryErrors.length && cleanupError) {
-    console.error(`[quicklogin-e2e] primary failure retained: ${primaryErrors.join("; ")}`);
-  }
-  try {
-    await writeFile(join(output, "runtime.json"), JSON.stringify(evidence, null, 2) + "\n");
-  } catch {
-    process.exitCode = 1;
+    const results = reports.flatMap(report => report.run.results.filter(test => test.kind === 'test' && test.selected));
+    if (JSON.stringify(results.map(test => test.id).sort()) !== JSON.stringify(pairs.map(pair => pair.id).sort())) failures.push('Aggregate test IDs do not equal framework discovery');
+    const summary = { discovered: pairs.length, selected: pairs.length, executed: results.length, passed: results.filter(test => test.status === 'passed').length, failed: results.filter(test => test.status === 'failed').length, interrupted: interrupted ? 1 : 0, skipped: pairs.length - results.length, flaky: 0 };
+    if (summary.passed !== pairs.length) failures.push('Not every discovered test passed');
+    const report = { ...(reports[0] ?? {}), run: { ...(reports[0]?.run ?? {}), status: failures.length ? 'failed' : 'passed', summary, results, errors: failures.map(message => ({ message })) } };
+    await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
+    await writeFile(join(output, 'runner.log'), logs.join('\n'));
+    const runtime = { ...(runtimes[0] ?? {}), output, groups: runtimes, completedGroups: runtimes.length, expectedGroups: groups.length, cleanup: runtimes.length && runtimes.every(value => value.cleanup === 'passed') ? 'passed' : 'incomplete-or-failed', primaryFailures: failures, cleanupFailures: runtimes.flatMap(value => value.cleanupFailures ?? []) };
+    await writeFile(join(output, 'runtime.json'), JSON.stringify(runtime, null, 2) + '\n');
+    console.log(`[quicklogin-e2e] ${summary.passed}/${pairs.length} independent runtime tests passed; cleanup ${runtime.cleanup}`);
+    process.exitCode = failures.length ? 1 : 0;
   }
 }
+process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop);

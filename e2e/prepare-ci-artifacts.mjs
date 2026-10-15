@@ -102,6 +102,7 @@ for (const name of requiredRuns) {
     }
     if (expectedSource && !sameSource(runtime)) problems.push("Independent runs used different source or build identities");
     expectedSource ??= sourceOf(runtime);
+    if (runtime.groups?.some(group => group.sourceDirty !== false || sourceOf(group) !== sourceOf(runtime) || group.cleanup !== 'passed')) problems.push(name + ' has inconsistent or dirty isolated runtime evidence');
     const summary = report.run.summary;
     if (runtime.cleanup !== "passed" || report.run.status !== "passed" ||
         !summary.executed || summary.executed !== summary.selected || summary.passed !== summary.executed ||

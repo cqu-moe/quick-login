@@ -1,0 +1,41 @@
+import { test } from '@e2e-dev/web';
+import { expect } from 'e2e';
+import { captureArtifacts } from './helpers.ts';
+import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until } from './school-helpers.ts';
+
+test('QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt', { timeout: 240_000, tags: ['school-cookie-ack'] }, async ({ app }) => {
+  const { popup, context, settings, identity, cookies } = await connectSchool(app, 'school-success');
+  const initial = await localState(popup);
+  expect(cookies.some(cookie => ['outside_domain', 'expired_probe'].includes(cookie.name))).toBe(false);
+  expect(cookies.some(cookie => cookie.name === 'SOURCEID_TGC' && cookie.hostOnly && cookie.httpOnly && cookie.secure && cookie.session && cookie.path === '/')).toBe(true);
+  expect(cookies.some(cookie => cookie.name === 'path_cookie' && cookie.path === '/quicklogin-business' && !cookie.session && cookie.sameSite === 'strict' && cookie.expirationDate! > Date.now() / 1000)).toBe(true);
+  expect(cookies.some(cookie => cookie.name === 'domain_cookie' && cookie.domain === '.sso.cqu.edu.cn' && !cookie.hostOnly && !cookie.session)).toBe(true);
+  await controlSchool({ expire: true, holdLogin: true, clearEvents: true });
+  const page = await openSchoolForm(context, 'fresh-ack');
+  let loads = 1;
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) loads++; });
+  await until(() => localState(popup), state => state.schoolAccess === 'login_form_seen' && !!state.loginRecovery);
+  await until(async () => ({ ...(await controlSchool()), failed: (await localState(popup)).loginRecovery?.failed }), value => {
+    if (value.failed) throw new Error('Recovery navigated an old session before a fresh school login completed');
+    return value.events.some(event => event.kind === 'code_accepted');
+  });
+  expect(loads).toBe(1);
+  expect((await localState(popup)).receipt?.sessionVersion).toBe(initial.receipt!.sessionVersion);
+  await relay({ path: 'receipts', hold: true });
+  await controlSchool({ holdLogin: false });
+  await until(() => relay(), value => value.heldResponses > 0);
+  expect((await localState(popup)).pendingAck).toBe(true);
+  expect(loads).toBe(1);
+  await relay({ hold: false });
+  await page.getByRole('heading', { name: '已进入学校合成业务', exact: true }).waitFor({ timeout: 120_000 });
+  const current = await until(() => localState(popup), state => !!state.receipt && !state.pendingAck && state.receipt.exportId !== initial.receipt!.exportId);
+  const server = await receiptProjection(identity.userId);
+  expect(server.devices.length).toBe(1);
+  expect(server.devices[0]?.deviceId).toBe(current.deviceId);
+  expect(current.localWriteState).toBe('ready');
+  const overview = await settings.evaluate(async () => (await (await fetch('/api/v1/cqu/quicklogin/overview')).json()).data);
+  expect(overview.devices[0].reportedLocal.receipt.exportId === current.receipt!.exportId).toBe(true);
+  expect(overview.devices[0].reportedLocal.acknowledgedAt > 0).toBe(true);
+  expect(loads).toBe(2);
+  await captureArtifacts('school-business-and-ack', [page, popup]);
+});

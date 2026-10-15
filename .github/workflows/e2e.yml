@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   quicklogin:
-    name: Real MV3 Auth PKCE device journey
+    name: Real MV3 Auth, school cookies and recovery
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
@@ -24,7 +24,7 @@ jobs:
       WRANGLER_SEND_METRICS: "false"
       PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
       QUICKLOGIN_E2E_AUTH_PATH: ${{ github.workspace }}/.e2e-auth
-      QUICKLOGIN_E2E_AUTH_COMMIT: d9bf0c5e6d5cc459029da6a345991b8d0f13f514
+      QUICKLOGIN_E2E_AUTH_COMMIT: db65d78c445985132e7784e4102e342df41994fe
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -59,6 +59,11 @@ jobs:
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
           VITE_POSTHOG_HOST: ""
+      - name: Build actual pinned Auth browser runtime
+        working-directory: .e2e-auth
+        run: node e2e/school/build.mjs
+      - name: Pull pinned native container interceptor
+        run: docker pull cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8
       - name: Run first independent E2E journey
         run: node e2e/run.mjs
         env:

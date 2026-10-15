@@ -6,6 +6,8 @@ import { join, resolve } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
+import { grantSchoolDevicePolicy } from "./school-policy.mjs";
+import { schoolPlatform } from "./school-platform.mjs";
 import { closeServer, listenLoopback } from "./lifecycle.mjs";
 
 const execute = promisify(execFile);
@@ -69,10 +71,18 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
 
   const runtimeDir = join(outputDir, "auth-runtime");
   await mkdir(runtimeDir, { recursive: true });
+  let heldPath = null, heldResponses = 0;
+  let releaseGate;
+  let gate = Promise.resolve();
+  function releaseNetwork() { heldPath = null; releaseGate?.(); }
   let prepareAccount;
+  let school;
+  let activeSchoolUser;
+  const schoolEnabled = process.env.QUICKLOGIN_E2E_SCHOOL === "1";
   const mails = new Map();
   const identities = new Map();
   const unexpected = [];
+  const observedSecrets = new Set();
   let mf;
   let db;
   let controlOrigin = "";
@@ -85,7 +95,7 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
       if (request.method === "GET" && url.pathname === "/health") {
         response.writeHead(200, { "content-type": "application/json" }).end("{\"ok\":true}");
       } else if (request.method === "POST" && url.pathname === "/identity") {
-        const { key } = await readJsonBody(request);
+        const { key, school: bindSchool = false } = await readJsonBody(request);
         if (typeof key !== "string" || !/^[a-z0-9-]{1,64}$/.test(key)) throw new Error("INVALID_IDENTITY_KEY");
         let identity = identities.get(key);
         if (!identity) {
@@ -105,12 +115,40 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
               controlOrigin,
               db,
             }, { email, password, name: `QuickLogin E2E ${key}` });
+            if (bindSchool) {
+              if (!school) throw new Error("School runtime was not configured");
+              school.addUser(identity.userId);
+              activeSchoolUser = identity.userId;
+              await grantSchoolDevicePolicy(authRoot, { origin: AUTH_ORIGIN, controlOrigin, db }, identity.userId, school.sensitive);
+              const { prepareSchoolBinding } = await import(pathToFileURL(join(authRoot, "e2e/school/prepare-binding.mjs")).href);
+              await prepareSchoolBinding({ origin: AUTH_ORIGIN, controlOrigin, db, prepare: async () => identity }, { email, password });
+            }
           } finally {
             globalThis.fetch = originalFetch;
           }
           identities.set(key, identity);
         }
         response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(identity));
+      } else if (request.method === "POST" && url.pathname === "/relay") {
+        const input = await readJsonBody(request);
+        if (input.hold === true) {
+          if (!["exports", "receipts"].includes(input.path)) throw new Error("Invalid transport gate");
+          releaseNetwork(); heldPath = input.path; heldResponses = 0;
+          gate = new Promise(done => { releaseGate = done; });
+        } else if (input.hold === false) releaseNetwork();
+        response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ heldResponses }));
+      } else if (request.method === "POST" && url.pathname === "/school") {
+        if (!school || !activeSchoolUser) throw new Error("No active school identity");
+        const { changes } = await readJsonBody(request);
+        const device = await db.prepare("SELECT device_id FROM quicklogin_device_projection WHERE user_id=? LIMIT 1").bind(activeSchoolUser).first();
+        const value = await school.control(device ? `quicklogin:${activeSchoolUser}:${device.device_id}` : activeSchoolUser, "control", changes);
+        response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(value));
+      } else if (request.method === "POST" && url.pathname === "/protect") {
+        if (!school) throw new Error("No school runtime");
+        const { values } = await readJsonBody(request);
+        if (!Array.isArray(values) || values.some(value => typeof value !== "string" || !value)) throw new Error("Invalid protected values");
+        for (const value of values) school.sensitive.add(value);
+        response.writeHead(204).end();
       } else if (request.method === "GET" && url.pathname === "/network") {
         response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(readObservations()));
       } else if (request.method === "GET" && url.pathname === "/mail") {
@@ -160,7 +198,7 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
     ({ prepareAccount } = await import(pathToFileURL(join(authRoot, "e2e/prepare-account.mjs")).href));
     await execute(process.execPath, [
       join(authRoot, "node_modules/wrangler/bin/wrangler.js"),
-      "deploy", "--dry-run", "--config", join(authRoot, "e2e/wrangler.jsonc"),
+      "deploy", "--dry-run", "--config", join(authRoot, schoolEnabled ? "e2e/school/wrangler.jsonc" : "e2e/wrangler.jsonc"),
       "--outdir", join(runtimeDir, "bundle"),
     ], {
       cwd: runtimeDir,
@@ -177,14 +215,15 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
 
     const requireAuth = createRequire(join(authRoot, "package.json"));
     const { Miniflare, Log, LogLevel } = requireAuth("miniflare");
-    mf = new Miniflare({
+    if (schoolEnabled) school = await schoolPlatform(authRoot, resolve("e2e/school"));
+    const authOptions = {
       name: "quicklogin-consumer-auth",
       host: "127.0.0.1",
       port: workerPort,
       modules: [{
         type: "ESModule",
-        path: join(runtimeDir, "bundle/index.js"),
-        contents: await readFile(join(runtimeDir, "bundle/index.js"), "utf8"),
+        path: join(runtimeDir, schoolEnabled ? "bundle/worker.js" : "bundle/index.js"),
+        contents: await readFile(join(runtimeDir, schoolEnabled ? "bundle/worker.js" : "bundle/index.js"), "utf8"),
       }],
       compatibilityDate: "2026-05-01",
       compatibilityFlags: ["nodejs_compat"],
@@ -230,9 +269,11 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
         unexpected.push(url.origin);
         return new Response("Unexpected external request denied", { status: 502 });
       },
-    });
+    };
+    mf = new Miniflare(school ? school.configure(authOptions) : authOptions);
     await mf.ready;
-    db = await mf.getD1Database("DATABASE");
+    db = await mf.getD1Database("DATABASE", school ? "quicklogin-consumer-auth" : undefined);
+    if (school) await school.ready(mf, db);
 
     for (const file of (await readdir(join(authRoot, "drizzle/migrations"))).filter(file => file.endsWith(".sql")).sort()) {
       const sql = await readFile(join(authRoot, "drizzle/migrations", file), "utf8");
@@ -248,12 +289,21 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
     controlOrigin = `http://127.0.0.1:${await listenLoopback(control)}`;
     return {
       commit,
+      protect(values) { for (const value of values) if (typeof value === "string" && value) observedSecrets.add(value); },
+      schoolEvidence: school?.outcomes,
+      async responseGate(path) { if (heldPath && path.endsWith(`/${heldPath}`)) { heldResponses++; await gate; } },
+      async schoolRequest(method, path, headers, body) {
+        if (!school || !activeSchoolUser) throw new Error("No school identity for browser transport");
+        const device = await db.prepare("SELECT device_id FROM quicklogin_device_projection WHERE user_id=? LIMIT 1").bind(activeSchoolUser).first();
+        if (!device) throw new Error("No registered device for school browser transport");
+        return school.control(`quicklogin:${activeSchoolUser}:${device.device_id}`, "browser", { method, path, cookie: headers.cookie ?? "", body });
+      },
       workerPort,
       controlOrigin,
       identityCount: () => identities.size,
       setNetworkReader: reader => { readObservations = reader; },
       async checkArtifacts(directory, sensitiveValues) {
-        const secrets = [...sensitiveValues, ...identities.values().map(identity => identity.password), ...mails.values()];
+        const secrets = [...observedSecrets, ...sensitiveValues, ...(school?.sensitive ?? []), ...identities.values().map(identity => identity.password), ...mails.values()];
         async function inspect(current) {
           for (const entry of await readdir(current, { withFileTypes: true })) {
             const path = join(current, entry.name);
@@ -267,18 +317,22 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
         await inspect(directory);
       },
       async close() {
+        releaseNetwork();
+        const before = await Promise.allSettled([school?.beforeClose()]);
         const results = await Promise.allSettled([
           closeServer(control),
           mf.dispose(),
         ]);
-        await rm(runtimeDir, { recursive: true, force: true });
+        results.push(...before, ...await Promise.allSettled([rm(runtimeDir, { recursive: true, force: true }), school?.close()]));
         const failures = results.filter(result => result.status === "rejected");
         if (failures.length) throw new AggregateError(failures.map(result => result.reason), "Auth runtime cleanup failed");
         if (unexpected.length) throw new Error(`Unexpected Worker egress denied (${unexpected.length} requests)`);
       },
     };
   } catch (error) {
-    const cleanup = await Promise.allSettled([closeServer(control), mf?.dispose()]);
+    const before = await Promise.allSettled([school?.beforeClose()]);
+    const cleanup = [...before, ...await Promise.allSettled([closeServer(control), mf?.dispose()])];
+    cleanup.push(...await Promise.allSettled([school?.close()]));
     cleanup.push(...await Promise.allSettled([rm(runtimeDir, { recursive: true, force: true })]));
     const failures = cleanup.filter(result => result.status === "rejected");
     if (failures.length) {

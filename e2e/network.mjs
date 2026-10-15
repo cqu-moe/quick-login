@@ -10,7 +10,7 @@ import { closeServer, listenLoopback } from "./lifecycle.mjs";
 
 const execute = promisify(execFile);
 
-export async function createAuthTls({ outputDir, workerPort }) {
+export async function createAuthTls({ outputDir, workerPort, schoolRequest, responseGate, protect }) {
   const directory = join(outputDir, "tls");
   await mkdir(directory, { recursive: true });
   const key = join(directory, "auth-key.pem");
@@ -21,7 +21,7 @@ export async function createAuthTls({ outputDir, workerPort }) {
       "req", "-x509", "-newkey", "rsa:2048", "-nodes",
       "-keyout", key, "-out", certificate, "-days", "1",
       "-subj", "/CN=auth.cqu.moe",
-      "-addext", "subjectAltName=DNS:auth.cqu.moe",
+      "-addext", "subjectAltName=DNS:auth.cqu.moe,DNS:sso.cqu.edu.cn",
     ]);
     const certPem = await readFile(certificate, "utf8");
     const spki = createPublicKey(certPem).export({ type: "spki", format: "der" });
@@ -31,7 +31,20 @@ export async function createAuthTls({ outputDir, workerPort }) {
     const authorizationContracts = [];
     const observations = [];
     let successfulTokenExchanges = 0;
-    tls = createHttpsServer({ key: keyPem, cert: certPem }, (fromClient, toClient) => {
+    tls = createHttpsServer({ key: keyPem, cert: certPem }, async (fromClient, toClient) => {
+      if (fromClient.headers.host === "sso.cqu.edu.cn") {
+        try {
+          let body = ""; for await (const chunk of fromClient) body += chunk;
+          const result = await schoolRequest(fromClient.method, fromClient.url, fromClient.headers, body);
+          const headers = {};
+          for (const [key, value] of result.headers) {
+            if (key.toLowerCase() === "set-cookie") (headers["set-cookie"] ??= []).push(value);
+            else headers[key] = value;
+          }
+          toClient.writeHead(result.status, headers).end(result.body);
+        } catch { toClient.writeHead(502).end("Isolated school unavailable"); }
+        return;
+      }
       const requestUrl = new URL(fromClient.url ?? "/", "https://auth.cqu.moe");
       if (requestUrl.pathname === "/api/v1/auth/oauth2/authorize") {
         authorizationContracts.push({
@@ -47,13 +60,16 @@ export async function createAuthTls({ outputDir, workerPort }) {
       const upstream = httpRequest({
         host: "127.0.0.1", port: workerPort, method: fromClient.method,
         path: fromClient.url, headers,
-      }, response => {
-        if (["/api/v1/auth/oauth2/authorize", "/api/v1/auth/sign-in/email", "/api/v1/auth/oauth2/consent", "/api/v1/auth/oauth2/token", "/api/v1/cqu/quicklogin/registrations"].includes(requestUrl.pathname)) {
+      }, async response => {
+        // Installing an observation data listener must not drain response bytes
+        // while a genuine upstream response waits behind the transport gate.
+        response.pause();
+        if (["/api/v1/auth/oauth2/authorize", "/api/v1/auth/sign-in/email", "/api/v1/auth/oauth2/consent", "/api/v1/auth/oauth2/token", "/api/v1/cqu/quicklogin/registrations"].includes(requestUrl.pathname) || requestUrl.pathname.endsWith("/receipts")) {
           const redirect = response.headers.location ? new URL(response.headers.location, "https://auth.cqu.moe") : null;
           const observation = { method: fromClient.method, path: requestUrl.pathname, status: response.statusCode,
             oauthError: redirect?.searchParams.get("error") ?? null, codeIssued: Boolean(redirect?.searchParams.has("code")) };
           observations.push(observation);
-          if (["/api/v1/auth/sign-in/email", "/api/v1/auth/oauth2/consent"].includes(requestUrl.pathname)) {
+          if (["/api/v1/auth/sign-in/email", "/api/v1/auth/oauth2/consent", "/api/v1/auth/oauth2/token"].includes(requestUrl.pathname)) {
             observation.bodyEncoding = response.headers["content-encoding"] ?? "identity";
             let size = 0;
             let chunks = [];
@@ -66,6 +82,7 @@ export async function createAuthTls({ outputDir, workerPort }) {
               try {
                 const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
                 observation.jsonParsed = true;
+                protect?.([body.access_token, body.refresh_token]);
                 if (body.redirect === true && typeof body.url === "string") {
                   const target = new URL(body.url);
                   observation.codeIssued = target.origin === "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org" && target.searchParams.has("code");
@@ -78,6 +95,16 @@ export async function createAuthTls({ outputDir, workerPort }) {
         if (fromClient.method === "POST" && requestUrl.pathname === "/api/v1/auth/oauth2/token" && (response.statusCode ?? 0) >= 200 && (response.statusCode ?? 0) < 300) {
           successfulTokenExchanges++;
         }
+        if (requestUrl.pathname.endsWith("/exports")) {
+          let chunks = [], size = 0;
+          response.on("data", chunk => { size += chunk.length; if (size <= 262144) chunks.push(chunk); else chunks = []; });
+          response.on("end", () => {
+            try { const body = JSON.parse(Buffer.concat(chunks).toString("utf8")); protect?.((body.data?.cookies ?? []).map(cookie => cookie.value)); }
+            catch { /* Parsing is observation only; the genuine response still reaches the extension. */ }
+            finally { chunks = []; }
+          });
+        }
+        await responseGate?.(requestUrl.pathname);
         toClient.writeHead(response.statusCode ?? 502, response.headers);
         response.pipe(toClient);
       });
@@ -152,7 +179,7 @@ export async function createEgressProxy({ tlsPort }) {
     request.pipe(upstream);
   });
   proxy.on("connect", (request, clientSocket, head) => {
-    if (request.url !== "auth.cqu.moe:443") {
+    if (!["auth.cqu.moe:443", "sso.cqu.edu.cn:443"].includes(request.url)) {
       denied.push(originOf(`https://${request.url ?? "unknown-connect-target"}`));
       clientSocket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
       return;
