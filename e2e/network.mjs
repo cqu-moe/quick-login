@@ -189,12 +189,18 @@ export async function createEgressProxy({ tlsPort }) {
     request.pipe(upstream);
   });
   proxy.on("connect", (request, clientSocket, head) => {
+    let upstream;
+    clientSocket.on("error", () => {
+      upstream?.destroy();
+      clientSocket.destroy();
+    });
+    clientSocket.on("close", () => upstream?.destroy());
     if (!["auth.cqu.moe:443", "sso.cqu.edu.cn:443"].includes(request.url)) {
       denied.push(originOf(`https://${request.url ?? "unknown-connect-target"}`));
       clientSocket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
       return;
     }
-    const upstream = tcpConnect(tlsPort, "127.0.0.1", () => {
+    upstream = tcpConnect(tlsPort, "127.0.0.1", () => {
       clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
       upstream.write(head);
       upstream.pipe(clientSocket);
@@ -203,7 +209,6 @@ export async function createEgressProxy({ tlsPort }) {
     upstream.on("error", () => {
       clientSocket.destroy();
     });
-    clientSocket.on("error", () => upstream.destroy());
   });
   await listenLoopback(proxy);
   return {

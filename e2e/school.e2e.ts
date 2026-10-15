@@ -1,5 +1,6 @@
 import { test } from '@e2e-dev/web';
 import { expect } from 'e2e';
+import { sameTuple } from '../src/shared/protocol-v3.generated.ts';
 import { captureArtifacts } from './helpers.ts';
 import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until } from './school-helpers.ts';
 
@@ -24,11 +25,21 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   expect((await page.getByRole('status').innerText()).includes('已就绪')).toBe(false);
   expect(await popup.getByRole('heading', { name: '已就绪', exact: true }).count()).toBe(0);
   expect(loads).toBe(1);
-  expect((await localState(popup)).receipt?.sessionVersion).toBe(initial.receipt!.sessionVersion);
+  const waiting = await localState(popup);
+  expect(sameTuple(waiting.loginRecovery!.rejectedTuple, initial.receipt)).toBe(true);
+  expect(waiting.loginRecovery!.appliedExportId).toBe(null);
+  expect(waiting.loginRecovery!.acknowledgedExportId ?? null).toBe(null);
+  expect(waiting.pendingAck).toBe(false);
+  expect(waiting.receipt === null || waiting.receipt.exportId === initial.receipt!.exportId).toBe(true);
   await relay({ path: 'receipts', hold: true });
   await controlSchool({ holdLogin: false });
   await until(() => relay(), value => value.heldResponses > 0);
-  expect((await localState(popup)).pendingAck).toBe(true);
+  const written = await localState(popup);
+  expect(written.pendingAck).toBe(true);
+  expect(sameTuple(written.receipt, initial.receipt)).toBe(false);
+  expect(written.receipt?.result).toBe('applied');
+  expect(written.loginRecovery!.appliedExportId).toBe(written.receipt!.exportId);
+  expect(written.loginRecovery!.acknowledgedExportId ?? null).toBe(null);
   await popup.getByRole('heading', { name: '浏览器已同步，正在确认', exact: true }).waitFor({ timeout: 10_000 });
   await page.getByRole('status').getByText('浏览器已同步，正在确认', { exact: false }).waitFor({ timeout: 10_000 });
   expect(loads).toBe(1);
