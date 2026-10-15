@@ -11,7 +11,7 @@ const root = process.cwd();
 const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || join(root, `.e2e/run-${Date.now()}`));
 if (!output.startsWith(resolve(root, ".e2e") + "/")) throw new Error("E2E output must be a child of .e2e");
 const authPath = process.env.QUICKLOGIN_E2E_AUTH_PATH || join(root, "..", "QUICKLOGIN-02-deps/auth");
-const expectedCommit = process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "db65d78c445985132e7784e4102e342df41994fe";
+const expectedCommit = process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "134f447284a676cacceb7dd0758be0290c3ca42c";
 await mkdir(dirname(output), { recursive: true });
 await mkdir(output, { mode: 0o700 });
 
@@ -139,11 +139,14 @@ try {
   if (egress) tasks.push(egress.close());
   if (tls) tasks.push(tls.close());
   if (runtime) tasks.push(runtime.close().then(() => {
-    evidence.school = runtime.schoolEvidence;
+    const school = runtime.schoolEvidence;
+    if (school && (school.proxyObjectsRemoved !== true || !Array.isArray(school.removedProxyIds) || !school.removedProxyIds.length)) {
+      throw new Error("Native school proxy cleanup lacks actual removed-proxy evidence");
+    }
     if (unexpectedDeniedEgress.length) {
       throw new Error(`Unexpected browser egress denied (${unexpectedDeniedEgress.join(", ")})`);
     }
-  }));
+  }).finally(() => { evidence.school = runtime.schoolEvidence; }));
   tasks.push(rmdir(join(output, "profiles")).catch(error => {
     if (error.code !== "ENOENT") throw new Error("Browser profile cleanup failed: residual state remains");
   }));

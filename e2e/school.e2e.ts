@@ -6,6 +6,7 @@ import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjec
 test('QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt', { timeout: 240_000, tags: ['school-cookie-ack'] }, async ({ app }) => {
   const { popup, context, settings, identity, cookies } = await connectSchool(app, 'school-success');
   const initial = await localState(popup);
+  await popup.getByRole('heading', { name: '已就绪', exact: true }).waitFor();
   expect(cookies.some(cookie => ['outside_domain', 'expired_probe'].includes(cookie.name))).toBe(false);
   expect(cookies.some(cookie => cookie.name === 'SOURCEID_TGC' && cookie.hostOnly && cookie.httpOnly && cookie.secure && cookie.session && cookie.path === '/')).toBe(true);
   expect(cookies.some(cookie => cookie.name === 'path_cookie' && cookie.path === '/quicklogin-business' && !cookie.session && cookie.sameSite === 'strict' && cookie.expirationDate! > Date.now() / 1000)).toBe(true);
@@ -19,12 +20,17 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
     if (value.failed) throw new Error('Recovery navigated an old session before a fresh school login completed');
     return value.events.some(event => event.kind === 'code_accepted');
   });
+  await page.getByRole('status').waitFor();
+  expect((await page.getByRole('status').innerText()).includes('已就绪')).toBe(false);
+  expect(await popup.getByRole('heading', { name: '已就绪', exact: true }).count()).toBe(0);
   expect(loads).toBe(1);
   expect((await localState(popup)).receipt?.sessionVersion).toBe(initial.receipt!.sessionVersion);
   await relay({ path: 'receipts', hold: true });
   await controlSchool({ holdLogin: false });
   await until(() => relay(), value => value.heldResponses > 0);
   expect((await localState(popup)).pendingAck).toBe(true);
+  await popup.getByRole('heading', { name: '浏览器已同步，正在确认', exact: true }).waitFor({ timeout: 10_000 });
+  await page.getByRole('status').getByText('浏览器已同步，正在确认', { exact: false }).waitFor({ timeout: 10_000 });
   expect(loads).toBe(1);
   await relay({ hold: false });
   await page.getByRole('heading', { name: '已进入学校合成业务', exact: true }).waitFor({ timeout: 120_000 });
@@ -36,6 +42,7 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   const overview = await settings.evaluate(async () => (await (await fetch('/api/v1/cqu/quicklogin/overview')).json()).data);
   expect(overview.devices[0].reportedLocal.receipt.exportId === current.receipt!.exportId).toBe(true);
   expect(overview.devices[0].reportedLocal.acknowledgedAt > 0).toBe(true);
+  await popup.getByRole('heading', { name: '已就绪', exact: true }).waitFor();
   expect(loads).toBe(2);
   await captureArtifacts('school-business-and-ack', [page, popup]);
 });

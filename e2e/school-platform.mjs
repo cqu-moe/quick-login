@@ -1,23 +1,28 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Configuration and external mail transport only; production handlers run unchanged.
 export async function schoolPlatform(authRoot, fixtureDirectory) {
+  const { schoolContainerCleanup } = await import(pathToFileURL(join(authRoot, 'e2e/school/containers.mjs')).href);
   const docker = args => execFileSync('docker', args, { cwd: authRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000 }).trim();
   const base = execFileSync(process.execPath, ['--input-type=module', '-e', "import {browserBase} from './e2e/school/image.mjs'; process.stdout.write(browserBase())"], { cwd: authRoot, encoding: 'utf8' }).trim();
   const image = `quicklogin-school-fixture:${randomUUID()}`;
   const interceptor = 'cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8';
+  const containerCleanup = schoolContainerCleanup({ docker, image, interceptor });
   docker(['image', 'inspect', base]); docker(['image', 'inspect', interceptor]);
   const rawSocket = process.env.AUTH_SCHOOL_DOCKER_SOCKET || docker(['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}']);
   docker(['build', '--platform', 'linux/amd64', '--build-context', `school-fixture=${fixtureDirectory}`, '--build-arg', `BASE=${base}`, '--build-arg', `RUN_ID=${randomUUID()}`, '-t', image, '-f', 'e2e/school/Dockerfile', '.']);
   let mf, timer, pumping = false;
   const users = new Map(), errors = [], sensitive = new Set();
-  const outcomes = { fixtureImage: image, deliveries: 0, acceptedDeliveries: 0, containerObjectsRemoved: false, imageRemoved: false };
+  const outcomes = { fixtureImage: image, deliveries: 0, acceptedDeliveries: 0, containerObjectsRemoved: false, proxyObjectsRemoved: false, imageRemoved: false };
   async function control(userId, path, body) {
     if (!users.has(userId)) users.set(userId, userId.startsWith("quicklogin:") ? userId.split(":")[1] : userId);
     const ns = await mf.getDurableObjectNamespace('CQU_LOGIN', 'quicklogin-consumer-auth');
-    const response = await ns.get(ns.idFromName(userId)).fetch(`http://fixture/__fixture/${path}`, body === undefined ? {} : {
+    const instanceId = ns.idFromName(userId);
+    containerCleanup.track('quicklogin-consumer-auth', instanceId);
+    const response = await ns.get(instanceId).fetch(`http://fixture/__fixture/${path}`, body === undefined ? {} : {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error(`School fixture transport failed (${response.status})`);
@@ -87,11 +92,7 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
       }
     },
     async close() {
-      const ids = docker(['ps', '-aq', '--filter', `ancestor=${image}`]);
-      outcomes.removedContainerIds = ids ? ids.split('\n') : [];
-      if (ids) docker(['rm', '-f', ...outcomes.removedContainerIds]);
-      if (docker(['ps', '-aq', '--filter', `ancestor=${image}`])) throw new Error('Owned school containers remain');
-      outcomes.containerObjectsRemoved = true;
+      Object.assign(outcomes, containerCleanup.close());
       docker(['image', 'rm', image]); outcomes.imageRemoved = true;
       if (errors.length) throw new Error(`School transport errors (${[...new Set(errors)].join('; ')})`);
     },

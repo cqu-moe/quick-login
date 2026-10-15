@@ -5,7 +5,7 @@
 ## 固定环境与入口
 
 - Node.js `22.22.3`；`e2e@0.21.0`、`@e2e-dev/web@0.15.0`、`playwright-core@1.64.0` 已锁定。
-- Auth 固定为 `db65d78c445985132e7784e4102e342df41994fe`，且不得有 tracked 修改。默认只读使用相邻 `QUICKLOGIN-02-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
+- Auth 固定为 `134f447284a676cacceb7dd0758be0290c3ca42c`，且不得有 tracked 修改。默认只读使用相邻 `QUICKLOGIN-02-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
 - Chromium 通过 `npx --no-install e2e-web install chromium --with-deps` 预装；安装浏览器本身不会启动浏览器。
 - 学校旅程要求可用 Docker。先在固定 Auth checkout 运行 `node e2e/school/build.mjs` 构建生产浏览器基础镜像，再拉取 `cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8`。每个学校旅程基于该镜像构建独占 fixture 镜像，结束后删除自己的容器和镜像；缺少 Docker/镜像直接失败。
 - `openssl` 用于生成每轮独立的短期 TLS 证书。浏览器中的 `https://auth.cqu.moe` 保持原 origin，由本地代理送往本轮真实 Auth；`sso.cqu.edu.cn` 送到同一真实设备容器中的合成学校，不访问生产。SPKI 只放行本轮证书，不关闭全局 TLS 校验。
@@ -79,6 +79,6 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 延迟门只持有真实 upstream 响应字节，不修改内容。CDP 断点仅定位实际构建的时间/崩溃边界，不作为通过判据；若无法定位，运行失败。实际 Cookie、journal、原生 worker 停止/重启、页面导航及服务端读回才是断言。框架能力缺口与 QUICKLOGIN-01 一致，继续使用同一受管 headless 浏览器的 CDP；没有另开浏览器或放宽 profile/keychain 限制。
 
-每组清理停止邮件 pump、workerd/容器、服务和 profile，移除独占 SQLite/bundle/TLS/image。`runtime.json` 的 groups 保存逐组源提交、学校浏览器结果及清理证据；collector 要求各组都是同一固定干净源码/构建。完整后台 alarm、撤销/兄弟设备生命周期由 QUICKLOGIN-03 负责；真实大学账号、真实学校、原生权限界面和用户日常安装由独立验收负责。合成学校业务通过不等于真实学校通过。
+每组清理停止邮件 pump、workerd/容器、服务和 profile，移除独占 SQLite/bundle/TLS/image。原生 egress proxy 必须通过固定 Auth 的 schoolContainerCleanup 合同回收：在每次私有 fixture DO fetch 前登记实际 worker/DO ID，关闭时只收集本轮唯一镜像的业务容器及其精确名称对应的 proxy，校验固定 interceptor 镜像且无挂载后停止/删除，并分别独立查询业务及 proxy 的 absence。runtime 记录 removedContainerIds、removedProxyIds 和 proxyObjectsRemoved；仅业务镜像删除不算完整清理。旧环境 orphan 的“停止保留”不等于删除，不能纳入本轮回收成功计数。`runtime.json` 的 groups 保存逐组源提交、学校浏览器结果及清理证据；collector 要求各组都是同一固定干净源码/构建。完整后台 alarm、撤销/兄弟设备生命周期由 QUICKLOGIN-03 负责；真实大学账号、真实学校、原生权限界面和用户日常安装由独立验收负责。合成学校业务通过不等于真实学校通过。
 
 原生停止入口为 Chromium [ServiceWorker.stopWorker](https://chromedevtools.github.io/devtools-protocol/tot/ServiceWorker/#method-stopWorker)，以实际 workerVersionUpdated 的 versionId 调用并观察 stopped，再由真实 popup 消息唤醒。曾实际探测 chrome.runtime.reload：命令行加载的未上架扩展在当前 Chromium 中会被停用，故不把该失败探针当作可用的 worker 恢复入口。

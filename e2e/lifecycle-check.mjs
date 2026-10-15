@@ -20,7 +20,7 @@ async function probe(name, { missingAuth = false, assertionFailure = false, prov
       QUICKLOGIN_E2E_BROWSERS_PATH: process.env.QUICKLOGIN_E2E_BROWSERS_PATH || "",
       QUICKLOGIN_E2E_AUTH_PATH: missingAuth ? join(output, "missing-auth-source") :
         process.env.QUICKLOGIN_E2E_AUTH_PATH || resolve("..", "QUICKLOGIN-02-deps", "auth"),
-      QUICKLOGIN_E2E_AUTH_COMMIT: process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "db65d78c445985132e7784e4102e342df41994fe",
+      QUICKLOGIN_E2E_AUTH_COMMIT: process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "134f447284a676cacceb7dd0758be0290c3ca42c",
       QUICKLOGIN_E2E_OUTPUT: run,
       QUICKLOGIN_E2E_BREAK_ASSERTION: assertionFailure ? "1" : "",
       QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP: providerFailure ? "1" : "",
