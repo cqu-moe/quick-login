@@ -1,0 +1,10 @@
+
+> cqu-quicklogin@0.4.8 check:package
+> npm run check:contract && node scripts/check-package.mjs
+
+
+> cqu-quicklogin@0.4.8 check:contract
+> node scripts/check-contract.mjs
+
+contract ok: d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1
+package ok: 14 files, 3 manifest references

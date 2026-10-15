@@ -1,0 +1,312 @@
+{
+  "pairs": [
+    {
+      "id": "f9665fe68c7a8dbc344999942c524bcda8f3f0887d016cd050026c9a4e1ee134",
+      "file": "e2e/capability.e2e.ts",
+      "title": "tester-army rides a persistent Chromium context and loads the real MV3 extension",
+      "titlePath": [
+        "tester-army rides a persistent Chromium context and loads the real MV3 extension"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/capability.e2e.ts",
+        "line": 5,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "e941f03a9e762dab2752b73586c8941f7e2b242e13c1b59a889dade9a70d8116",
+      "file": "e2e/journey.e2e.ts",
+      "title": "the real popup completes Auth PKCE login and device registration",
+      "titlePath": [
+        "the real popup completes Auth PKCE login and device registration"
+      ],
+      "kind": "test",
+      "tags": [
+        "auth-device-registration"
+      ],
+      "source": {
+        "file": "e2e/journey.e2e.ts",
+        "line": 11,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "95efae2f21cde28682688215ed9efea183fecb615c6a0b4a485c4c776784fa86",
+      "file": "e2e/journey.e2e.ts",
+      "title": "canceling the real Auth login does not connect the device",
+      "titlePath": [
+        "canceling the real Auth login does not connect the device"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/journey.e2e.ts",
+        "line": 86,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "78a0a70a9e89a7663e2bec0ae42cd68e2ef8735a1ced51ea5c08641f370f3d7f",
+      "file": "e2e/journey.e2e.ts",
+      "title": "a real callback with the wrong pending state is rejected",
+      "titlePath": [
+        "a real callback with the wrong pending state is rejected"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/journey.e2e.ts",
+        "line": 111,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "7ab2e9d4fb74c6977468a9523b08c263437035ce05d0637d950afacf081fd97e",
+      "file": "e2e/journey.e2e.ts",
+      "title": "a callback outside the registered extension redirect is rejected",
+      "titlePath": [
+        "a callback outside the registered extension redirect is rejected"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/journey.e2e.ts",
+        "line": 142,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "8cc3e04646fd17e2b1bd03b067132df66b240dc43fa69d047ec43f54a38bb26f",
+      "file": "e2e/journey.e2e.ts",
+      "title": "real device registration rejection does not display a connected device",
+      "titlePath": [
+        "real device registration rejection does not display a connected device"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/journey.e2e.ts",
+        "line": 174,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "da65f4fccb8e4616b5c3f46f7730ebdc608a3e3a958c0d73492c079e5b219c90",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 foreign cookies and ambiguous domain/path ownership survive sync and disable",
+      "titlePath": [
+        "QUICKLOGIN-02 foreign cookies and ambiguous domain/path ownership survive sync and disable"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 7,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "4fb2dd0b094274da56811226f9446f74f4b0d8fc42d882b7122231d129aea8c4",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 actual manual typing fences a late real school login and exposes recovery actions",
+      "titlePath": [
+        "QUICKLOGIN-02 actual manual typing fences a late real school login and exposes recovery actions"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 26,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "d5e99da038cad438720e0830a33b089eff22e8b9e0d79dc6f3a797b3e1307c89",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 disabling sync while a real export response is delayed cancels its cookie write and receipt",
+      "titlePath": [
+        "QUICKLOGIN-02 disabling sync while a real export response is delayed cancels its cookie write and receipt"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 44,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "f9776fab1d8e697d291c36127572da8c4dbc947d2ef6179bbd1e5418901ae2b7",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 two waiting school documents each navigate once after a new acknowledged write",
+      "titlePath": [
+        "QUICKLOGIN-02 two waiting school documents each navigate once after a new acknowledged write"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 63,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "8c1022ae52b3916b97d521b5339dce1d1c4e3a615e6b4574cee5d2cb0ec896da",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 replacing a waiting school document prevents its late navigation",
+      "titlePath": [
+        "QUICKLOGIN-02 replacing a waiting school document prevents its late navigation"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 81,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "3c49d8f43660bda9b7aea8b9cc82895b9771f2357a9d329a92bc8e9b3d0759c8",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 an expired genuine export cannot write cookies or send a success receipt",
+      "titlePath": [
+        "QUICKLOGIN-02 an expired genuine export cannot write cookies or send a success receipt"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 98,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "3e61c15985071d040ce7bc74215a48ebe2a176565a7a59df8b1649b5329febca",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 a school that still rejects the fresh write stops after one navigation with manual and retry actions",
+      "titlePath": [
+        "QUICKLOGIN-02 a school that still rejects the fresh write stops after one navigation with manual and retry actions"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 116,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "7ab53d631bee5bf727ed3407f4fb0d5bdcf87e6a7e40533e7dbdb15900e42880",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 an actually issued receipt from an older device generation is rejected without replacing current authority",
+      "titlePath": [
+        "QUICKLOGIN-02 an actually issued receipt from an older device generation is rejected without replacing current authority"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 132,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "56eb99564dc536b19ddcdc98eaed899f3ac4c080ce705c0cc69b564ce4e7f648",
+      "file": "e2e/school-guards.e2e.ts",
+      "title": "QUICKLOGIN-02 worker termination after the real Cookie API writes but before journal completion rolls back and recovers",
+      "titlePath": [
+        "QUICKLOGIN-02 worker termination after the real Cookie API writes but before journal completion rolls back and recovers"
+      ],
+      "kind": "test",
+      "tags": [],
+      "source": {
+        "file": "e2e/school-guards.e2e.ts",
+        "line": 154,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    },
+    {
+      "id": "7451b5fd02e8789d91a594ce5b1353bfc2b69d41f450de60d9d59a648e064c70",
+      "file": "e2e/school.e2e.ts",
+      "title": "QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt",
+      "titlePath": [
+        "QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt"
+      ],
+      "kind": "test",
+      "tags": [
+        "school-cookie-ack"
+      ],
+      "source": {
+        "file": "e2e/school.e2e.ts",
+        "line": 6,
+        "column": 1
+      },
+      "sessions": [],
+      "target": "desktop",
+      "agent": "default",
+      "disposition": "run"
+    }
+  ]
+}

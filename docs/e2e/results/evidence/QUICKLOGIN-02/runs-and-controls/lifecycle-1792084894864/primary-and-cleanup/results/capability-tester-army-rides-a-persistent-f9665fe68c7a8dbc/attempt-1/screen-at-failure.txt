@@ -1,0 +1,7 @@
+#root document "CQU 快捷登录"
+ #n3003 main
+  #n3004 text="QuickLogin"
+  #n3005 status "当前状态 未连接 Auth"
+   #n3006 text="当前状态"
+   #n3007 heading "未连接 Auth"
+  #n3008 button "连接 Auth"

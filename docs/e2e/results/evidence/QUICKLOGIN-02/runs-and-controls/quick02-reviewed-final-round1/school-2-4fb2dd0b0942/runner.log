@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a14096-5330-7339-b950-11d01a9210a4 · targets: desktop
+
+ ✓ target "desktop" command ready 89ms
+ ✓ |desktop| e2e/school-guards.e2e.ts (1 test) 55.53s
+   ✓ QUICKLOGIN-02 actual manual typing fences a late real school login and exposes recovery actions 55.53s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:22:36
+   Duration  55.98s (startup 89ms)

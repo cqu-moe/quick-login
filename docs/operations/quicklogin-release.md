@@ -1,3 +1,12 @@
+# 2026-10-16 QUICKLOGIN-02 / 0.4.8 本地验证完成，未发布
+
+- 可执行源码 `e1fde7ddf48c48fb3bc06250aadd568be46e1c93`；实际固定 Auth `870933794326b9d280dcf07f392c80c127fd7233`。两轮全新真实扩展/内部 Auth/原生容器/学校替身业务各16/16；40业务容器、40proxy、20镜像已独立确认消失。合成学校通过不代表真实大学登录通过。
+- 本地候选 `.e2e/local-candidates/QUICKLOGIN-02-e1fde7d/cqu-quicklogin-0.4.8-canary.zip`：142522字节，14文件/CRC/manifest与源码/逐文件字节核对通过，SHA256 `62602b9765a78fe5dbf55a392bad1111b0a5186b4dbeb7d8c5956b3f336a6194`。旧候选未覆盖。
+- 171项单测、10项发布测试、类型与构建/包检查及失败控制通过；既往transport500首败与尚未确定的原因如实保留。详见 [QUICKLOGIN-02报告](../e2e/results/QUICKLOGIN-02.md)。
+- 本票未合入integration/main、未push、未创建标签、未部署Worker/官网、未上传或晋级canary、未操作商店。Auth仅作本地固定依赖，生产Worker版本不适用。父任务负责独立审查与integration推送。
+
+---
+
 # QuickLogin 发布操作与历史记录
 
 发布规则见 [发布约定](../agents/release.md)。以下按历次工作追加，顶部不是最新状态；按版本标题查找证据，历史“待部署”等措辞只适用于对应记录。当前源码版本查 package.json，线上版本需实际读回。

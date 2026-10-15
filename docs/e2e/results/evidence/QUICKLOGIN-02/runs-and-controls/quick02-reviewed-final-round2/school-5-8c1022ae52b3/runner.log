@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a140a2-0102-7f87-be17-74bb74dad275 · targets: desktop
+
+ ✓ target "desktop" command ready 89ms
+ ✓ |desktop| e2e/school-guards.e2e.ts (1 test) 58.79s
+   ✓ QUICKLOGIN-02 replacing a waiting school document prevents its late navigation 58.79s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:35:21
+   Duration  59.24s (startup 89ms)

@@ -1,0 +1,108 @@
+{
+  "status": "passed",
+  "copiedFiles": 25,
+  "files": [
+    {
+      "path": "owner-regression/report.json",
+      "sha256": "629dbd61c9abafc2d0ce7ef1cdd7519152b2b6914720b353ca4a7bb36d9b414c"
+    },
+    {
+      "path": "owner-regression/runtime.json",
+      "sha256": "b288e92bf4b70f85197f886af90d49c5332cac52276af4af295f63d7892dd3d4"
+    },
+    {
+      "path": "owner-regression/runner.log",
+      "sha256": "61b3414d5b7dfd11cacf6e89b2beec061453fe9b70a1d9d31a4b99fb81a1c1bb"
+    },
+    {
+      "path": "owner-regression/control.json",
+      "sha256": "9aa0946e5763b1c1f884cd086d17ff4f901de474c31311fbafc05b0bccc829b2"
+    },
+    {
+      "path": "aggregate-failure/report.json",
+      "sha256": "6b445fb387663fcd91c08307f5e4801f18ff7fdfea7a454526a1ce020cfb2878"
+    },
+    {
+      "path": "aggregate-failure/runtime.json",
+      "sha256": "fbb9debd3e3c99acb1c0e4b9b2c4970ea8886e5e84da98b5ab5ae4e4db400039"
+    },
+    {
+      "path": "aggregate-failure/command.log",
+      "sha256": "4b894defe1938fa844fc49151ff6f9c20fd4406731c2f537e0577504d3f54876"
+    },
+    {
+      "path": "aggregate-failure/control.json",
+      "sha256": "2bea2627454990dd2dbebba4d96cb48fec7632a446470d65ad5863b23a369163"
+    },
+    {
+      "path": "retained-transport-500/report.json",
+      "sha256": "bc8ab0eff864938ec73afb6b7c43775708f6f155c7c0871f69d308b6ad9cfaa0"
+    },
+    {
+      "path": "retained-transport-500/runtime.json",
+      "sha256": "832e62627e10028667d7359310ad4b3dffb2ce75b23845a3ea0aca1d3c710b44"
+    },
+    {
+      "path": "retained-transport-500/runner.log",
+      "sha256": "89e0933c7a29c350b70b462f050900837ef376d883439c5a2d5c45ee689e9301"
+    },
+    {
+      "path": "retained-pre-dispose-guard-failure/report.json",
+      "sha256": "c7853087629ef0763d67c90642d9c89b50e4f85d17f3c441ebd3769d32c94294"
+    },
+    {
+      "path": "retained-pre-dispose-guard-failure/runtime.json",
+      "sha256": "08f0525b21bad6956e466a2865fcda888e5e3069965bb046add63d8920363115"
+    },
+    {
+      "path": "retained-pre-dispose-guard-failure/runner.log",
+      "sha256": "8dd4ca38cf65898a61910b9440031597ab4b49b225a286ea016bedce488b82fc"
+    },
+    {
+      "path": "focused-transport-diagnostic/report.json",
+      "sha256": "61259162d751922e4c80631713a4d588a14d30f13c9cee5225fcfc76fc93cb41"
+    },
+    {
+      "path": "focused-transport-diagnostic/runtime.json",
+      "sha256": "a5623d36fa53d8fbaf16233d341813a3882d20796e3aa8aaf9bc8249d89427f3"
+    },
+    {
+      "path": "focused-transport-diagnostic/runner.log",
+      "sha256": "8c78b747b8db95490e17b1f0a847b92e254e9719f946e6b31254a56d6cf607d0"
+    },
+    {
+      "path": "local-package/verification.json",
+      "sha256": "1b9ae124fa9a6dc1f7d35fb1eaef800920cc586d7c382383c189c097da3ae3ba"
+    },
+    {
+      "path": "local-package/0.4.8.json",
+      "sha256": "8f3955b7b32f8c325a2528e1bd1f4dab24772ddc0e189392a34184a7c8705210"
+    },
+    {
+      "path": "checks/typecheck.log",
+      "sha256": "5f27abd3d41d5a592fca4dbfcd802b5b78abc30bb444909e08994764fe728709"
+    },
+    {
+      "path": "checks/unit.log",
+      "sha256": "7252960973c1b9ccc32aee860a773a5e7b2ed0a8f377f366f9eb296c52c55e43"
+    },
+    {
+      "path": "checks/release-tests.log",
+      "sha256": "680a487c2341ef390c45af56902260d55e03f535a4ca1f64c73632cadec0b0e6"
+    },
+    {
+      "path": "checks/e2e-types.log",
+      "sha256": "425283a247d92e74e0d6974e9024bd26a0b8222b0f24e3804a2c512f32015aaf"
+    },
+    {
+      "path": "checks/build.log",
+      "sha256": "e0ea360a1925bbf8dd288aa4c8103cf1d257ee84ca02c9bd825a7cac950e9f70"
+    },
+    {
+      "path": "checks/package.log",
+      "sha256": "c0f24610d178eb6b7a953e73520d3591f5f30f8f0d63bb531220f13a47d4ab26"
+    }
+  ],
+  "boundary": "Explicit text/JSON whitelist only; no profiles, DB, TLS, raw network bodies, or diagnostic screenshots copied. Retained failures are not successful final runs.",
+  "publicationWhitespaceNormalization": "See ../whitespace-normalization.json; content unchanged except line-ending/EOF whitespace."
+}

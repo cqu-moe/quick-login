@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a140a0-624c-7d8f-b7d9-e53c434899e4 · targets: desktop
+
+ ✓ target "desktop" command ready 90ms
+ ✓ |desktop| e2e/school-guards.e2e.ts (1 test) 38.00s
+   ✓ QUICKLOGIN-02 disabling sync while a real export response is delayed cancels its cookie write and receipt 38.00s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:33:35
+   Duration  38.47s (startup 90ms)

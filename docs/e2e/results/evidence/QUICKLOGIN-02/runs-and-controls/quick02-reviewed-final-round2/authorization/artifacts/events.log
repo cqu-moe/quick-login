@@ -1,0 +1,10 @@
+{"event":"tester-army-capability","persistentContext":true,"extensionNavigation":"POLICY_DENIED: chrome-extension:"}
+{"event":"oauth-window","distinctFromPopup":true}
+{"event":"tester-army-oauth-window","followsNativeWindow":false,"activePageRemainsPopup":true}
+2026-10-15T17:31:28.972Z success-popup
+page 1: null/popup.html
+{"event":"oauth-window","distinctFromPopup":true}
+{"event":"oauth-window","distinctFromPopup":true}
+{"event":"oauth-window","distinctFromPopup":true}
+{"event":"wrong-callback","authError":"invalid_redirect","rejectedBeforeWindowClosed":true}
+{"event":"oauth-window","distinctFromPopup":true}
