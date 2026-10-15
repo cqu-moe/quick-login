@@ -1,0 +1,86 @@
+name: Extension E2E
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quicklogin:
+    name: Real MV3 Auth PKCE device journey
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      E2E_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      WRANGLER_SEND_METRICS: "false"
+      PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+      QUICKLOGIN_E2E_AUTH_PATH: ${{ github.workspace }}/.e2e-auth
+      QUICKLOGIN_E2E_AUTH_COMMIT: d9bf0c5e6d5cc459029da6a345991b8d0f13f514
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Checkout pinned Auth dependency
+        run: |
+          git init .e2e-auth
+          git -C .e2e-auth remote add origin https://github.com/cqu-moe/auth.git
+          git -C .e2e-auth fetch --depth 1 origin "$QUICKLOGIN_E2E_AUTH_COMMIT"
+          git -C .e2e-auth checkout --detach FETCH_HEAD
+          test "$(git -C .e2e-auth rev-parse HEAD)" = "$QUICKLOGIN_E2E_AUTH_COMMIT"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          package_json_file: .e2e-auth/frontend/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22.22.3"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:e2e
+      - run: npx --no-install e2e-web install chromium --with-deps
+      - run: npm run build
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ""
+          VITE_POSTHOG_HOST: ""
+      - run: npm ci
+        working-directory: .e2e-auth
+      - run: pnpm install --frozen-lockfile
+        working-directory: .e2e-auth/frontend
+      - run: pnpm run build
+        working-directory: .e2e-auth/frontend
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ""
+          VITE_POSTHOG_HOST: ""
+      - name: Run first independent E2E journey
+        run: node e2e/run.mjs
+        env:
+          QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-1
+      - name: Run second independent E2E journey
+        run: node e2e/run.mjs
+        env:
+          QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-2
+      - name: Require expected assertion failure
+        run: node e2e/self-check.mjs
+      - name: Require zero-selection failure
+        run: node e2e/zero-check.mjs
+      - name: Require startup, cleanup and combined failures
+        run: node e2e/lifecycle-check.mjs
+      - name: Prepare sanitized evidence even after a failure
+        if: always()
+        run: node e2e/prepare-ci-artifacts.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: quicklogin-e2e-${{ github.sha }}
+          path: ci-e2e-artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14

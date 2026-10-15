@@ -2,6 +2,8 @@ node_modules/
 /node_modules
 .worktrees/
 dist/
+.e2e/
+.e2e-auth/
 coverage/
 releases/*.zip
 .env
@@ -22,3 +24,4 @@ scripts/__pycache__/
 releases/*.json
 /releases/webstore/
 /ci-artifacts/
+/ci-e2e-artifacts/
