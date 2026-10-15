@@ -91,7 +91,7 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
         outcomes.school = [];
         for (const userId of users.keys()) {
           const value = await control(userId, 'control', { hold: false, holdLogin: false, holdMail: false });
-          outcomes.school.push({ profiles: value.profiles, chromeProcesses: value.chromeProcesses, browserLaunches: value.browserLaunches });
+          outcomes.school.push({ preDisposeProfiles: value.profiles, preDisposeChromeProcesses: value.chromeProcesses, browserLaunches: value.browserLaunches });
         }
       } finally {
         containerCleanup.capture();
