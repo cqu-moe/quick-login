@@ -350,3 +350,14 @@ Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终�
 - 待发布：提交/PR/CI、合并触发官网 canary 后记录实际提交及包 SHA，再独立验证安装扩展和 `my.cqu.edu.cn`。当前用户安装仍按诊断时 0.4.6 记录，本地通过不等于已升级。
 - Auth 源码和 Worker 未改动；未执行商店上传、送审或发布。
 - 诊断和回归入口：`docs/research/2026-10-15-ready-status/README.md`。
+
+## 2026-10-15 0.4.7 官网 canary 正式发布
+
+- 修复 [PR #21](https://github.com/cqu-moe/quick-login/pull/21) 在 CI 与官网预览全绿后 squash 合并；源码 / 标签 `v0.4.7`：`1579ec9a6c93c82c82c10b60e3ae850e9f608d26`。
+- [PR CI 38670075452](https://github.com/cqu-moe/quick-login/actions/runs/38670075452)、[主分支 CI 38670205068](https://github.com/cqu-moe/quick-login/actions/runs/38670205068)、[Publish canary 38670205046](https://github.com/cqu-moe/quick-login/actions/runs/38670205046) 均成功；R2 包与通道读回确认从 0.4.6 晋级 0.4.7。
+- 正式包：`cqu-quicklogin-0.4.7-canary.zip`，143272 bytes；SHA-256：`f4cc5e9471543d69f0489cbe424779d32a3cca9edf920d79b5cd6023d6f2b4ec`。
+- 使用现有浏览器登录会话从 Auth 同源下载接口实际取得 HTTP 200 ZIP，字节数/SHA 与发布日志和公开元数据一致；CRC、14 个运行文件、根目录路径、manifest 0.4.7、build-info 来源提交/协议版本/契约指纹全部核对。仓库 `verify_package` 对该实际下载通过。未覆盖旧版本包。
+- CI runner 的公开请求被 Cloudflare challenge 拦截，已补浏览器验收：公开元数据为 0.4.7，匿名下载（credentials omit）返回 401，认证下载返回 200。
+- 官网生产 [构建 724b083c-d3ef-4d2e-a3d7-34f3badb2b48](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/724b083c-d3ef-4d2e-a3d7-34f3badb2b48) 成功；真实浏览器读回 [下载页](https://quicklogin.cqu.moe/download/) 的 0.4.7、正式包名及 SHA，更新记录显示本次修复。
+- 本地验证：23 个文件 / 171 项测试、10 项发布脚本测试，扩展与官网 typecheck、build、包/页面检查通过。规范与需求审查中的页面生命周期问题已修复。
+- 安装扩展升级与 `my.cqu.edu.cn` 真实学校登录验收仍待单独执行；本次发布不会自动更新用户当前安装。Auth 源码和 Worker 未变更，Chrome Web Store 未上传、送审或发布。
