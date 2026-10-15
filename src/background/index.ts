@@ -1,4 +1,6 @@
-import { configureTrustedStorage, readLocalState } from "./storage";
+import { configureTrustedStorage, LOCAL_STATE_KEY, readLocalState } from "./storage";
+import { forgetSchoolPage, notifySchoolPages, onSchoolTabUpdated } from "./school-recovery";
+import type { LocalState } from "../shared/contracts";
 import { SYNC_ALARM, SYNC_PERIOD_MINUTES } from "../shared/config";
 import { handleContentMessage, handleMessage, type BackgroundMessage } from "./messages";
 import type { ContentMessage } from "../shared/messages";
@@ -33,6 +35,14 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     void sync("alarm");
   }
 });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes[LOCAL_STATE_KEY]) {
+    const change = changes[LOCAL_STATE_KEY] as {oldValue?:LocalState;newValue?:LocalState};
+    notifySchoolPages(change.oldValue, change.newValue);
+  }
+});
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => { void onSchoolTabUpdated(tabId,change,tab); });
+chrome.tabs.onRemoved.addListener(tabId => { void forgetSchoolPage(tabId); });
 chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessage, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
   const senderUrl = sender.url ? new URL(sender.url) : null;

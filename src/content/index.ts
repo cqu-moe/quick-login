@@ -4,14 +4,19 @@ import { sendUiMessage } from "../shared/ui-message";
 import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
 
 const CHECK_INTERVAL = 5_000;
+const STATE_REFRESH_DEBOUNCE_MS = 150;
+const STATE_REFRESH_MIN_INTERVAL_MS = 1_000;
 let pending = false;
 let userEditing = false;
 let navigating = false;
+let recovering = false;
 let stopped = false;
 let active = false;
 let generation = 0;
 let lastCheck = -Infinity;
 let debounce = 0;
+let stateDebounce = 0;
+let lastStateRefresh = -Infinity;
 let waitingCheck = 0;
 let lifetime = new AbortController();
 let request: AbortController | undefined;
@@ -23,8 +28,10 @@ function setPending(value: boolean): void {
   banner?.querySelectorAll("button").forEach(button => button.setAttribute("aria-disabled", String(value)));
 }
 function present(result: LoginRecoveryResult): void {
+  recovering = result.kind === "recovering";
   navigating = result.kind === "navigating";
   stopped = result.kind === "manual_required";
+  if (navigating || result.kind === "idle" || userEditing) clearStateRefresh();
   renderStatusBanner(document, result, act);
 }
 async function send(message: ContentMessage): Promise<void> {
@@ -56,11 +63,44 @@ function act(type: "ENTER_MANUAL" | "RETRY_AUTOMATIC"): void {
   userEditing = type === "ENTER_MANUAL";
   stopped = userEditing;
   navigating = false;
+  recovering = false;
+  clearStateRefresh();
   void send({ type });
+}
+function clearStateRefresh(): void {
+  window.clearTimeout(stateDebounce);
+  stateDebounce = 0;
+}
+function scheduleStateRefresh(): void {
+  if (!active || userEditing || navigating || document.hidden) return;
+  // A stopped automatic recovery can observe a successful popup retry; direct editing cannot.
+  if (!recovering && !(stopped && !userEditing)) return;
+  if (stateDebounce) return;
+  const wait = Math.max(
+    STATE_REFRESH_DEBOUNCE_MS,
+    lastStateRefresh + STATE_REFRESH_MIN_INTERVAL_MS - Date.now()
+  );
+  stateDebounce = window.setTimeout(() => {
+    stateDebounce = 0;
+    if (!active || userEditing || navigating || document.hidden ||
+        (!recovering && !(stopped && !userEditing))) return;
+    if (pending) {
+      scheduleStateRefresh();
+      return;
+    }
+    lastStateRefresh = Date.now();
+    void send({ type: "GET_UI_STATE" });
+  }, wait);
 }
 function check(): void {
   if (!active || pending || userEditing || navigating || stopped || document.hidden ||
-      Date.now() - lastCheck < CHECK_INTERVAL || !detectLoginForm(document, new URL(location.href))) return;
+      Date.now() - lastCheck < CHECK_INTERVAL) return;
+  if (recovering) {
+    lastCheck = Date.now();
+    void send({ type: "CHECK_STATE" });
+    return;
+  }
+  if (!detectLoginForm(document, new URL(location.href))) return;
   lastCheck = Date.now();
   void send({ type: "LOGIN_FORM_VISIBLE" });
 }
@@ -70,6 +110,8 @@ function noticeManualEdit(event: Event): void {
   userEditing = true;
   stopped = true;
   navigating = false;
+  recovering = false;
+  clearStateRefresh();
   // Explicit typing supersedes an automatic check, including any late response.
   void send({ type: "ENTER_MANUAL" });
 }
@@ -80,16 +122,30 @@ const observer = new MutationObserver(records => {
   // A fixed trailing timer cannot be starved by a continuously changing host page.
   if (!debounce) debounce = window.setTimeout(() => { debounce = 0; check(); }, 150);
 });
-function onVisibility(): void { if (!document.hidden) check(); }
+function onVisibility(): void {
+  if (document.hidden) return;
+  scheduleStateRefresh();
+  check();
+}
+function onRuntimeMessage(message: unknown, sender: chrome.runtime.MessageSender): void {
+  if (typeof message === "object" && message !== null &&
+      (message as { type?: unknown }).type === "QUICKLOGIN_STATE_CHANGED" &&
+      sender.id === chrome.runtime.id) {
+    scheduleStateRefresh();
+  }
+}
 function start(): void {
   if (active) return;
   active = true;
   lifetime = new AbortController();
   lastCheck = -Infinity;
   navigating = false;
+  recovering = false;
+  clearStateRefresh();
   observer.observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener("input", noticeManualEdit);
   document.addEventListener("visibilitychange", onVisibility);
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
   waitingCheck = window.setInterval(check, CHECK_INTERVAL);
   check();
 }
@@ -100,10 +156,12 @@ function stop(event: PageTransitionEvent): void {
   setPending(false);
   window.clearInterval(waitingCheck);
   window.clearTimeout(debounce);
+  clearStateRefresh();
   debounce = 0;
   observer.disconnect();
   document.removeEventListener("input", noticeManualEdit);
   document.removeEventListener("visibilitychange", onVisibility);
+  chrome.runtime.onMessage.removeListener(onRuntimeMessage);
   if (!event.persisted) {
     window.removeEventListener("pagehide", stop);
     window.removeEventListener("pageshow", onPageShow);

@@ -297,5 +297,6 @@ export async function clearDeviceAuthorization(): Promise<void> {
     reportEpoch: crypto.randomUUID(),
     enabledIntent: false,
     recovery: null,
+    loginRecovery: null,
   }));
 }

@@ -340,3 +340,13 @@ Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终�
 ## 2026-10-13 0.4.5 动效与响应候选
 
 独立工作区基线 `767146b`，修改未提交，不能用该基线代表修改后的发布 commit。插件和官网响应修复、动效优化及回归已准备，验收范围见 `docs/acceptance/2026-10-13-motion-responsiveness.md`。本地构建目录为 `dist/`、`website/dist/`；正式包 `cqu-quicklogin-0.4.5-canary.zip` 尚未生成，SHA-256 待发布后记录。推送、CI、canary 发布、官网部署、安装扩展重载及真实学校 SSO 均未验收；无 Auth 或 Chrome Web Store 变更。
+
+## 2026-10-15 0.4.7 学校登录恢复候选
+
+- 工作区：`codex/quicklogin-login-recovery-state`，基线 `c410e127f908a11e25608a8c7e5f81d9d00fd8c9`。本次修改尚未提交；此基线不代表修复后的发布提交。
+- 学校登录表单即时撤销 ready/usable，后台安全通知与前台 5 秒检查更新进度。本轮新会话写入、读回及 ACK 后才刷新等待文档；再次出现表单停止自动刷新。离开 SSO 或关闭标签页清理该页面轮次，不据此宣称业务登录成功。
+- 验证：23 个测试文件、171 项测试通过；typecheck、build、check:package、契约指纹及三处版本一致检查通过。官网 typecheck/build/check 通过；10 项发布脚本测试通过。新增状态通知不开放可信存储、不新增扩展权限。
+- 本地构建：`dist/`；目标正式包名 `cqu-quicklogin-0.4.7-canary.zip`。未创建发布 ZIP，SHA-256 待正式发布记录；未提交的本地 build-info 中 sourceCommit 仍是基线，不能作为修复产物的发布来源证明。
+- 待发布：提交/PR/CI、合并触发官网 canary 后记录实际提交及包 SHA，再独立验证安装扩展和 `my.cqu.edu.cn`。当前用户安装仍按诊断时 0.4.6 记录，本地通过不等于已升级。
+- Auth 源码和 Worker 未改动；未执行商店上传、送审或发布。
+- 诊断和回归入口：`docs/research/2026-10-15-ready-status/README.md`。

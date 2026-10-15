@@ -1,4 +1,4 @@
-import type { AuthorizationState, DeviceSnapshot, ObservationState, ReasonCode, Receipt } from "./protocol-v3.generated";
+import type { AuthorizationState, DeviceSnapshot, ObservationState, ReasonCode, Receipt, VersionTuple } from "./protocol-v3.generated";
 
 export type ErrorCode =
   | "UNAUTHORIZED" | "FORBIDDEN" | "INVALID_REQUEST"
@@ -91,6 +91,13 @@ export interface LocalState {
   nextAttemptAt: number | null;
   localError: ReasonCode | null;
   schoolAccess: "unverified" | "accepted" | "login_form_seen";
+  loginRecovery?: {
+    id: string;
+    rejectedTuple: VersionTuple | null;
+    appliedExportId: string | null;
+    failed: boolean;
+    pages: Array<{ tabId: number; documentId: string | null; navigated: boolean }>;
+  } | null;
   networkFailures: number;
   pendingCommand: { id: string; enabled: boolean } | null;
   deviceId: string | null;
