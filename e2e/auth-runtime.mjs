@@ -71,7 +71,8 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
 
   const runtimeDir = join(outputDir, "auth-runtime");
   await mkdir(runtimeDir, { recursive: true });
-  let heldPath = null, heldResponses = 0;
+  let heldPath = null, heldResponses = 0, heldLimit = Infinity;
+  let tokenUnavailable = false;
   let releaseGate;
   let gate = Promise.resolve();
   function releaseNetwork() { heldPath = null; releaseGate?.(); }
@@ -95,7 +96,7 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
       if (request.method === "GET" && url.pathname === "/health") {
         response.writeHead(200, { "content-type": "application/json" }).end("{\"ok\":true}");
       } else if (request.method === "POST" && url.pathname === "/identity") {
-        const { key, school: bindSchool = false } = await readJsonBody(request);
+        const { key, school: bindSchool = false, policy = false } = await readJsonBody(request);
         if (typeof key !== "string" || !/^[a-z0-9-]{1,64}$/.test(key)) throw new Error("INVALID_IDENTITY_KEY");
         let identity = identities.get(key);
         if (!identity) {
@@ -115,11 +116,11 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
               controlOrigin,
               db,
             }, { email, password, name: `QuickLogin E2E ${key}` });
+            if (bindSchool || policy) await grantSchoolDevicePolicy(authRoot, { origin: AUTH_ORIGIN, controlOrigin, db }, identity.userId, observedSecrets);
             if (bindSchool) {
               if (!school) throw new Error("School runtime was not configured");
               school.addUser(identity.userId);
               activeSchoolUser = identity.userId;
-              await grantSchoolDevicePolicy(authRoot, { origin: AUTH_ORIGIN, controlOrigin, db }, identity.userId, school.sensitive);
               const { prepareSchoolBinding } = await import(pathToFileURL(join(authRoot, "e2e/school/prepare-binding.mjs")).href);
               await prepareSchoolBinding({ origin: AUTH_ORIGIN, controlOrigin, db, prepare: async () => identity }, { email, password });
             }
@@ -132,8 +133,8 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
       } else if (request.method === "POST" && url.pathname === "/relay") {
         const input = await readJsonBody(request);
         if (input.hold === true) {
-          if (!["exports", "receipts"].includes(input.path)) throw new Error("Invalid transport gate");
-          releaseNetwork(); heldPath = input.path; heldResponses = 0;
+          if (!["exports", "receipts", "reconcile", "token"].includes(input.path)) throw new Error("Invalid transport gate");
+          releaseNetwork(); heldPath = input.path; heldResponses = 0; heldLimit = input.once === true ? 1 : Infinity;
           gate = new Promise(done => { releaseGate = done; });
         } else if (input.hold === false) releaseNetwork();
         response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ heldResponses }));
@@ -144,11 +145,22 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
         const value = await school.control(device ? `quicklogin:${activeSchoolUser}:${device.device_id}` : activeSchoolUser, "control", changes);
         response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(value));
       } else if (request.method === "POST" && url.pathname === "/protect") {
-        if (!school) throw new Error("No school runtime");
         const { values } = await readJsonBody(request);
         if (!Array.isArray(values) || values.some(value => typeof value !== "string" || !value)) throw new Error("Invalid protected values");
-        for (const value of values) school.sensitive.add(value);
+        for (const value of values) observedSecrets.add(value);
         response.writeHead(204).end();
+      } else if (request.method === "POST" && url.pathname === "/token-transport") {
+        const { unavailable } = await readJsonBody(request);
+        if (typeof unavailable !== "boolean") throw new Error("Invalid transport fault");
+        tokenUnavailable = unavailable;
+        response.writeHead(204).end();
+      } else if (request.method === "POST" && url.pathname === "/expire-refresh") {
+        // Negative-only fault: expire genuinely issued grants; never insert tokens.
+        const { userId } = await readJsonBody(request);
+        if (![...identities.values()].some(identity => identity.userId === userId)) throw new Error("Unknown synthetic owner");
+        const result = await db.prepare("UPDATE oauthRefreshToken SET expiresAt=? WHERE userId=?")
+          .bind(new Date(Date.now() - 60_000).toISOString(), userId).run();
+        response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ expired: result.meta.changes }));
       } else if (request.method === "GET" && url.pathname === "/network") {
         response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(readObservations()));
       } else if (request.method === "GET" && url.pathname === "/mail") {
@@ -289,9 +301,10 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
     controlOrigin = `http://127.0.0.1:${await listenLoopback(control)}`;
     return {
       commit,
+      tokenUnavailable: () => tokenUnavailable,
       protect(values) { for (const value of values) if (typeof value === "string" && value) observedSecrets.add(value); },
       schoolEvidence: school?.outcomes,
-      async responseGate(path) { if (heldPath && path.endsWith(`/${heldPath}`)) { heldResponses++; await gate; } },
+      async responseGate(path) { if (heldPath && heldResponses < heldLimit && path.endsWith(`/${heldPath}`)) { heldResponses++; await gate; } },
       async schoolRequest(method, path, headers, body) {
         if (!school || !activeSchoolUser) throw new Error("No school identity for browser transport");
         const device = await db.prepare("SELECT device_id FROM quicklogin_device_projection WHERE user_id=? LIMIT 1").bind(activeSchoolUser).first();

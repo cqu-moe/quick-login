@@ -10,7 +10,7 @@ import { closeServer, listenLoopback } from "./lifecycle.mjs";
 
 const execute = promisify(execFile);
 
-export async function createAuthTls({ outputDir, workerPort, schoolRequest, responseGate, protect }) {
+export async function createAuthTls({ outputDir, workerPort, schoolRequest, responseGate, protect, tokenUnavailable }) {
   const directory = join(outputDir, "tls");
   await mkdir(directory, { recursive: true });
   const key = join(directory, "auth-key.pem");
@@ -46,6 +46,13 @@ export async function createAuthTls({ outputDir, workerPort, schoolRequest, resp
         return;
       }
       const requestUrl = new URL(fromClient.url ?? "/", "https://auth.cqu.moe");
+      if (requestUrl.pathname === "/api/v1/auth/oauth2/token" && tokenUnavailable?.()) {
+        // Actual browser transport fault, before Auth. No internal success envelope.
+        observations.push({ method: fromClient.method, path: requestUrl.pathname, status: 503, transportFault: true, oauthError: null, codeIssued: false });
+        fromClient.resume();
+        toClient.writeHead(503, { "content-type": "text/plain", "retry-after": "1" }).end("Isolated token transport unavailable");
+        return;
+      }
       if (requestUrl.pathname === "/api/v1/auth/oauth2/authorize") {
         authorizationContracts.push({
           clientId: requestUrl.searchParams.get("client_id"),
@@ -64,7 +71,7 @@ export async function createAuthTls({ outputDir, workerPort, schoolRequest, resp
         // Installing an observation data listener must not drain response bytes
         // while a genuine upstream response waits behind the transport gate.
         response.pause();
-        if (["/api/v1/auth/oauth2/authorize", "/api/v1/auth/sign-in/email", "/api/v1/auth/oauth2/consent", "/api/v1/auth/oauth2/token", "/api/v1/cqu/quicklogin/registrations"].includes(requestUrl.pathname) || requestUrl.pathname.endsWith("/receipts")) {
+        if (requestUrl.pathname.startsWith("/api/v1/")) {
           const redirect = response.headers.location ? new URL(response.headers.location, "https://auth.cqu.moe") : null;
           const observation = { method: fromClient.method, path: requestUrl.pathname, status: response.statusCode,
             oauthError: redirect?.searchParams.get("error") ?? null, codeIssued: Boolean(redirect?.searchParams.has("code")) };

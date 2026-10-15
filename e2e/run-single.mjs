@@ -10,7 +10,7 @@ import { failureMessage } from "./lifecycle.mjs";
 const root = process.cwd();
 const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || join(root, `.e2e/run-${Date.now()}`));
 if (!output.startsWith(resolve(root, ".e2e") + "/")) throw new Error("E2E output must be a child of .e2e");
-const authPath = process.env.QUICKLOGIN_E2E_AUTH_PATH || join(root, "..", "QUICKLOGIN-02-deps/auth");
+const authPath = process.env.QUICKLOGIN_E2E_AUTH_PATH || join(root, "..", "QUICKLOGIN-03-deps/auth");
 const expectedCommit = process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "870933794326b9d280dcf07f392c80c127fd7233";
 await mkdir(dirname(output), { recursive: true });
 await mkdir(output, { mode: 0o700 });
@@ -49,7 +49,7 @@ try {
   if (evidence.build.sourceCommit !== evidence.extensionCommit) throw new Error("Extension build does not match HEAD; run npm run build");
   evidence.backgroundSha256 = createHash("sha256").update(await readFile(join(root, "dist/background.js"))).digest("hex");
   runtime = await startPinnedAuth({ authPath, outputDir: output, expectedCommit });
-  tls = await createAuthTls({ outputDir: output, workerPort: runtime.workerPort, schoolRequest: runtime.schoolRequest, responseGate: runtime.responseGate, protect: runtime.protect });
+  tls = await createAuthTls({ outputDir: output, workerPort: runtime.workerPort, schoolRequest: runtime.schoolRequest, responseGate: runtime.responseGate, protect: runtime.protect, tokenUnavailable: runtime.tokenUnavailable });
   runtime.setNetworkReader(tls.readObservations);
   await chmod(tls.certificate, 0o644);
 
@@ -74,6 +74,8 @@ try {
       QUICKLOGIN_E2E_PROXY: `http://127.0.0.1:${egress.port}`,
       QUICKLOGIN_E2E_ARTIFACTS: output,
       QUICKLOGIN_E2E_BREAK_ASSERTION: process.env.QUICKLOGIN_E2E_BREAK_ASSERTION || "",
+      QUICKLOGIN_E2E_BREAK_ALARM: process.env.QUICKLOGIN_E2E_BREAK_ALARM || "",
+      QUICKLOGIN_E2E_BREAK_ACK: process.env.QUICKLOGIN_E2E_BREAK_ACK || "",
       QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP: process.env.QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP || "",
       E2E_TELEMETRY_DISABLED: "1",
       DO_NOT_TRACK: "1",

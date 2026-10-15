@@ -4,7 +4,7 @@ import { extensionOrigin } from './helpers.ts';
 
 // CDP supplies scheduling/crash faults at actual browser execution boundaries.
 // No Chrome API, Auth response, journal or successful state is manufactured.
-export async function pauseWorkerAt(boundary: 'expiry' | 'cookie-written') {
+export async function pauseWorkerAt(boundary: 'expiry' | 'cookie-written', cookieName?: string) {
   const endpoint = (globalThis as typeof globalThis & { __QUICKLOGIN_CDP_ENDPOINT__?: string }).__QUICKLOGIN_CDP_ENDPOINT__;
   if (!endpoint) throw new Error('Missing owned Chromium endpoint');
   const targets = await (await fetch(`${endpoint}/json/list`)).json() as Array<{ type: string; url: string; webSocketDebuggerUrl: string }>;
@@ -35,11 +35,12 @@ export async function pauseWorkerAt(boundary: 'expiry' | 'cookie-written') {
   const source = await readFile(join(process.cwd(), 'dist/background.js'), 'utf8');
   const matches = [...source.matchAll(boundary === 'expiry'
     ? /if\([\w$]+\.applyBefore<=Date\.now\(\)\)throw new [\w$]+\(`STALE_SNAPSHOT`\)/g
-    : /[\w$]+\.completed=!0,await [\w$]+\(/g)];
+    : /([\w$]+)\.completed=!0,await [\w$]+\(/g)];
   if (matches.length !== 1) { socket.close(); throw new Error(`Cannot identify unique real ${boundary} scheduling boundary`); }
   const prefix = source.slice(0, matches[0]!.index);
   const location = { url: `${extensionOrigin}/background.js`, lineNumber: prefix.split('\n').length - 1, columnNumber: prefix.split('\n').at(-1)!.length };
-  const breakpoint = await send('Debugger.setBreakpointByUrl', location);
+  const breakpoint = await send('Debugger.setBreakpointByUrl', { ...location,
+    ...(cookieName && boundary === 'cookie-written' ? { condition: `${matches[0]![1]}.name === ${JSON.stringify(cookieName)}` } : {}) });
   return {
     async wait() {
       const deadline = Date.now() + 120_000;

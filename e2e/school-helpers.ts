@@ -65,7 +65,7 @@ export async function receiptProjection(userId: string) {
   return response.json() as Promise<{ devices: Array<Record<string, any>> }>;
 }
 
-export async function relay(input: { hold?: boolean; path?: 'exports' | 'receipts' } = {}) {
+export async function relay(input: { hold?: boolean; path?: 'exports' | 'receipts' | 'reconcile' | 'token'; once?: boolean } = {}) {
   const response = await fetch(`${requiredControl()}/relay`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
   if (!response.ok) throw new Error('Real-response transport gate failed');
   return response.json() as Promise<{ heldResponses: number }>;

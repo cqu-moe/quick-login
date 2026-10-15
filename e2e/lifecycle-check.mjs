@@ -19,7 +19,7 @@ async function probe(name, { missingAuth = false, assertionFailure = false, prov
       PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || "",
       QUICKLOGIN_E2E_BROWSERS_PATH: process.env.QUICKLOGIN_E2E_BROWSERS_PATH || "",
       QUICKLOGIN_E2E_AUTH_PATH: missingAuth ? join(output, "missing-auth-source") :
-        process.env.QUICKLOGIN_E2E_AUTH_PATH || resolve("..", "QUICKLOGIN-02-deps", "auth"),
+        process.env.QUICKLOGIN_E2E_AUTH_PATH || resolve("..", "QUICKLOGIN-03-deps", "auth"),
       QUICKLOGIN_E2E_AUTH_COMMIT: process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "870933794326b9d280dcf07f392c80c127fd7233",
       QUICKLOGIN_E2E_OUTPUT: run,
       QUICKLOGIN_E2E_BREAK_ASSERTION: assertionFailure ? "1" : "",

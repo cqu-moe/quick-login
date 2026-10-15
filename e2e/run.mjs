@@ -25,8 +25,9 @@ if (discovery.code) {
 }
 else {
   const pairs = JSON.parse(discovery.stdout).pairs.filter(pair => pair.kind === 'test' && pair.disposition === 'run');
-  const school = pairs.filter(pair => ['e2e/school.e2e.ts', 'e2e/school-guards.e2e.ts'].includes(pair.file));
-  if (!school.length || pairs.length === 1) {
+  const school = pairs.filter(pair => ['e2e/school.e2e.ts', 'e2e/school-guards.e2e.ts', 'e2e/device-school.e2e.ts'].includes(pair.file));
+  const independent = pairs.filter(pair => school.includes(pair) || pair.file === 'e2e/device-lifecycle.e2e.ts');
+  if (!independent.length || pairs.length === 1) {
     const result = await command(['e2e/run-single.mjs', ...args], school.length ? { QUICKLOGIN_E2E_SCHOOL: '1' } : { QUICKLOGIN_E2E_SCHOOL: '' });
     process.exitCode = interrupted ? 1 : result.code;
   } else {
@@ -34,8 +35,8 @@ else {
     if (!output.startsWith(resolve('.e2e') + '/')) throw new Error('E2E output must be a child of .e2e');
     await mkdir(output);
     await writeFile(join(output, 'discovery.json'), discovery.stdout);
-    const base = pairs.filter(pair => !school.includes(pair));
-    const groups = [...(base.length ? [{ name: 'authorization', pairs: base, school: false }] : []), ...school.map((pair, index) => ({ name: `school-${index + 1}-${pair.id.slice(0, 12)}`, pairs: [pair], school: true }))];
+    const base = pairs.filter(pair => !independent.includes(pair));
+    const groups = [...(base.length ? [{ name: 'authorization', pairs: base, school: false }] : []), ...independent.map((pair, index) => ({ name: `isolated-${index + 1}-${pair.id.slice(0, 12)}`, pairs: [pair], school: school.includes(pair) }))];
     const executionArgs = args.filter((arg, index) => arg !== '--grep' && !arg.startsWith('--grep=') && args[index - 1] !== '--grep');
     const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const reports = [], runtimes = [], logs = [], failures = [];

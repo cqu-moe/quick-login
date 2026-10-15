@@ -5,7 +5,7 @@
 ## 固定环境与入口
 
 - Node.js `22.22.3`；`e2e@0.21.0`、`@e2e-dev/web@0.15.0`、`playwright-core@1.64.0` 已锁定。
-- Auth 固定为 `870933794326b9d280dcf07f392c80c127fd7233`，且不得有 tracked 修改。默认只读使用相邻 `QUICKLOGIN-02-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
+- Auth 固定为 `870933794326b9d280dcf07f392c80c127fd7233`，且不得有 tracked 修改。默认只读使用本票独立副本 `QUICKLOGIN-03-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
 - Chromium 通过 `npx --no-install e2e-web install chromium --with-deps` 预装；安装浏览器本身不会启动浏览器。
 - 学校旅程要求可用 Docker。先在固定 Auth checkout 运行 `node e2e/school/build.mjs` 构建生产浏览器基础镜像，再拉取 `cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8`。每个学校旅程基于该镜像构建独占 fixture 镜像，结束后删除自己的容器和镜像；缺少 Docker/镜像直接失败。
 - `openssl` 用于生成每轮独立的短期 TLS 证书。浏览器中的 `https://auth.cqu.moe` 保持原 origin，由本地代理送往本轮真实 Auth；`sso.cqu.edu.cn` 送到同一真实设备容器中的合成学校，不访问生产。SPKI 只放行本轮证书，不关闭全局 TLS 校验。
@@ -82,5 +82,38 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 每组清理停止邮件 pump、workerd/容器、服务和 profile，移除独占 SQLite/bundle/TLS/image。原生 egress proxy 必须通过固定 Auth 的 schoolContainerCleanup 合同回收：在每次私有 fixture DO fetch 前登记实际 worker/DO ID，关闭时只收集本轮唯一镜像的业务容器及其精确名称对应的 proxy，校验固定 interceptor 镜像且无挂载后停止/删除，并分别独立查询业务及 proxy 的 absence。runtime 记录 removedContainerIds、removedProxyIds 和 proxyObjectsRemoved；仅业务镜像删除不算完整清理。旧环境 orphan 的“停止保留”不等于删除，不能纳入本轮回收成功计数。`runtime.json` 的 groups 保存逐组源提交、学校浏览器结果及清理证据；collector 要求各组都是同一固定干净源码/构建。完整后台 alarm、撤销/兄弟设备生命周期由 QUICKLOGIN-03 负责；真实大学账号、真实学校、原生权限界面和用户日常安装由独立验收负责。合成学校业务通过不等于真实学校通过。
 
 原生停止入口为 Chromium [ServiceWorker.stopWorker](https://chromedevtools.github.io/devtools-protocol/tot/ServiceWorker/#method-stopWorker)，以实际 workerVersionUpdated 的 versionId 调用并观察 stopped，再由真实 popup 消息唤醒。曾实际探测 chrome.runtime.reload：命令行加载的未上架扩展在当前 Chromium 中会被停用，故不把该失败探针当作可用的 worker 恢复入口。
+
+## QUICKLOGIN-03 生命周期与撤销
+
+本票从未接受的02候选 `e6512e4cf7873828c31615243a010d800a4d6647` 起步，保持 Auth870 固定，不代为确认02验收。依赖和 Auth checkout 已物理 COW 复制到03专属目录，Git metadata 也独立。03没有生产成功开关或私有监听器调用；`src/`、manifest、版本和 lockfile 保持起点不变。
+
+`device-lifecycle.e2e.ts` 与 `device-school.e2e.ts` 共八项，每项使用新 runtime、数据库、端口、profile；其中四项需要独占原生学校容器。框架默认负责浏览器生命周期、发现、报告及原生确认框，MV3/CDP 的既有能力例外保留。真实确认框只有 tester-army 一个处理者；额外原生 CDP 连接仅观察，避免其自动取消确认框。撤销必须有真实 DELETE 204、独立 Auth 读回和旧凭据拒绝，不能只看设备行消失。
+
+| 场景 | 新增的真实边界与可失败结果 |
+| --- | --- |
+| alarm / rotation / 503 | 本地仅过期已签发 access；代理对真实 token 请求返回 transport 503；设备身份保留；移除周期 alarm、实际 stopWorker，30秒原生 alarm 唤醒后重建周期 alarm、真实 Auth 轮换两种 token，reportEpoch 不变 |
+| lost / expired grant | 删除实际 token 或负向过期真实 D1 grant；不 seed 授权；popup 明确重连，经真实官网 resume-ticket/OAuth 恢复原 deviceId/installationId，设备数不增 |
+| late refresh | 持有真实 Auth refresh 响应；关闭同步保留已轮换 refresh，显式新 OAuth 授权后旧响应不能覆盖新 token/epoch |
+| two installations / revoke | 两个独立 Chromium profile 各自完成 OAuth；实际设备页撤销一台；旧 resource 403 DEVICE_REVOKED / refresh 400 INVALID_GRANT，另一台仍能实际 refresh，网站会话可继续读 overview |
+| Cookie journal / alarm | 在真正写入 TGC 后、journal completed 持久化前暂停，校验真 journal 和真 Cookie；手动替换精确域元组，实际 kill/原生 alarm 后回滚不覆盖手动值、无虚假成功 receipt；公开切换动作后新同步及学校业务通过 |
+| pending ACK / alarm | 持有真实 ACK 响应，读到真实 pendingAck；停止 worker，由真实 alarm 恢复，重验证 Cookie 后补 ACK，同 exportId、无重复下载、独立网站回执和学校业务通过 |
+| owned Cookie revoke | ready 后手动替换一项；真实撤销仅移除仍归扩展所有的 Cookie/token/receipt，保留手动值 |
+| late ACK / report | 真实 ACK、reconcile 字节分别晚于关闭同步、新 OAuth 和设备退出，不能恢复旧 receipt/代际或覆盖手动 Cookie |
+
+真实 alarm 等待期间 popup 导航到同扩展的静态 manifest，消除 popup 五秒轮询唤醒；只读 native storage 不发送产品消息。CDP 观察 stopped → running 的原生事件，唤醒时间不得早于实际 scheduledAt。journal 断点仅定位 TGC 崩溃边界，最终断言仍是 Cookie、journal、ACK 和业务读回。
+
+```sh
+QUICKLOGIN_E2E_OUTPUT=.e2e/quick03-round1 node e2e/run.mjs --grep '^QUICKLOGIN-03'
+QUICKLOGIN_E2E_OUTPUT=.e2e/quick03-round2 node e2e/run.mjs --grep '^QUICKLOGIN-03'
+npm run test:e2e:self-check
+npm run test:e2e:zero
+npm run test:e2e:lifecycle
+npm run test:e2e:device-controls
+QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-quick03 node e2e/prepare-ci-artifacts.mjs quick03-round1 quick03-round2
+```
+
+`device-controls.mjs` 保持原测试断言，只通过真实 Chrome API 删除唤醒 alarm，或持有真实 reconcile ACK 响应。两次都必须因指定缺失结果失败、runner 1、清理通过，才能记录控制成功。collector 对包含03的两轮额外要求这些同源控制。既有 zero/startup/provider/primary+cleanup 控制仍要求通过。全量入口会发现既有01/02与03；上述两轮只证明03八项，不重报未接受02的完整验收。
+
+原生权限 allow/deny 为独立 [人工待验清单](QUICKLOGIN-03-manual.md)，没有自动化通过声明。实际大学账号、日常浏览器、真实学校长时效和发布不在本票证明内。
 
 学校 fixture 在固定 Auth Dockerfile 最后仅覆盖 Chromium executable wrapper，强制 headless/basic/mock-keychain 并 unset DISPLAY；不修改生产 Python 或 Auth checkout。外部 fixture 从实际 /proc cmdline 只汇总各 Chromium 主进程 PID 与安全参数布尔值，不保存完整参数或 profile 路径。邮件 poll 期间观察，最终清理必须同时具备非空真实 launch 记录、四项参数成立和 profile/Chrome 进程为零，否则 wrapper 失败。beforeClose 的 finally 在 dispose 前 capture 业务名称，覆盖生产直接启动后业务对象先消失的 proxy 清理边界。

@@ -12,6 +12,7 @@ await mkdir(dirname(destination), { recursive: true });
 await mkdir(destination);
 const problems = [];
 let expectedSource;
+let requireDeviceControls = false;
 const copiedPaths = [];
 const redactedPaths = [];
 const excludedDirectories = new Set(["auth-runtime", "tls", "profiles"]);
@@ -97,6 +98,7 @@ for (const name of requiredRuns) {
   const path = join(source, name);
   try {
     const { runtime, report } = await readRun(path);
+    requireDeviceControls ||= report.run.results.some(test => test.selected && test.titlePath?.join(' ').startsWith('QUICKLOGIN-03 '));
     if (runtime.sourceDirty !== false || runtime.build?.sourceCommit !== runtime.extensionCommit || !runtime.backgroundSha256) {
       problems.push(name + " did not use a clean fixed build");
     }
@@ -145,6 +147,20 @@ const lifecycle = await findControl("lifecycle-", async path => {
 for (const [name, path] of [["negative", negative], ["zero", zero], ["lifecycle", lifecycle]]) {
   if (path) await copySafe(path);
   else problems.push("Verified " + name + " control is missing");
+}
+if (requireDeviceControls) {
+  const controls = await findControl('device-control-', async path => {
+    const result = JSON.parse(await readFile(join(path, 'control.json'), 'utf8'));
+    if (result.status !== 'passed' || JSON.stringify(result.checks.map(check => check.name).sort()) !== JSON.stringify(['held-ack', 'missing-alarm'])) return false;
+    for (const check of result.checks) {
+      const { runtime, report } = await readRun(join(path, check.name));
+      const attempt = report.run.results.find(test => test.selected)?.attempts[0];
+      if (!sameSource(runtime) || runtime.cleanup !== 'passed' || runtime.runnerExitCode !== 1 || report.run.summary.executed !== 1 || report.run.summary.failed !== 1 || report.run.summary.passed || report.run.summary.skipped || attempt?.error?.message !== check.expectedFailure) return false;
+    }
+    return true;
+  });
+  if (controls) await copySafe(controls);
+  else problems.push('Verified actual MV3 alarm/ACK fault controls are missing');
 }
 await writeFile(join(destination, "sanitization.json"), JSON.stringify({
   copiedFiles: copiedPaths.length,
