@@ -78,6 +78,8 @@ jobs:
         run: node e2e/zero-check.mjs
       - name: Require startup, cleanup and combined failures
         run: node e2e/lifecycle-check.mjs
+      - name: Require native alarm and genuine pending ACK failure controls
+        run: node e2e/device-controls.mjs
       - name: Prepare sanitized evidence even after a failure
         if: always()
         run: node e2e/prepare-ci-artifacts.mjs
