@@ -157,8 +157,7 @@ async function rollback(journal: CookieJournal, snapshots: CookieSnapshots | nul
   return complete ? discarded ? "discarded" : "restored" : "incomplete";
 }
 
-export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
-  const state = await readLocalState();
+async function localTgcCandidates(): Promise<chrome.cookies.Cookie[]> {
   const storeId = await normalStoreId();
   const urls = [`${SSO_URL}/login`, `${SSO_URL}/authserver/login`];
   const [lists, singles] = await Promise.all([
@@ -172,7 +171,7 @@ export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreig
   const presentSingles = singles.filter(
     (cookie): cookie is chrome.cookies.Cookie => cookie !== null && cookie !== undefined
   );
-  const cookies = [...new Map([...lists.flat(), ...presentSingles]
+  return [...new Map([...lists.flat(), ...presentSingles]
     .filter((cookie) =>
       cookie.domain === "sso.cqu.edu.cn" || cookie.domain === ".sso.cqu.edu.cn"
     )
@@ -180,6 +179,11 @@ export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreig
       `${cookie.storeId}\0${cookie.domain}\0${cookie.path}\0${cookie.name}`,
       cookie,
     ])).values()];
+}
+
+export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
+  const state = await readLocalState();
+  const cookies = await localTgcCandidates();
   if (cookies.length === 0) return "missing";
   for (const cookie of cookies) {
     const managed = state.managed.find((entry) =>
@@ -288,6 +292,10 @@ async function applyEnvelopeUnlocked(
       managed.push({
         name: entry.name, domain: entry.domain, path: entry.path,
         storeId: entry.storeId, digest: entry.expectedDigest,
+        ...(!current.session && current.expirationDate !== undefined ? { renewal: {
+          digest: await digestCookie({...current,expirationDate:undefined}),
+          expirationDate: current.expirationDate,
+        } } : {}),
       });
     }
     const keep = new Set(managed.map(snapshotId));
@@ -335,6 +343,29 @@ export async function inspectManagedCookies(): Promise<"verified" | "missing" | 
 
 export async function verifyManagedCookies(): Promise<boolean> {
   return await inspectManagedCookies() === "verified";
+}
+
+// A school response may extend an auxiliary Cookie while another document is
+// still waiting on the same acknowledged write. This does not reclaim ownership.
+export async function verifyRecoveryCookies(managed: ManagedCookie[]): Promise<boolean> {
+  const candidates = await localTgcCandidates();
+  if (!candidates.length) return false;
+  for (const cookie of candidates) {
+    const owned = managed.find(entry => entry.name === cookie.name && entry.domain === cookie.domain &&
+      entry.path === cookie.path && entry.storeId === cookie.storeId);
+    if (!owned || await digestCookie(cookie) !== owned.digest) return false;
+  }
+  for (const entry of managed) {
+    const current = await getExact(entry);
+    if (!current) return false;
+    if (await digestCookie(current) === entry.digest) continue;
+    const baseline = entry.renewal;
+    if (entry.name === "SOURCEID_TGC" || !baseline || current.session ||
+        !Number.isFinite(baseline.expirationDate) || !Number.isFinite(current.expirationDate) ||
+        current.expirationDate! <= Date.now()/1000 || current.expirationDate! < baseline.expirationDate ||
+        await digestCookie({...current,expirationDate:undefined}) !== baseline.digest) return false;
+  }
+  return managed.some(entry => entry.name === "SOURCEID_TGC");
 }
 
 async function clearOwnedCookiesUnlocked(): Promise<void> {
