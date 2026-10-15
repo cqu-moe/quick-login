@@ -4,7 +4,7 @@ import { REASON_CODES, sameTuple, tupleForSnapshot, type DeviceSnapshot, type Ex
 import * as api from "./api-v3";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
-import { clearOwnedCookies, verifyManagedCookies, inspectLocalTgc } from "./cookie-store";
+import { clearOwnedCookies, inspectManagedCookies, inspectLocalTgc } from "./cookie-store";
 import {
   captureQuickloginOperation,
   durationFrom,
@@ -139,14 +139,22 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
       await updateLocalState((state) => ({ ...state,protocolSupport:"supported" }));
     }
     let currentCookiesVerified = false;
+    let locallyChangedCookies = false;
+    let locallyOwnedTgc = false;
     if (local.receipt) {
-      currentCookiesVerified = await verifyManagedCookies();
-      const tgcMissing = !currentCookiesVerified && await inspectLocalTgc() === "missing";
+      const cookieState = await inspectManagedCookies();
+      currentCookiesVerified = cookieState === "verified";
+      locallyChangedCookies = cookieState === "changed";
+      const tgcState = currentCookiesVerified ? "managed" : await inspectLocalTgc();
+      const tgcMissing = tgcState === "missing";
+      locallyOwnedTgc = tgcState === "managed";
       local = await updateLocalState((state) => {
         if (state.localGeneration !== fence) return state;
         return currentCookiesVerified && state.receipt
           ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() } }
-          : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle",
+          : { ...state,receipt:locallyChangedCookies && locallyOwnedTgc && state.receipt
+              ? { ...state.receipt,result:"foreign",verifiedAt:null } : null,
+            pendingAck:false,appliedVersion:null,localWriteState:"idle",
             loginRecovery: state.loginRecovery && sameTuple(state.loginRecovery.rejectedTuple, state.receipt)
               ? { ...state.loginRecovery, rejectedTuple:tgcMissing ? null : state.loginRecovery.rejectedTuple, appliedExportId:null } : state.loginRecovery };
       });
@@ -190,7 +198,8 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
       return { outcome: "needs_input" };
     }
     const rejectedHere = local.schoolAccess === "login_form_seen" && !!local.loginRecovery && !local.loginRecovery.failed;
-    const rejectedCurrent = currentCookiesVerified && sameTuple(local.receipt, tupleForSnapshot(remote)) &&
+    const rejectedCurrent = (currentCookiesVerified || (locallyOwnedTgc && local.receipt?.result === "foreign")) &&
+      sameTuple(local.receipt, tupleForSnapshot(remote)) &&
       (!local.loginRecovery || sameTuple(local.loginRecovery.rejectedTuple, local.receipt));
     const userRecovery = !hasManagedSwitch(local) && (((reason === "login_form" || rejectedHere) && rejectedCurrent) ||
       (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen")));
@@ -208,11 +217,23 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
       const response = await api.operate(userRecovery ? "retry_session" : "ensure_session",remote,
         `${remote.identity.deviceId}:${remote.versions.generation}:${remote.versions.bindingEpoch}:${local.loginRecovery?.id ?? local.recovery!.id}`);
       local = await adopt(response.snapshot,local.localGeneration);
+      if (userRecovery && local.receipt?.result === "foreign") {
+        local = await updateLocalState(state => state.localGeneration === local.localGeneration
+          ? { ...state, receipt: null } : state);
+      }
       remote = local.snapshot!;
     }
     if (!remote.capabilities.canExport || remote.cloud.state !== "ready") {
       await schedule(remote.presentation.nextCheckAt ?? Date.now()+PREPARING_SYNC_DELAY_MS);
       return { outcome: "partial" };
+    }
+    // A local rotation is not a missing Cookie. Do not reapply the same cloud
+    // session over it during a routine poll. A school recovery must still be
+    // able to install its genuinely new session, or the user can switch once.
+    if (locallyChangedCookies && locallyOwnedTgc && local.receipt?.result === "foreign" &&
+        sameTuple(local.receipt, tupleForSnapshot(remote)) &&
+        !hasManagedSwitch(local) && !rejectedHere) {
+      return { outcome: "needs_input" };
     }
     if (local.receipt && sameTuple(local.receipt,tupleForSnapshot(remote)) && local.localWriteState === "ready") {
       if (local.pendingAck) await ackCurrent(local);
