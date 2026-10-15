@@ -64,6 +64,10 @@ export const extensionBrowser: BrowserProvider = {
         "--remote-debugging-address=127.0.0.1",
         "--remote-debugging-port=0",
       ];
+      // GitHub's Ubuntu runner blocks Chromium user namespaces (observed
+      // SIGABRT/no usable sandbox). Match Playwright's Linux CI policy only
+      // for this synthetic, proxy-confined browser; macOS keeps its sandbox.
+      if (process.platform === "linux" && process.env.CI === "true") arguments_.push("--no-sandbox");
       if (process.env.QUICKLOGIN_E2E_TLS_SPKI) {
         arguments_.push(`--ignore-certificate-errors-spki-list=${process.env.QUICKLOGIN_E2E_TLS_SPKI}`);
       }
