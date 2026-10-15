@@ -44,7 +44,7 @@ test('QUICKLOGIN-03 native alarm wakes a stopped MV3 worker after token transpor
     expect(after.reportEpoch).toBe(before.reportEpoch);
     expect((await serverState(identity.userId)).devices.length).toBe(1);
     await recordEvent('native-alarm-refresh', { ...native, realTokenRotation: rotated.refresh, deviceRetained: true });
-  } catch (error) { await captureArtifacts('alarm-refresh-failure', [popup]); throw error; }
+  } catch (error) { await captureArtifacts('alarm-refresh-failure', [popup], { error }); throw error; }
   finally { await control('/token-transport', { unavailable: false }); }
 });
 
@@ -85,7 +85,7 @@ test('QUICKLOGIN-03 late real refresh persists across disable but cannot overwri
     expect((await localState(popup)).deviceId).toBe(first.deviceId);
     expect((await serverState(identity.userId)).devices.length).toBe(1);
     await recordEvent('late-refresh-fences', { rotatedTokenRetainedAcrossDisable: true, newerAuthorizationRetained: true, sameDevice: true });
-  } catch (error) { await captureArtifacts('late-refresh-failure', [popup, settings]); throw error; }
+  } catch (error) { await captureArtifacts('late-refresh-failure', [popup, settings], { error }); throw error; }
   finally { await relay({ hold: false }); }
 });
 
@@ -146,7 +146,7 @@ test('QUICKLOGIN-03 actual Auth device revocation rejects old resource and refre
     expect(server.devices.length).toBe(2);
     expect(server.devices.some(device => device.deviceId === second.deviceId && !device.revokedAt)).toBe(true);
     await recordEvent('real-device-revocation', { oldResourceStatus: rejected.resource, oldRefreshStatus: rejected.refresh, otherDeviceRefreshed: true, websiteSurvived: true });
-  } catch (error) { await captureArtifacts('device-revoke-failure', [popup, settings]); throw error; }
+  } catch (error) { await captureArtifacts('device-revoke-failure', [popup, settings], { error }); throw error; }
   finally { if (lease) await extensionBrowser.release(lease, {} as Parameters<typeof extensionBrowser.release>[1]); }
 });
 
@@ -175,5 +175,5 @@ test('QUICKLOGIN-03 lost token and actually expired Auth grants require explicit
       await recordEvent('explicit-device-reconnect', { fault, sameDevice: true, sameInstallation: true });
     }
     expect((await networkEvents()).some(event => event.path.endsWith('/oauth2/token') && event.status === 400)).toBe(true);
-  } catch (error) { await captureArtifacts('device-reconnect-failure', [popup, settings]); throw error; }
+  } catch (error) { await captureArtifacts('device-reconnect-failure', [popup, settings], { error }); throw error; }
 });

@@ -77,7 +77,7 @@ test("the real popup completes Auth PKCE login and device registration", { tags:
     await captureArtifacts("success-popup", [popup]);
     await Promise.allSettled([authPage.close(), settings.close(), sourceProbe.close(), disallowed.close()]);
   } catch (error) {
-    await captureArtifacts("success-failure", [popup, authPage]);
+    await captureArtifacts("success-failure", [popup, authPage], { error });
     throw error;
   } finally {
     await popup.close();
@@ -102,7 +102,7 @@ test("canceling the real Auth login does not connect the device", async ({ app, 
     expect(await hasTokens(popup)).toBe(false);
     await expect(screen.getByRole("heading", { name: "未连接 Auth", exact: true })).toBeVisible();
   } catch (error) {
-    await captureArtifacts("cancel-failure", [popup, authPage]);
+    await captureArtifacts("cancel-failure", [popup, authPage], { error });
     throw error;
   } finally {
     await popup.close();
@@ -133,7 +133,7 @@ test("a real callback with the wrong pending state is rejected", async ({ app, s
     expect(network.some(event => event.path === "/api/v1/auth/oauth2/token")).toBe(false);
     await expect(screen.getByRole("heading", { name: "未连接 Auth", exact: true })).toBeVisible();
   } catch (error) {
-    await captureArtifacts("wrong-state-failure", [popup, authPage]);
+    await captureArtifacts("wrong-state-failure", [popup, authPage], { error });
     throw error;
   } finally {
     await popup.close();
@@ -164,7 +164,7 @@ test("a callback outside the registered extension redirect is rejected", async (
     expect(await hasTokens(popup)).toBe(false);
     await expect(screen.getByRole("heading", { name: "未连接 Auth", exact: true })).toBeVisible();
   } catch (error) {
-    await captureArtifacts("wrong-callback-failure", [popup, authPage]);
+    await captureArtifacts("wrong-callback-failure", [popup, authPage], { error });
     throw error;
   } finally {
     await setOAuthClient("official");
@@ -194,7 +194,7 @@ test("real device registration rejection does not display a connected device", a
       event.path === "/api/v1/cqu/quicklogin/registrations" && event.status === 422)).toBe(true);
     await expect(screen.getByRole("heading", { name: "未连接 Auth", exact: true })).toBeVisible();
   } catch (error) {
-    await captureArtifacts("registration-rejection-failure", [popup, authPage]);
+    await captureArtifacts("registration-rejection-failure", [popup, authPage], { error });
     throw error;
   } finally {
     await popup.close();

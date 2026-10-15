@@ -24,6 +24,8 @@ QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-my-run node e2e/prepare-ci-artifacts.m
 
 运行目录必须为本票 worktree，输出目录必须全新，不能复用已有运行。构建 provenance 的 sourceCommit 必须与 HEAD 一致。`npm run test:e2e` 是类型检查及 runner 的快捷入口，不隐式构建。
 
+采集失败回归控制：构建后运行 `node --experimental-strip-types e2e/artifact-failure-check.ts .e2e/artifact-failure-control`。它在独占 headless Chromium 中关闭实际扩展 Page，验证业务原错与采集错误均保留、成功路径 viewport 错误仍致命；不启动 Auth/Docker，不计作业务旅程或两轮验收。CI 在 core 两种视口分片执行；失败调用点显式传入原错，采集失败时以 `AggregateError.errors` 和 `cause` 保留原对象，消息同时包含两个原因。
+
 ## 六个业务 / 平台用例
 
 1. tester-army 持久 context 加载真实 MV3 worker 和 popup；同时实际探测扩展 URL 导航能力。

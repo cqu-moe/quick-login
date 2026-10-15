@@ -93,7 +93,7 @@ test('QUICKLOGIN-03 website revoke clears only truly managed Cookie values and p
     expect((await overview(settings)).devices.length).toBe(0);
     await recordEvent('revoke-owned-cookie-readback', values);
     await captureArtifacts('revoked-owned-cookies', [popup]);
-  } catch (error) { await captureArtifacts('revoke-owned-cookie-failure', [popup, settings]); throw error; }
+  } catch (error) { await captureArtifacts('revoke-owned-cookie-failure', [popup, settings], { error }); throw error; }
 });
 
 test('QUICKLOGIN-03 real pending ACK resumes only after exact Cookie readback on a native alarm without downloading again', { timeout: 300_000 }, async ({ app }) => {
@@ -173,6 +173,6 @@ test('QUICKLOGIN-03 disable and actual authorization replacement fence held call
     expect(await popup.evaluate(async () => (await chrome.cookies.get({ url: 'https://sso.cqu.edu.cn/login', name: 'SOURCEID_TGC' }))?.value === 'manual-after-disable')).toBe(true);
     expect(await popup.evaluate(async () => !!(await chrome.storage.local.get('quicklogin.tokens'))['quicklogin.tokens'])).toBe(false);
     await recordEvent('late-callback-fences', { disabledAckIgnored: true, replacementSameDevice: true, disconnectedOldGeneration: true, manualCookiePreserved: true });
-  } catch (error) { await captureArtifacts('late-callback-failure', [popup, settings]); throw error; }
+  } catch (error) { await captureArtifacts('late-callback-failure', [popup, settings], { error }); throw error; }
   finally { await relay({ hold: false }); }
 });

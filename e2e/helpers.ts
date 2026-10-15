@@ -208,28 +208,35 @@ export async function hasPendingPkce(page: Page) {
   return await page.evaluate(async () => Boolean((await chrome.storage.local.get("quicklogin.pkce"))["quicklogin.pkce"]));
 }
 
-export async function captureArtifacts(name: string, pages: Array<Page | undefined>) {
-  const output = process.env.QUICKLOGIN_E2E_ARTIFACTS;
-  if (!output) return;
-  const directory = join(output, "artifacts");
-  await mkdir(directory, { recursive: true });
-  const active = pages.filter((page): page is Page => Boolean(page));
-  const lines = [`${new Date().toISOString()} ${name}`];
-  for (const [index, page] of active.entries()) {
-    await observeWebViewport(page);
-    const url = new URL(page.url());
-    lines.push(`page ${index + 1}: ${url.origin}${url.pathname}`);
-    try {
-      await page.screenshot({
-        path: join(directory, `${name}-${index + 1}.png`),
-        mask: [page.locator("input, textarea, [contenteditable='true']")],
-        animations: "disabled",
-      });
-    } catch {
-      lines.push(`page ${index + 1}: screenshot unavailable`);
+export async function captureArtifacts(name: string, pages: Array<Page | undefined>, failure?: { error: unknown }) {
+  try {
+    const output = process.env.QUICKLOGIN_E2E_ARTIFACTS;
+    if (!output) return;
+    const directory = join(output, "artifacts");
+    await mkdir(directory, { recursive: true });
+    const active = pages.filter((page): page is Page => Boolean(page));
+    const lines = [`${new Date().toISOString()} ${name}`];
+    for (const [index, page] of active.entries()) {
+      await observeWebViewport(page);
+      const url = new URL(page.url());
+      lines.push(`page ${index + 1}: ${url.origin}${url.pathname}`);
+      try {
+        await page.screenshot({
+          path: join(directory, `${name}-${index + 1}.png`),
+          mask: [page.locator("input, textarea, [contenteditable='true']")],
+          animations: "disabled",
+        });
+      } catch {
+        lines.push(`page ${index + 1}: screenshot unavailable`);
+      }
     }
+    await appendFile(join(directory, "events.log"), `${lines.join("\n")}\n`);
+  } catch (captureError) {
+    if (!failure) throw captureError;
+    const message = (error: unknown) => error instanceof Error ? error.message : String(error);
+    throw new AggregateError([failure.error, captureError],
+      `${message(failure.error)}\nArtifact capture failed: ${message(captureError)}`, { cause: failure.error });
   }
-  await appendFile(join(directory, "events.log"), `${lines.join("\n")}\n`);
 }
 
 export async function recordEvent(event: string, evidence: Record<string, string | number | boolean>) {
