@@ -127,8 +127,14 @@ test('QUICKLOGIN-03 actual Auth device revocation rejects old resource and refre
     await until(() => localState(popup), state => state.authorization === 'revoked');
     expect(await popup.evaluate(async () => !!(await chrome.storage.local.get('quicklogin.tokens'))['quicklogin.tokens'])).toBe(false);
     await popup.getByRole('heading', { name: '此设备已退出', exact: true }).waitFor();
+    const successfulExchanges = (await networkEvents()).filter(event => event.path.endsWith('/oauth2/token') && event.status === 200).length;
     await expireLocalAccess(other);
     await other.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
+    await until(() => other.evaluate(async () => {
+      const token = (await chrome.storage.local.get('quicklogin.tokens'))['quicklogin.tokens'] as { expiresAt: number } | undefined;
+      return !!token && token.expiresAt > Date.now() + 30_000;
+    }), Boolean);
+    expect((await networkEvents()).filter(event => event.path.endsWith('/oauth2/token') && event.status === 200).length > successfulExchanges).toBe(true);
     await until(() => localState(other), state => state.authorization === 'authorized' && state.observation === 'fresh' && state.networkFailures === 0);
     expect((await localState(other)).deviceId).toBe(second.deviceId);
     expect(await settings.evaluate(async () => (await fetch('/api/v1/cqu/quicklogin/overview')).status)).toBe(200);
