@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { extensionOrigin } from './helpers.ts';
+import { extensionOrigin, recordEvent } from './helpers.ts';
 
 // CDP supplies scheduling/crash faults at actual browser execution boundaries.
 // No Chrome API, Auth response, journal or successful state is manufactured.
@@ -57,18 +57,46 @@ export async function pauseWorkerAt(boundary: 'expiry' | 'cookie-written', cooki
 export async function stopExtensionWorker(context: import('playwright-core').BrowserContext, page: import('playwright-core').Page) {
   const session = await context.newCDPSession(page);
   const versions = new Map<string, { versionId: string; scriptURL: string; runningStatus: string }>();
-  session.on('ServiceWorker.workerVersionUpdated', event => { for (const version of event.versions) versions.set(version.versionId, version); });
+  const timeline: Array<Record<string, unknown>> = [];
+  const startedAt = performance.now();
+  const targets = new Set<string>();
+  let selectedVersion = '', stopRequested = false, stoppedObserved = false;
+  const observe = (event: string, value: Record<string, unknown> = {}) => timeline.push({ ms: performance.now() - startedAt, event, ...value });
+  session.on('ServiceWorker.workerVersionUpdated', event => {
+    for (const version of event.versions) versions.set(version.versionId, version);
+    const own = event.versions.filter(version => version.scriptURL === `${extensionOrigin}/background.js`);
+    // A public popup message can restart this version before the next poll.
+    if (stopRequested && own.some(version => version.versionId === selectedVersion && version.runningStatus === 'stopped')) stoppedObserved = true;
+    for (const version of own) if (version.targetId) targets.add(version.targetId);
+    observe('ServiceWorker.workerVersionUpdated', { versions: own.map(({ versionId, registrationId, runningStatus, status, targetId, controlledClients }) => ({ versionId, registrationId, runningStatus, status, targetId, controlledClients })) });
+  });
+  for (const event of ['Target.targetCreated', 'Target.targetInfoChanged'] as const) session.on(event, ({ targetInfo }) => {
+    if (targetInfo.type !== 'service_worker' || targetInfo.url !== `${extensionOrigin}/background.js`) return;
+    targets.add(targetInfo.targetId);
+    observe(event, { targetId: targetInfo.targetId, attached: targetInfo.attached });
+  });
+  session.on('Target.targetDestroyed', ({ targetId }) => { if (targets.has(targetId)) observe('Target.targetDestroyed', { targetId }); });
+  session.on('Target.detachedFromTarget', ({ targetId }) => { if (targetId && targets.has(targetId)) observe('Target.detachedFromTarget', { targetId }); });
   try {
+    await session.send('Target.setDiscoverTargets', { discover: true });
     await session.send('ServiceWorker.enable');
     const deadline = Date.now() + 5000;
     while (![...versions.values()].some(version => version.scriptURL === `${extensionOrigin}/background.js`) && Date.now() < deadline) await new Promise(done => setTimeout(done, 50));
     const version = [...versions.values()].find(value => value.scriptURL === `${extensionOrigin}/background.js` && value.runningStatus === 'running');
     if (!version) throw new Error('Native extension worker version not discovered');
+    selectedVersion = version.versionId;
+    stopRequested = true;
+    observe('ServiceWorker.stopWorker.request', { versionId: version.versionId });
     await session.send('ServiceWorker.stopWorker', { versionId: version.versionId });
-    if (versions.get(version.versionId)?.runningStatus !== 'stopped') {
+    observe('ServiceWorker.stopWorker.response', { versionId: version.versionId });
+    if (!stoppedObserved) {
       const stoppedBy = Date.now() + 5000;
-      while (versions.get(version.versionId)?.runningStatus !== 'stopped' && Date.now() < stoppedBy) await new Promise(done => setTimeout(done, 50));
-      if (versions.get(version.versionId)?.runningStatus !== 'stopped') throw new Error('Native extension worker did not stop');
+      while (!stoppedObserved && Date.now() < stoppedBy) await new Promise(done => setTimeout(done, 50));
+      if (!stoppedObserved) throw new Error('Native extension worker did not stop');
     }
-  } finally { await session.detach(); }
+  } finally {
+    observe('observation-finished', { selectedVersion, lastRunningStatus: versions.get(selectedVersion)?.runningStatus ?? 'missing' });
+    await session.detach();
+    await recordEvent('worker-stop-trace', { selectedVersion, stoppedObserved, timeline: JSON.stringify(timeline) });
+  }
 }

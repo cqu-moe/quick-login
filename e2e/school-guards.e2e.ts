@@ -1,6 +1,6 @@
 import { test } from '@e2e-dev/web';
 import { expect } from 'e2e';
-import { captureArtifacts, networkEvents } from './helpers.ts';
+import { captureArtifacts, extensionOrigin, networkEvents, recordEvent } from './helpers.ts';
 import { connectSchool, controlSchool, localState, popupEnabled, beginHeldRecovery, relay, until, overview, protectedValues, openSchoolForm, schoolUrl } from './school-helpers.ts';
 import { pauseWorkerAt, stopExtensionWorker } from './worker-debugger.ts';
 
@@ -153,7 +153,22 @@ test('QUICKLOGIN-02 an actually issued receipt from an older device generation i
 
 test('QUICKLOGIN-02 worker termination after the real Cookie API writes but before journal completion rolls back and recovers', { timeout: 300_000 }, async ({ app }) => {
   let debugger_: Awaited<ReturnType<typeof pauseWorkerAt>> | undefined;
-  const { popup, context, settings } = await connectSchool(app, 'school-interrupted-write', async () => { debugger_ = await pauseWorkerAt('cookie-written'); }, false);
+  let lifecycle: import('playwright-core').CDPSession | undefined;
+  let restartAfterStop = false;
+  let wake: Promise<unknown> | undefined;
+  let previousTimeOrigin = 0;
+  const { popup, context, settings } = await connectSchool(app, 'school-interrupted-write', async (popup, context) => {
+    previousTimeOrigin = await context.serviceWorkers().find(worker => worker.url() === `${extensionOrigin}/background.js`)!.evaluate(() => performance.timeOrigin);
+    debugger_ = await pauseWorkerAt('cookie-written');
+    lifecycle = await context.newCDPSession(popup);
+    lifecycle.on('ServiceWorker.workerVersionUpdated', ({ versions }) => {
+      // Exercise the real popup-message race immediately after a native stop.
+      if (restartAfterStop && !wake && versions.some(version => version.scriptURL === `${extensionOrigin}/background.js` && version.runningStatus === 'stopped')) {
+        wake = popup.evaluate(() => chrome.runtime.sendMessage({ type: 'GET_UI_STATE' }));
+      }
+    });
+    await lifecycle.send('ServiceWorker.enable');
+  }, false);
   try {
     await debugger_!.wait();
     const written = await popup.evaluate(async () => {
@@ -163,10 +178,15 @@ test('QUICKLOGIN-02 worker termination after the real Cookie API writes but befo
     });
     expect(written.completed).toBe(false); expect(written.cookieExists).toBe(true);
     await relay({ path: 'exports', hold: true });
+    restartAfterStop = true;
     await stopExtensionWorker(context, popup);
     debugger_!.close(); debugger_ = undefined;
+    expect(Boolean(wake)).toBe(true);
+    await wake;
     const next = popup;
     await next.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
+    const freshTimeOrigin = await context.serviceWorkers().find(worker => worker.url() === `${extensionOrigin}/background.js`)!.evaluate(() => performance.timeOrigin);
+    expect(freshTimeOrigin > previousTimeOrigin).toBe(true);
     await until(() => next.evaluate(async () => !(await chrome.storage.local.get('quicklogin.cookieJournal'))['quicklogin.cookieJournal']), Boolean);
     expect(await next.evaluate(async ({ name, path }) => !(await chrome.cookies.get({ url: `https://sso.cqu.edu.cn${path}`, name })), written)).toBe(true);
     expect((await localState(next)).receipt).toBe(null);
@@ -176,6 +196,7 @@ test('QUICKLOGIN-02 worker termination after the real Cookie API writes but befo
     await until(() => localState(next), state => state.localWriteState === 'ready' && !!state.receipt && !state.pendingAck);
     const allowed = await context.newPage(); await allowed.goto(schoolUrl('after-interruption'));
     await allowed.getByRole('heading', { name: '已进入学校合成业务' }).waitFor();
+    await recordEvent('worker-stop-journal-recovered', { previousTimeOrigin, freshTimeOrigin, publicPopupWake: true, realIncompleteJournal: true, rolledBackCookie: true, noFalseReceipt: true, businessRecovered: true });
     await captureArtifacts('interrupted-write-recovered', [allowed, next]);
-  } finally { await relay({ hold: false }); if (debugger_) { await debugger_.resume().catch(() => {}); debugger_.close(); } }
+  } finally { await relay({ hold: false }); if (debugger_) { await debugger_.resume().catch(() => {}); debugger_.close(); } await lifecycle?.detach(); }
 });
