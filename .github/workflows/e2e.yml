@@ -14,10 +14,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quicklogin:
-    name: Real MV3 Auth, school cookies and recovery
+  journeys:
+    name: Real MV3 journeys (${{ matrix.suite }})
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: core
+            selector: --grep-invert
+          - suite: devices
+            selector: --grep
     env:
       E2E_TELEMETRY_DISABLED: "1"
       DO_NOT_TRACK: "1"
@@ -65,11 +73,11 @@ jobs:
       - name: Pull pinned native container interceptor
         run: docker pull cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8
       - name: Run first independent E2E journey
-        run: node e2e/run.mjs
+        run: node e2e/run.mjs ${{ matrix.selector }} '^QUICKLOGIN-03 '
         env:
           QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-1
       - name: Run second independent E2E journey
-        run: node e2e/run.mjs
+        run: node e2e/run.mjs ${{ matrix.selector }} '^QUICKLOGIN-03 '
         env:
           QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-2
       - name: Require expected assertion failure
@@ -79,6 +87,7 @@ jobs:
       - name: Require startup, cleanup and combined failures
         run: node e2e/lifecycle-check.mjs
       - name: Require native alarm and genuine pending ACK failure controls
+        if: matrix.suite == 'devices'
         run: node e2e/device-controls.mjs
       - name: Prepare sanitized evidence even after a failure
         if: always()
@@ -86,8 +95,20 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: quicklogin-e2e-${{ github.sha }}
+          name: quicklogin-e2e-${{ github.sha }}-${{ matrix.suite }}
           path: ci-e2e-artifacts/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
+
+  quicklogin:
+    name: Real MV3 Auth, school cookies and recovery
+    needs: journeys
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Require every suite and its two-round artifact admission
+        env:
+          SUITES_RESULT: ${{ needs.journeys.result }}
+        run: test "$SUITES_RESULT" = success
