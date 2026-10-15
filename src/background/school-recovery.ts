@@ -1,7 +1,7 @@
 import type { LocalState } from "../shared/contracts";
 import { sameTuple, tupleForSnapshot } from "../shared/protocol-v3.generated";
 import { readLocalState, updateLocalState } from "./storage";
-import { verifyManagedCookies } from "./cookie-store";
+import { verifyRecoveryCookies } from "./cookie-store";
 
 export interface SchoolPage { tabId: number; documentId: string | null }
 
@@ -65,10 +65,14 @@ export async function observeSchoolLogin(page: SchoolPage): Promise<void> {
 function canNavigate(state: LocalState): boolean {
   const round = state.loginRecovery;
   return !!round && !round.failed && !!round.appliedExportId &&
+    round.acknowledgedExportId === round.appliedExportId &&
     state.enabledIntent && !state.manualOverride && state.authorization === "authorized" &&
-    state.schoolAccess !== "login_form_seen" && state.localWriteState === "ready" && !state.pendingAck &&
+    state.schoolAccess !== "login_form_seen" && !state.pendingAck &&
+    ((state.localWriteState === "ready" && state.receipt?.result === "applied") ||
+      (state.localWriteState === "idle" && state.receipt?.result === "foreign")) &&
     state.receipt?.exportId === round.appliedExportId && state.snapshot !== null &&
     state.snapshot.authorization.policy === "enabled" && state.snapshot.observation === "fresh" &&
+    state.snapshot.cloud.state === "ready" &&
     state.observation === "fresh" && state.snapshot.freshUntil > Date.now() &&
     sameTuple(state.receipt, tupleForSnapshot(state.snapshot));
 }
@@ -79,10 +83,10 @@ export async function navigateRecoveredPage(page: SchoolPage, url: string): Prom
   const target = before.loginRecovery?.pages.find(item => item.tabId === page.tabId && item.documentId === page.documentId);
   if (!target || before.loginRecovery?.failed || before.manualOverride || !before.enabledIntent) return false;
   if (target.navigated) return canNavigate(before);
-  if (!canNavigate(before) || !await verifyManagedCookies()) return false;
+  if (!canNavigate(before) || !await verifyRecoveryCookies(before.managed)) return false;
   let accepted = false;
   await updateLocalState(state => {
-    if (state.localGeneration !== before.localGeneration || state.loginRecovery?.id !== before.loginRecovery?.id ||
+    if (state.authGeneration !== before.authGeneration || state.localGeneration !== before.localGeneration || state.loginRecovery?.id !== before.loginRecovery?.id ||
         !canNavigate(state) || state.receipt?.exportId !== before.receipt?.exportId) return state;
     const current = state.loginRecovery!.pages.find(item => item.tabId === page.tabId && item.documentId === page.documentId);
     if (!current || current.navigated) return state;
@@ -92,7 +96,7 @@ export async function navigateRecoveredPage(page: SchoolPage, url: string): Prom
   });
   if (!accepted) return false;
   const after = await readLocalState();
-  if (after.localGeneration !== before.localGeneration || after.loginRecovery?.id !== before.loginRecovery?.id ||
+  if (after.authGeneration !== before.authGeneration || after.localGeneration !== before.localGeneration || after.loginRecovery?.id !== before.loginRecovery?.id ||
       after.receipt?.exportId !== before.receipt?.exportId || !canNavigate(after)) return false;
   await chrome.tabs.update(page.tabId, { url });
   return true;

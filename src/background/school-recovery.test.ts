@@ -4,12 +4,12 @@ import { readySnapshot as snapshot, envelope } from "../test/protocol-fixtures";
 import { initialLocalState, LOCAL_STATE_KEY, readLocalState } from "./storage";
 import { handleContentMessage, handleMessage } from "./messages";
 import { sync, setEnvelopeWriter, retryAutomaticNow, setEnabled } from "./sync";
-import { applyEnvelope } from "./cookie-store";
+import { applyEnvelope, clearOwnedCookies } from "./cookie-store";
 import { derivePopupView, type PopupInput } from "../popup/view-model";
 import * as api from "./api-v3";
 import * as telemetry from "../shared/posthog";
 import { onSchoolTabUpdated } from "./school-recovery";
-import type { DeviceSnapshot, OperationResponse } from "../shared/protocol-v3.generated";
+import type { DeviceSnapshot, ExportEnvelope, OperationResponse } from "../shared/protocol-v3.generated";
 
 function operationResponse(value: DeviceSnapshot): OperationResponse {
   return { snapshot: value, operation: {
@@ -36,13 +36,13 @@ async function startRecovery() {
   await sync("alarm");
 }
 
-function publishNewSession(sessionVersion = 8) {
+function publishNewSession(sessionVersion = 8, auxiliaryCookies: ExportEnvelope["cookies"] = []) {
   const fresh = snapshot();
   fresh.versions = {...fresh.versions,sessionVersion,deviceRevision:sessionVersion+5};
   fresh.reportedLocal = null;
   vi.mocked(api.reconcile).mockResolvedValue({centralUserId:"central-user-a",snapshot:fresh,receiptAck:null});
   vi.mocked(api.exportSession).mockResolvedValue({...envelope(),sessionVersion,exportId:`export-${sessionVersion}`,
-    cookies:envelope().cookies.map(cookie=>({...cookie,value:`synthetic-session-${sessionVersion}`}))});
+    cookies:[...envelope().cookies.map(cookie=>({...cookie,value:`synthetic-session-${sessionVersion}`})), ...auxiliaryCookies]});
   const acknowledge: typeof api.acknowledge = async applied => {
     const local = await readLocalState();
     return {accepted:true,exportId:applied.exportId,acceptedTuple:applied,reportEpoch:local.reportEpoch,
@@ -164,6 +164,44 @@ it("shares an in-flight recovery between waiting tabs but never lends its comple
   expect(await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},unrelated)).toMatchObject({kind:"recovering"});
   expect(fake.tabUpdates.map(update=>update.tabId)).toEqual([7,8]);
 });
+
+it.each(["renewed", "shortened", "value", "security", "missing", "foreign-tgc", "foreign-domain-tgc", "foreign-path-tgc"] as const)(
+  "finishes an acknowledged waiting page only for unchanged cookies or expiry renewal: %s", async change => {
+    await startRecovery();
+    const second = {...sender,tab:{id:8},documentId:"delayed-waiter"} as chrome.runtime.MessageSender;
+    await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},second);
+    await sync("alarm");
+    publishNewSession(8, [{name:"auxiliary",value:"same-school-session",domain:"sso.cqu.edu.cn",path:"/",
+      secure:true,httpOnly:true,sameSite:"Lax",expires:Date.now()/1000+1800}]);
+    await sync("alarm");
+    expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toEqual({kind:"navigating"});
+    const auxiliary = fake.getCookie("auxiliary")!;
+    const originalExpiry = auxiliary.expirationDate!;
+    if (change === "missing") await chrome.cookies.remove({url:"https://sso.cqu.edu.cn/",name:"auxiliary"});
+    else if (change === "foreign-tgc") fake.getCookie("SOURCEID_TGC")!.value = "another-account";
+    else if (change === "foreign-domain-tgc" || change === "foreign-path-tgc") {
+      await chrome.cookies.set({url:"https://sso.cqu.edu.cn/authserver/login",name:"SOURCEID_TGC",value:"another-account",
+        path:change === "foreign-path-tgc" ? "/authserver" : "/",
+        ...(change === "foreign-domain-tgc" ? {domain:".sso.cqu.edu.cn"} : {}),secure:true,httpOnly:true});
+    }
+    else if (change === "value") auxiliary.value = "another-session";
+    else if (change === "security") auxiliary.httpOnly = false;
+    else auxiliary.expirationDate = originalExpiry + (change === "renewed" ? 60 : -60);
+    if (change !== "missing") await sync("popup");
+    const exports = vi.mocked(api.exportSession).mock.calls.length;
+    const acknowledgments = vi.mocked(api.acknowledge).mock.calls.length;
+    const result = await handleContentMessage({type:"GET_UI_STATE"},second);
+    expect(result.kind === "navigating").toBe(change === "renewed");
+    expect(fake.tabUpdates.map(update=>update.tabId)).toEqual(change === "renewed" ? [7,8] : [7]);
+    expect(api.exportSession).toHaveBeenCalledTimes(exports);
+    expect(api.acknowledge).toHaveBeenCalledTimes(acknowledgments);
+    if (change === "renewed") {
+      expect((await readLocalState()).receipt).toMatchObject({result:"foreign",verifiedAt:null});
+      await clearOwnedCookies();
+      expect(fake.getCookie("auxiliary")?.expirationDate).toBe(originalExpiry+60);
+    }
+  }
+);
 
 it("does not restore ready or navigate when manual input cancels an outstanding ACK",async()=>{
   await startRecovery();

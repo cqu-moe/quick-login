@@ -111,7 +111,12 @@ async function ackCurrent(local: LocalState): Promise<void> {
     return;
   }
   await adopt(ack.snapshot, local.localGeneration);
-  await updateLocalState((state) => sameTuple(state.receipt,receipt) ? { ...state,pendingAck:false } : state);
+  await updateLocalState((state) => state.localGeneration === local.localGeneration &&
+    state.receipt?.exportId === receipt.exportId && sameTuple(state.receipt,receipt)
+    ? { ...state,pendingAck:false,
+      loginRecovery: receipt.result === "applied" && receipt.verifiedAt !== null &&
+        state.loginRecovery?.appliedExportId === receipt.exportId
+        ? {...state.loginRecovery,acknowledgedExportId:receipt.exportId} : state.loginRecovery } : state);
 }
 
 async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
@@ -171,7 +176,10 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
       if (ack.accepted && !sameTuple(ack.acceptedTuple,local.receipt)) throw new api.ApiFailure("CONTRACT_INVALID");
       local = await updateLocalState((state) => {
         if (state.localGeneration !== local.localGeneration || state.receipt?.exportId !== ack.exportId) return state;
-        return ack.accepted ? { ...state,pendingAck:false }
+        return ack.accepted ? { ...state,pendingAck:false,
+          loginRecovery: state.receipt?.result === "applied" && state.receipt.verifiedAt !== null &&
+            state.loginRecovery?.appliedExportId === ack.exportId
+            ? {...state.loginRecovery,acknowledgedExportId:ack.exportId} : state.loginRecovery }
           : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle" };
       });
     }
@@ -293,7 +301,8 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
         sessionVersion:envelope.sessionVersion,exportId:envelope.exportId,result:"applied",verifiedAt:Date.now() },
         pendingAck:true,appliedVersion:envelope.sessionVersion,localWriteState:"ready",
         schoolAccess:recovered ? "unverified" : state.schoolAccess,
-        loginRecovery:state.loginRecovery && recovered ? { ...state.loginRecovery,appliedExportId:envelope.exportId } : state.loginRecovery,
+        loginRecovery:state.loginRecovery && recovered ? { ...state.loginRecovery,appliedExportId:envelope.exportId,
+          acknowledgedExportId:null } : state.loginRecovery,
         recovery:{ ...round,phase:"finished" } };
     });
     if (local.localGeneration === generationFence) await ackCurrent(local);

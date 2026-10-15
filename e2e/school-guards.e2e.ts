@@ -73,18 +73,38 @@ test('QUICKLOGIN-02 two waiting school documents each navigate once after a new 
   expect(await popup.evaluate(async () => (await chrome.cookies.get({ url: 'https://sso.cqu.edu.cn/', name: 'SESSION' }))?.value === 'local-rotation-before-recovery')).toBe(true);
   const first = await beginHeldRecovery(popup, context, 'tab-first');
   const second = await openSchoolForm(context, 'tab-second');
+  const secondDebugger = await context.newCDPSession(second);
   let firstLoads = 0, secondLoads = 0;
   first.on('framenavigated', frame => { if (frame === first.mainFrame()) firstLoads++; });
   second.on('framenavigated', frame => { if (frame === second.mainFrame()) secondLoads++; });
   try {
     await until(() => localState(popup), state => state.loginRecovery?.pages.length === 2);
     expect(firstLoads + secondLoads).toBe(0);
+    await first.bringToFront();
+    await secondDebugger.send('Debugger.enable');
+    await secondDebugger.send('Debugger.pause');
     await controlSchool({ holdLogin: false });
-    for (const page of [first, second]) { await page.bringToFront(); await page.getByRole('heading', { name: '已进入学校合成业务' }).waitFor({ timeout: 120_000 }); }
+    for (const [index, page] of [first, second].entries()) {
+      await page.bringToFront();
+      await page.getByRole('heading', { name: '已进入学校合成业务' }).waitFor({ timeout: 120_000 });
+      await recordEvent('waiting-page-arrived', { index, firstLoads, secondLoads });
+      if (index === 0) {
+        expect(firstLoads).toBe(1); expect(secondLoads).toBe(0);
+        // Exercise a real school Set-Cookie renewal and ordinary polling before
+        // the original background document is allowed to consume the same ACK.
+        await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
+        await until(() => localState(popup), state => state.receipt?.result === 'foreign' && state.receipt.verifiedAt === null);
+        await secondDebugger.send('Debugger.resume');
+      }
+    }
     await first.bringToFront(); await first.waitForTimeout(1200);
     expect(firstLoads).toBe(1); expect(secondLoads).toBe(1);
     expect((await localState(popup)).pendingAck).toBe(false);
-  } finally { await controlSchool({ holdLogin: false }); }
+  } finally {
+    await secondDebugger.send('Debugger.disable');
+    await secondDebugger.detach();
+    await controlSchool({ holdLogin: false });
+  }
 });
 
 test('QUICKLOGIN-02 replacing a waiting school document prevents its late navigation', { timeout: 240_000 }, async ({ app }) => {
