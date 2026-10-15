@@ -7,7 +7,7 @@ const output = resolve(".e2e/lifecycle-" + Date.now());
 await mkdir(output, { recursive: true });
 const checks = [];
 
-async function probe(name, { missingAuth = false, assertionFailure = false } = {}) {
+async function probe(name, { missingAuth = false, assertionFailure = false, providerFailure = false } = {}) {
   const run = join(output, name);
   const residue = join(run, "profiles", "controlled-residue.txt");
   const child = spawn(process.execPath, ["e2e/run.mjs", "--grep", "^tester-army rides"], {
@@ -23,6 +23,7 @@ async function probe(name, { missingAuth = false, assertionFailure = false } = {
       QUICKLOGIN_E2E_AUTH_COMMIT: process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "d9bf0c5e6d5cc459029da6a345991b8d0f13f514",
       QUICKLOGIN_E2E_OUTPUT: run,
       QUICKLOGIN_E2E_BREAK_ASSERTION: assertionFailure ? "1" : "",
+      QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP: providerFailure ? "1" : "",
       E2E_TELEMETRY_DISABLED: "1",
       DO_NOT_TRACK: "1",
     },
@@ -36,7 +37,7 @@ async function probe(name, { missingAuth = false, assertionFailure = false } = {
   const timeout = setTimeout(() => child.kill("SIGTERM"), 30000);
   let planted = false;
   try {
-    if (!missingAuth) {
+    if (!missingAuth && !providerFailure) {
       const deadline = Date.now() + 5000;
       while (Date.now() < deadline && child.exitCode === null) {
         try {
@@ -60,6 +61,15 @@ async function probe(name, { missingAuth = false, assertionFailure = false } = {
       assert.equal(runtime.cleanup, "passed");
       assert.equal(runtime.runnerExitCode, undefined);
       assert(runtime.primaryFailures.some(message => message.includes("missing-auth-source")));
+    } else if (providerFailure) {
+      const report = JSON.parse(await readFile(join(run, "report.json"), "utf8"));
+      assert.equal(runtime.runnerExitCode, 0);
+      assert.equal(report.run.summary.passed, 1);
+      const attempt = report.run.results.find(result => result.selected)?.attempts[0];
+      assert.equal(attempt?.cleanup, "failed");
+      assert(attempt.secondaryErrors.some(error => error.message.includes("Injected provider cleanup failure")));
+      assert(runtime.primaryFailures.includes("Browser provider cleanup failed in framework attempt evidence"));
+      assert.equal(runtime.cleanup, "passed");
     } else {
       const report = JSON.parse(await readFile(join(run, "report.json"), "utf8"));
       assert.equal(runtime.runnerExitCode, assertionFailure ? 1 : 0);
@@ -94,9 +104,10 @@ async function probe(name, { missingAuth = false, assertionFailure = false } = {
 await probe("missing-auth", { missingAuth: true });
 await probe("cleanup-only");
 await probe("primary-and-cleanup", { assertionFailure: true });
+await probe("provider-cleanup", { providerFailure: true });
 await writeFile(join(output, "control.json"), JSON.stringify({
   status: "passed",
   checks,
   controlledResiduesRemoved: true,
 }, null, 2) + "\n");
-console.log("[quicklogin-e2e] three lifecycle failure controls passed: " + output);
+console.log("[quicklogin-e2e] four lifecycle failure controls passed: " + output);

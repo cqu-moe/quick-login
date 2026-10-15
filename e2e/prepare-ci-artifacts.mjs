@@ -130,7 +130,10 @@ const zero = await findControl("zero-", async path => {
 });
 const lifecycle = await findControl("lifecycle-", async path => {
   const result = JSON.parse(await readFile(join(path, "control.json"), "utf8"));
-  if (result.status !== "passed" || result.checks.length !== 3 || result.controlledResiduesRemoved !== true) return false;
+  const names = result.checks.map(check => check.name).sort();
+  if (result.status !== "passed" || JSON.stringify(names) !== JSON.stringify([
+    "cleanup-only", "missing-auth", "primary-and-cleanup", "provider-cleanup",
+  ]) || result.controlledResiduesRemoved !== true) return false;
   for (const check of result.checks) {
     const runtime = JSON.parse(await readFile(join(path, check.name, "runtime.json"), "utf8"));
     if (!sameSource(runtime)) return false;

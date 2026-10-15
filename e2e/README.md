@@ -44,7 +44,9 @@ tester-army 负责 BrowserProvider 生命周期、popup 的确定性点击和可
 
 外部浏览器流量仅放行到本轮 Auth 的代理连接；Chromium 内建服务及 identity 回调的已知拒绝单独登记，其余请求拒绝且令运行失败。Worker 仅允许合成 `example.test` 邮件投递，其他外联失败。遥测及 AI 调用关闭。
 
-`self-check` 必须失败于指定的真实断言并返回 runner 1；`zero-check` 必须得到 `NO_TESTS` / runner 2。`lifecycle-check` 实际验证依赖缺失、成功测试后的残留 profile 清理拒绝，以及主失败与清理失败同时保留；只放入并移除自己的合成残留文件，不修改产品或替换内部服务。控制脚本仅在预期失败原因和清理证据均吻合时返回 0。
+`self-check` 必须失败于指定的真实断言并返回 runner 1；`zero-check` 必须得到 `NO_TESTS` / runner 2。`lifecycle-check` 实际验证依赖缺失、成功测试后的残留 profile 清理拒绝、主失败与清理失败同时保留，以及 provider 清理错误。只放入并移除自己的合成残留文件，不修改产品或替换内部服务。控制脚本仅在预期失败原因和清理证据均吻合时返回 0。
+
+固定 e2e 0.21 可能将 provider 清理失败记为 attempt secondary error，同时仍返回 passed / exit 0；必过 wrapper 会独立检查该记录并失败。专用负控制在实际资源已移除后注入 provider 错误，证明无需依赖残留文件也会拒绝。Linux 原生运行曾在 Chromium 退出后删除 Default 目录时得到 ENOTEMPTY；现在使用有上限的原生删除重试，持续残留仍失败。后台浏览器组件请求被启动参数抑制，代理继续拒绝并记录所有未登记外联。
 
 每轮输出 runner report / log、步骤日志、输入遮罩截图及 `runtime.json`。runtime 记录构建提交、Auth 提交、网络结果和清理结论；只观察 OAuth 跳转元数据，不保存响应正文、code、token 或 Cookie。TLS proxy 请求 identity 编码，避免把 gzip 字节误当 JSON。输出包含本地运行数据，不直接整体上传。
 

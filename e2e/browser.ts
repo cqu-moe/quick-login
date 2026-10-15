@@ -23,7 +23,9 @@ async function stopChromium(child: ChildProcess, profile: string) {
       child.kill("SIGTERM");
     });
   }
-  await rm(profile, { recursive: true, force: true });
+  // Linux can finish flushing utility-process files just after the parent
+  // exits (observed ENOTEMPTY). Bounded native retries still fail on residue.
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 export const extensionBrowser: BrowserProvider = {
@@ -53,9 +55,14 @@ export const extensionBrowser: BrowserProvider = {
         "--no-default-browser-check",
         "--disable-background-networking",
         "--disable-component-update",
+        "--disable-component-extensions-with-background-pages",
+        "--disable-default-apps",
+        "--disable-breakpad",
         "--disable-domain-reliability",
         "--disable-sync",
-        "--disable-features=AutofillServerCommunication",
+        // Match Playwright's startup-network suppression while retaining our
+        // actual extension. Unexpected destinations remain denied and fail CI.
+        "--disable-features=AutofillServerCommunication,MediaRouter,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled",
         "--metrics-recording-only",
         "--no-pings",
         "--check-for-update-interval=2147483647",
@@ -129,6 +136,7 @@ export const extensionBrowser: BrowserProvider = {
     const state = lease as { child?: ChildProcess; profile?: string };
     try {
       if (state.child && state.profile) await stopChromium(state.child, state.profile);
+      if (process.env.QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP === "1") throw new Error("Injected provider cleanup failure after resource removal");
     } finally {
       delete activeEndpoint.__QUICKLOGIN_CDP_ENDPOINT__;
     }

@@ -74,6 +74,7 @@ try {
       QUICKLOGIN_E2E_PROXY: `http://127.0.0.1:${egress.port}`,
       QUICKLOGIN_E2E_ARTIFACTS: output,
       QUICKLOGIN_E2E_BREAK_ASSERTION: process.env.QUICKLOGIN_E2E_BREAK_ASSERTION || "",
+      QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP: process.env.QUICKLOGIN_E2E_FAIL_PROVIDER_CLEANUP || "",
       E2E_TELEMETRY_DISABLED: "1",
       DO_NOT_TRACK: "1",
       WRANGLER_SEND_METRICS: "false",
@@ -105,6 +106,12 @@ try {
   const report = JSON.parse(await readFile(join(output, "report.json"), "utf8"));
   if (!report.run.summary.executed || report.run.summary.skipped || report.run.summary.interrupted) {
     throw new Error("Required E2E suite was empty, skipped or interrupted");
+  }
+  // e2e 0.21 can report passed/exit 0 while recording provider cleanup as a
+  // secondary attempt error. That is still a failed required gate.
+  if (report.run.results.some(result => result.selected && result.attempts?.some(attempt =>
+    attempt.cleanup === "failed" || attempt.secondaryErrors?.some(error => error.phase === "cleanup")))) {
+    throw new Error("Browser provider cleanup failed in framework attempt evidence");
   }
   if (process.exitCode === 0 && (report.run.summary.failed || report.run.status !== "passed")) {
     throw new Error("Runner result mismatch");
