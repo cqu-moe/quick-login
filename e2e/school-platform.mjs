@@ -82,13 +82,17 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
     async beforeClose() {
       clearInterval(timer);
       if (!mf) return;
-      while (pumping) await new Promise(done => setTimeout(done, 50));
-      const evidence = await mf.getD1Database('EVIDENCE', 'quicklogin-consumer-auth');
-      outcomes.browser = (await evidence.prepare('SELECT ok,code,phase FROM browser_outcomes ORDER BY id').all()).results;
-      outcomes.school = [];
-      for (const userId of users.keys()) {
-        const value = await control(userId, 'control', { hold: false, holdLogin: false, holdMail: false });
-        outcomes.school.push({ profiles: value.profiles, chromeProcesses: value.chromeProcesses });
+      try {
+        while (pumping) await new Promise(done => setTimeout(done, 50));
+        const evidence = await mf.getD1Database('EVIDENCE', 'quicklogin-consumer-auth');
+        outcomes.browser = (await evidence.prepare('SELECT ok,code,phase FROM browser_outcomes ORDER BY id').all()).results;
+        outcomes.school = [];
+        for (const userId of users.keys()) {
+          const value = await control(userId, 'control', { hold: false, holdLogin: false, holdMail: false });
+          outcomes.school.push({ profiles: value.profiles, chromeProcesses: value.chromeProcesses });
+        }
+      } finally {
+        containerCleanup.capture();
       }
     },
     async close() {

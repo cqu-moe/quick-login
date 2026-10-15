@@ -11,7 +11,7 @@ const root = process.cwd();
 const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || join(root, `.e2e/run-${Date.now()}`));
 if (!output.startsWith(resolve(root, ".e2e") + "/")) throw new Error("E2E output must be a child of .e2e");
 const authPath = process.env.QUICKLOGIN_E2E_AUTH_PATH || join(root, "..", "QUICKLOGIN-02-deps/auth");
-const expectedCommit = process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "134f447284a676cacceb7dd0758be0290c3ca42c";
+const expectedCommit = process.env.QUICKLOGIN_E2E_AUTH_COMMIT || "870933794326b9d280dcf07f392c80c127fd7233";
 await mkdir(dirname(output), { recursive: true });
 await mkdir(output, { mode: 0o700 });
 

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
+const startedAt = new Date().toISOString();
 const args = process.argv.slice(2);
 let active;
 let interrupted = false;
@@ -67,7 +68,7 @@ else {
     if (JSON.stringify(results.map(test => test.id).sort()) !== JSON.stringify(pairs.map(pair => pair.id).sort())) failures.push('Aggregate test IDs do not equal framework discovery');
     const summary = { discovered: pairs.length, selected: pairs.length, executed: results.length, passed: results.filter(test => test.status === 'passed').length, failed: results.filter(test => test.status === 'failed').length, interrupted: interrupted ? 1 : 0, skipped: pairs.length - results.length, flaky: 0 };
     if (summary.passed !== pairs.length) failures.push('Not every discovered test passed');
-    const report = { ...(reports[0] ?? {}), run: { ...(reports[0]?.run ?? {}), status: failures.length ? 'failed' : 'passed', summary, results, errors: failures.map(message => ({ message })) } };
+    const report = { ...(reports[0] ?? {}), run: { ...(reports[0]?.run ?? {}), startedAt, finishedAt: new Date().toISOString(), exitCode: failures.length ? 1 : 0, status: failures.length ? 'failed' : 'passed', summary, results, errors: failures.map(message => ({ message })) } };
     await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
     await writeFile(join(output, 'runner.log'), logs.join('\n'));
     const runtime = { ...(runtimes[0] ?? {}), output, groups: runtimes, completedGroups: runtimes.length, expectedGroups: groups.length, cleanup: runtimes.length && runtimes.every(value => value.cleanup === 'passed') ? 'passed' : 'incomplete-or-failed', primaryFailures: failures, cleanupFailures: runtimes.flatMap(value => value.cleanupFailures ?? []) };

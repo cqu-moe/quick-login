@@ -24,7 +24,7 @@ jobs:
       WRANGLER_SEND_METRICS: "false"
       PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
       QUICKLOGIN_E2E_AUTH_PATH: ${{ github.workspace }}/.e2e-auth
-      QUICKLOGIN_E2E_AUTH_COMMIT: 134f447284a676cacceb7dd0758be0290c3ca42c
+      QUICKLOGIN_E2E_AUTH_COMMIT: 870933794326b9d280dcf07f392c80c127fd7233
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
