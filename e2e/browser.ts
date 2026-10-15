@@ -73,7 +73,11 @@ export const extensionBrowser: BrowserProvider = {
       }
       arguments_.push("about:blank");
       request.signal.throwIfAborted();
-      child = spawn(chromium.executablePath(), arguments_, { stdio: "ignore" });
+      child = spawn(chromium.executablePath(), arguments_, { stdio: ["ignore", "ignore", "pipe"] });
+      // Keep only a bounded startup buffer, never persist raw stderr (which can
+      // include profile paths). Classify known environment failures on exit.
+      let startupStderr = "";
+      child.stderr?.on("data", chunk => { startupStderr = (startupStderr + chunk.toString()).slice(-16384); });
       let launchError: Error | undefined;
       child.once("error", error => { launchError = error; });
       let endpoint = "";
@@ -90,7 +94,12 @@ export const extensionBrowser: BrowserProvider = {
         }
       }
       if (!endpoint) {
-        throw new Error(launchError ? `Chromium launch failed: ${launchError.message}` : "Chromium did not expose a CDP endpoint");
+        const reason = /No usable sandbox|Failed to move to new namespace|zygote_host_impl_linux.*Operation not permitted/i.test(startupStderr)
+          ? "linux-sandbox-unavailable" : /error while loading shared libraries/i.test(startupStderr)
+            ? "missing-shared-library" : /Running as root without --no-sandbox/i.test(startupStderr)
+              ? "root-requires-explicit-sandbox-policy" : "unclassified";
+        throw new Error(launchError ? `Chromium launch failed: ${launchError.message}`
+          : `Chromium did not expose a CDP endpoint (exit=${child.exitCode}, signal=${child.signalCode}, reason=${reason})`);
       }
       request.signal.throwIfAborted();
       activeEndpoint.__QUICKLOGIN_CDP_ENDPOINT__ = endpoint;
