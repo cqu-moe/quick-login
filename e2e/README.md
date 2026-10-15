@@ -89,6 +89,8 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 `device-lifecycle.e2e.ts` 与 `device-school.e2e.ts` 共八项，每项使用新 runtime、数据库、端口、profile；其中四项需要独占原生学校容器。框架默认负责浏览器生命周期、发现、报告及原生确认框，MV3/CDP 的既有能力例外保留。真实确认框只有 tester-army 一个处理者；额外原生 CDP 连接仅观察，避免其自动取消确认框。撤销必须有真实 DELETE 204、独立 Auth 读回和旧凭据拒绝，不能只看设备行消失。
 
+连接及开关准备等待实际 connectIntent/pendingCommand 和公开按钮 aria-disabled 完成，再确认真实 enabledIntent。未等待 UI 动作结算时第二次 Space 曾被忙碌按钮忽略，表现为实际“已关闭”、无设备浏览器启动和 journal 断点超时；不以存储中写入 enabled/ready 绕过此竞争。
+
 | 场景 | 新增的真实边界与可失败结果 |
 | --- | --- |
 | alarm / rotation / 503 | 本地仅过期已签发 access；代理对真实 token 请求返回 transport 503；设备身份保留；移除周期 alarm、实际 stopWorker，30秒原生 alarm 唤醒后重建周期 alarm、真实 Auth 轮换两种 token，reportEpoch 不变 |

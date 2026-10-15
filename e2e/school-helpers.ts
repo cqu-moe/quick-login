@@ -31,6 +31,7 @@ export async function connectSchool(app: { open(path: string): Promise<unknown> 
   const { authPage } = await beginConnection(popup, context, () => popup.getByRole('button', { name: '连接 Auth', exact: true }).click());
   await completeLogin(authPage, key);
   await waitForUiState(popup, state => state?.deviceId && state.local?.authorization === 'authorized', 120_000);
+  await until(() => localState(popup), state => !state.connectIntentId && !state.pendingCommand);
   const settings = await context.newPage();
   await settings.goto('https://auth.cqu.moe/settings');
   const result = await settings.evaluate(async () => {
@@ -40,11 +41,9 @@ export async function connectSchool(app: { open(path: string): Promise<unknown> 
   expect(result).toEqual({ status: 200, masterEnabled: true });
   await popup.bringToFront();
   await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
-  const toggle = popup.getByRole('checkbox', { name: '开启 QuickLogin' });
-  await toggle.press("Space");
-  await until(() => localState(popup), state => !state.enabledIntent && !state.pendingCommand);
+  await popupEnabled(popup, false);
   if (beforeEnable) await beforeEnable(popup, context);
-  await toggle.press("Space");
+  await popupEnabled(popup, true);
   if (waitReady) await until(() => localState(popup), state => state.localWriteState === 'ready' && !!state.receipt && !state.pendingAck, 180_000);
   const cookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
   await protectedValues(cookies.map(cookie => cookie.value).filter(Boolean));

@@ -25,7 +25,7 @@ export async function authorize(popup: Page, context: BrowserContext, key: strin
   const { authPage } = await beginConnection(popup, context, () => popup.getByRole('button', { name: '连接 Auth', exact: true }).click());
   await completeLogin(authPage, key);
   await waitForUiState(popup, value => value?.deviceId && value.local.authorization === 'authorized', 120_000);
-  await until(() => localState(popup), value => !value.pendingCommand);
+  await until(() => localState(popup), value => !value.connectIntentId && !value.pendingCommand);
 }
 
 export async function expireLocalAccess(popup: Page) {
