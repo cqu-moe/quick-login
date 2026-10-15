@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a140a5-25a5-71cb-ab62-7df1eaa2c25a · targets: desktop
+
+ ✓ target "desktop" command ready 94ms
+ ✓ |desktop| e2e/school-guards.e2e.ts (1 test) 37.98s
+   ✓ QUICKLOGIN-02 an actually issued receipt from an older device generation is rejected without replacing current authority 37.98s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:38:47
+   Duration  38.48s (startup 94ms)

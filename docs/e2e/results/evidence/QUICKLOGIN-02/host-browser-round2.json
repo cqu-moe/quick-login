@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "observedActualProcesses": [
+    {
+      "pid": 35652,
+      "headless": true,
+      "basicPasswordStore": true,
+      "mockKeychain": true,
+      "disposableProfile": true
+    }
+  ]
+}

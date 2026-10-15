@@ -1,0 +1,33 @@
+{
+  "run": {
+    "startedAt": "2026-10-15T17:19:53.094Z",
+    "finishedAt": "2026-10-15T17:19:53.764Z",
+    "exitCode": 1,
+    "status": "failed",
+    "summary": {
+      "discovered": 2,
+      "selected": 2,
+      "executed": 0,
+      "passed": 0,
+      "failed": 0,
+      "interrupted": 0,
+      "skipped": 2,
+      "flaky": 0
+    },
+    "results": [],
+    "errors": [
+      {
+        "message": "school-1-da65f4fccb8e: ENOENT: no such file or directory, open '<worktree>/.e2e/aggregate-metadata-e1fde7d/school-1-da65f4fccb8e/report.json'"
+      },
+      {
+        "message": "school-1-da65f4fccb8e: wrapper exited 1"
+      },
+      {
+        "message": "Aggregate test IDs do not equal framework discovery"
+      },
+      {
+        "message": "Not every discovered test passed"
+      }
+    ]
+  }
+}

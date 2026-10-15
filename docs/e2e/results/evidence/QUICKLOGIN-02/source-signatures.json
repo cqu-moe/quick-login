@@ -1,0 +1,38 @@
+{
+  "effectiveName": "User-Unauthorized",
+  "effectiveEmail": "69748465+UserUnauthorized@users.noreply.github.com",
+  "signingEnabled": "true",
+  "integrationAncestor": "2baf0ccbae15fc7d431138daddf4f7ebe3b4fc2c",
+  "verified": [
+    {
+      "commit": "a2cd13e372f53c757e0f8cc8b44ca2f0034c070b",
+      "exitCode": 0,
+      "signature": "Good \"git\" signature for 69748465+UserUnauthorized@users.noreply.github.com with ED25519 key SHA256:kFBsDXcJS4MSU8XzdxOS6OXw1GWgslmAJ01pZuIHgrg"
+    },
+    {
+      "commit": "b453791345c6f6853671ab23f8923c3f1c2a3ac6",
+      "exitCode": 0,
+      "signature": "Good \"git\" signature for 69748465+UserUnauthorized@users.noreply.github.com with ED25519 key SHA256:kFBsDXcJS4MSU8XzdxOS6OXw1GWgslmAJ01pZuIHgrg"
+    },
+    {
+      "commit": "b7d224f79d158adbcc677d714d8eb5d87e3ff086",
+      "exitCode": 0,
+      "signature": "Good \"git\" signature for 69748465+UserUnauthorized@users.noreply.github.com with ED25519 key SHA256:kFBsDXcJS4MSU8XzdxOS6OXw1GWgslmAJ01pZuIHgrg"
+    },
+    {
+      "commit": "e6512e4cf7873828c31615243a010d800a4d6647",
+      "exitCode": 0,
+      "signature": "Good \"git\" signature for 69748465+UserUnauthorized@users.noreply.github.com with ED25519 key SHA256:kFBsDXcJS4MSU8XzdxOS6OXw1GWgslmAJ01pZuIHgrg"
+    },
+    {
+      "commit": "2e78e3b504e50b3b504f0ef6c0ad2b95aeb84e2d",
+      "exitCode": 0,
+      "signature": "Good \"git\" signature for 69748465+UserUnauthorized@users.noreply.github.com with ED25519 key SHA256:kFBsDXcJS4MSU8XzdxOS6OXw1GWgslmAJ01pZuIHgrg"
+    },
+    {
+      "commit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+      "exitCode": 0,
+      "signature": "Good \"git\" signature for 69748465+UserUnauthorized@users.noreply.github.com with ED25519 key SHA256:kFBsDXcJS4MSU8XzdxOS6OXw1GWgslmAJ01pZuIHgrg"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a1409d-757d-7b4e-9a62-fef1a9cbacab · targets: desktop
+
+ ✓ target "desktop" command ready 90ms
+ ✓ |desktop| e2e/school.e2e.ts (1 test) 56.45s
+   ✓ QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt 56.45s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:30:23
+   Duration  56.89s (startup 90ms)

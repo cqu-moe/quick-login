@@ -1,0 +1,15 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a14095-705f-7b56-9dca-b0b9d7a633ba · targets: desktop
+
+ ✓ target "desktop" command ready 89ms
+ ✓ |desktop| e2e/capability.e2e.ts (1 test) 743ms
+   ✓ tester-army rides a persistent Chromium context and loads the real MV3 extension 743ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:21:38
+   Duration  1.18s (startup 89ms)
+
+[quicklogin-e2e] runner exited with 0
+[quicklogin-e2e] cleanup failed: Browser profile cleanup failed: residual state remains

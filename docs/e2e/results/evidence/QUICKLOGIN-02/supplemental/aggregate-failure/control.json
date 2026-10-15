@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "wrapperExitCode": 1,
+  "reportExitCode": 1,
+  "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "authCommit": "870933794326b9d280dcf07f392c80c127fd7233",
+  "summary": {
+    "discovered": 2,
+    "selected": 2,
+    "executed": 0,
+    "passed": 0,
+    "failed": 0,
+    "interrupted": 0,
+    "skipped": 2,
+    "flaky": 0
+  },
+  "startedAt": "2026-10-15T17:19:53.094Z",
+  "finishedAt": "2026-10-15T17:19:53.764Z",
+  "nativeStarted": false
+}

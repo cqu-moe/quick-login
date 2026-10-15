@@ -1,0 +1,601 @@
+{
+  "schemaVersion": "report-1",
+  "run": {
+    "id": "01a14098-d4e2-74d6-a736-729ee4dfa130",
+    "specVersion": "0.1",
+    "runner": {
+      "name": "e2e",
+      "version": "0.21.0"
+    },
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-10-15T17:25:20.477Z",
+    "finishedAt": "2026-10-15T17:26:27.968Z",
+    "project": {
+      "id": "cqu-quicklogin",
+      "configDigest": "76d39d05a3e7e10a441aeba7f4d31e53b246b540c108f0d8660f707a92f071fa"
+    },
+    "environment": {
+      "ci": false,
+      "trustNoticeShown": false,
+      "os": "darwin 25.6.0",
+      "arch": "arm64",
+      "runtime": "node v22.22.3"
+    },
+    "vcs": {
+      "commit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+      "branch": "codex/e2e-20261015-quicklogin-02",
+      "dirty": false
+    },
+    "targets": [
+      {
+        "id": "desktop",
+        "index": 0,
+        "platform": "web",
+        "baseOrigin": "http://127.0.0.1:61412",
+        "environment": "test",
+        "engine": {
+          "name": "web",
+          "version": "0.15.0",
+          "spiVersion": 1
+        },
+        "capabilities": [
+          "actions",
+          "artifacts",
+          "browser",
+          "keyboard",
+          "location",
+          "observation",
+          "pointer"
+        ],
+        "artifactCapabilities": [
+          "screenshot",
+          "video"
+        ],
+        "stateCapability": false
+      }
+    ],
+    "serialGroups": [],
+    "results": [
+      {
+        "id": "f9665fe68c7a8dbc344999942c524bcda8f3f0887d016cd050026c9a4e1ee134",
+        "testId": "e2e/capability.e2e.ts::tester-army%20rides%20a%20persistent%20Chromium%20context%20and%20loads%20the%20real%20MV3%20extension",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "tester-army rides a persistent Chromium context and loads the real MV3 extension"
+        ],
+        "file": "e2e/capability.e2e.ts",
+        "source": {
+          "file": "e2e/capability.e2e.ts",
+          "line": 5,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "e941f03a9e762dab2752b73586c8941f7e2b242e13c1b59a889dade9a70d8116",
+        "testId": "e2e/journey.e2e.ts::the%20real%20popup%20completes%20Auth%20PKCE%20login%20and%20device%20registration",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "the real popup completes Auth PKCE login and device registration"
+        ],
+        "file": "e2e/journey.e2e.ts",
+        "source": {
+          "file": "e2e/journey.e2e.ts",
+          "line": 11,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [
+          "auth-device-registration"
+        ],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "95efae2f21cde28682688215ed9efea183fecb615c6a0b4a485c4c776784fa86",
+        "testId": "e2e/journey.e2e.ts::canceling%20the%20real%20Auth%20login%20does%20not%20connect%20the%20device",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "canceling the real Auth login does not connect the device"
+        ],
+        "file": "e2e/journey.e2e.ts",
+        "source": {
+          "file": "e2e/journey.e2e.ts",
+          "line": 86,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "78a0a70a9e89a7663e2bec0ae42cd68e2ef8735a1ced51ea5c08641f370f3d7f",
+        "testId": "e2e/journey.e2e.ts::a%20real%20callback%20with%20the%20wrong%20pending%20state%20is%20rejected",
+        "kind": "test",
+        "declarationIndex": 2,
+        "titlePath": [
+          "a real callback with the wrong pending state is rejected"
+        ],
+        "file": "e2e/journey.e2e.ts",
+        "source": {
+          "file": "e2e/journey.e2e.ts",
+          "line": 111,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "7ab2e9d4fb74c6977468a9523b08c263437035ce05d0637d950afacf081fd97e",
+        "testId": "e2e/journey.e2e.ts::a%20callback%20outside%20the%20registered%20extension%20redirect%20is%20rejected",
+        "kind": "test",
+        "declarationIndex": 3,
+        "titlePath": [
+          "a callback outside the registered extension redirect is rejected"
+        ],
+        "file": "e2e/journey.e2e.ts",
+        "source": {
+          "file": "e2e/journey.e2e.ts",
+          "line": 142,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "8cc3e04646fd17e2b1bd03b067132df66b240dc43fa69d047ec43f54a38bb26f",
+        "testId": "e2e/journey.e2e.ts::real%20device%20registration%20rejection%20does%20not%20display%20a%20connected%20device",
+        "kind": "test",
+        "declarationIndex": 4,
+        "titlePath": [
+          "real device registration rejection does not display a connected device"
+        ],
+        "file": "e2e/journey.e2e.ts",
+        "source": {
+          "file": "e2e/journey.e2e.ts",
+          "line": 174,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "da65f4fccb8e4616b5c3f46f7730ebdc608a3e3a958c0d73492c079e5b219c90",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20foreign%20cookies%20and%20ambiguous%20domain%2Fpath%20ownership%20survive%20sync%20and%20disable",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "QUICKLOGIN-02 foreign cookies and ambiguous domain/path ownership survive sync and disable"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 7,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "4fb2dd0b094274da56811226f9446f74f4b0d8fc42d882b7122231d129aea8c4",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20actual%20manual%20typing%20fences%20a%20late%20real%20school%20login%20and%20exposes%20recovery%20actions",
+        "kind": "test",
+        "declarationIndex": 1,
+        "titlePath": [
+          "QUICKLOGIN-02 actual manual typing fences a late real school login and exposes recovery actions"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 26,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "d5e99da038cad438720e0830a33b089eff22e8b9e0d79dc6f3a797b3e1307c89",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20disabling%20sync%20while%20a%20real%20export%20response%20is%20delayed%20cancels%20its%20cookie%20write%20and%20receipt",
+        "kind": "test",
+        "declarationIndex": 2,
+        "titlePath": [
+          "QUICKLOGIN-02 disabling sync while a real export response is delayed cancels its cookie write and receipt"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 44,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "f9776fab1d8e697d291c36127572da8c4dbc947d2ef6179bbd1e5418901ae2b7",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20two%20waiting%20school%20documents%20each%20navigate%20once%20after%20a%20new%20acknowledged%20write",
+        "kind": "test",
+        "declarationIndex": 3,
+        "titlePath": [
+          "QUICKLOGIN-02 two waiting school documents each navigate once after a new acknowledged write"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 63,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "8c1022ae52b3916b97d521b5339dce1d1c4e3a615e6b4574cee5d2cb0ec896da",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20replacing%20a%20waiting%20school%20document%20prevents%20its%20late%20navigation",
+        "kind": "test",
+        "declarationIndex": 4,
+        "titlePath": [
+          "QUICKLOGIN-02 replacing a waiting school document prevents its late navigation"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 81,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": true,
+        "status": "passed",
+        "attempts": [
+          {
+            "id": "01a14098-d77a-78f1-80f3-9cbb69355343",
+            "index": 0,
+            "status": "passed",
+            "startedAt": "2026-10-15T17:25:20.891Z",
+            "durationMs": 67067,
+            "artifacts": [],
+            "secondaryErrors": [],
+            "cleanup": "complete",
+            "environment": {
+              "browser": "chromium 156.0.8078.4",
+              "user agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+            },
+            "steps": [
+              {
+                "id": "01a14098-d77a-78f1-80f3-9cbb69355343:0",
+                "index": 0,
+                "kind": "app",
+                "api": "app.open",
+                "label": "/",
+                "status": "passed",
+                "startedAt": "2026-10-15T17:25:21.382Z",
+                "durationMs": 64,
+                "events": [
+                  {
+                    "kind": "navigation",
+                    "startedAt": "2026-10-15T17:25:36.186Z",
+                    "durationMs": 0,
+                    "status": "passed",
+                    "detail": "navigated to chrome-extension://igfidegfgfoofnoncpmbcokbffjmmook/popup.html"
+                  },
+                  {
+                    "kind": "navigation",
+                    "startedAt": "2026-10-15T17:25:36.919Z",
+                    "durationMs": 0,
+                    "status": "passed",
+                    "detail": "the new tab navigated to https://auth.cqu.moe/settings"
+                  },
+                  {
+                    "kind": "navigation",
+                    "startedAt": "2026-10-15T17:26:24.049Z",
+                    "durationMs": 0,
+                    "status": "passed",
+                    "detail": "the new tab navigated to https://sso.cqu.edu.cn/quicklogin-document"
+                  }
+                ],
+                "artifacts": [],
+                "screen": {
+                  "location": "http://127.0.0.1:61412/",
+                  "nodes": 2,
+                  "changes": []
+                },
+                "source": {
+                  "file": "e2e/school-helpers.ts",
+                  "line": 24,
+                  "column": 13
+                }
+              }
+            ],
+            "appLog": [
+              {
+                "source": "network",
+                "level": "error",
+                "text": "POST https://auth.cqu.moe/api/v1/cqu/quicklogin/devices/f666f1ef-1af9-46fc-8806-66493a600d38/operations 503 Service Unavailable",
+                "at": "2026-10-15T17:25:36.695Z",
+                "step": 0
+              },
+              {
+                "source": "network",
+                "level": "error",
+                "text": "POST https://auth.cqu.moe/api/v1/cqu/quicklogin/devices/f666f1ef-1af9-46fc-8806-66493a600d38/reconcile 502 Bad Gateway",
+                "at": "2026-10-15T17:26:01.204Z",
+                "step": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "3c49d8f43660bda9b7aea8b9cc82895b9771f2357a9d329a92bc8e9b3d0759c8",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20an%20expired%20genuine%20export%20cannot%20write%20cookies%20or%20send%20a%20success%20receipt",
+        "kind": "test",
+        "declarationIndex": 5,
+        "titlePath": [
+          "QUICKLOGIN-02 an expired genuine export cannot write cookies or send a success receipt"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 98,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "3e61c15985071d040ce7bc74215a48ebe2a176565a7a59df8b1649b5329febca",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20a%20school%20that%20still%20rejects%20the%20fresh%20write%20stops%20after%20one%20navigation%20with%20manual%20and%20retry%20actions",
+        "kind": "test",
+        "declarationIndex": 6,
+        "titlePath": [
+          "QUICKLOGIN-02 a school that still rejects the fresh write stops after one navigation with manual and retry actions"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 116,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "7ab53d631bee5bf727ed3407f4fb0d5bdcf87e6a7e40533e7dbdb15900e42880",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20an%20actually%20issued%20receipt%20from%20an%20older%20device%20generation%20is%20rejected%20without%20replacing%20current%20authority",
+        "kind": "test",
+        "declarationIndex": 7,
+        "titlePath": [
+          "QUICKLOGIN-02 an actually issued receipt from an older device generation is rejected without replacing current authority"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 132,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "56eb99564dc536b19ddcdc98eaed899f3ac4c080ce705c0cc69b564ce4e7f648",
+        "testId": "e2e/school-guards.e2e.ts::QUICKLOGIN-02%20worker%20termination%20after%20the%20real%20Cookie%20API%20writes%20but%20before%20journal%20completion%20rolls%20back%20and%20recovers",
+        "kind": "test",
+        "declarationIndex": 8,
+        "titlePath": [
+          "QUICKLOGIN-02 worker termination after the real Cookie API writes but before journal completion rolls back and recovers"
+        ],
+        "file": "e2e/school-guards.e2e.ts",
+        "source": {
+          "file": "e2e/school-guards.e2e.ts",
+          "line": 154,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      },
+      {
+        "id": "7451b5fd02e8789d91a594ce5b1353bfc2b69d41f450de60d9d59a648e064c70",
+        "testId": "e2e/school.e2e.ts::QUICKLOGIN-02%20real%20binding%2Fcontainer%20cookies%20reach%20a%20school%20business%20page%20and%20server%20receipt",
+        "kind": "test",
+        "declarationIndex": 0,
+        "titlePath": [
+          "QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt"
+        ],
+        "file": "e2e/school.e2e.ts",
+        "source": {
+          "file": "e2e/school.e2e.ts",
+          "line": 6,
+          "column": 1
+        },
+        "targetId": "desktop",
+        "platform": "web",
+        "agent": "default",
+        "repeat": 0,
+        "tags": [
+          "school-cookie-ack"
+        ],
+        "selected": false,
+        "status": "skipped",
+        "skip": {
+          "cause": "filtered",
+          "reason": "title does not match --grep"
+        },
+        "attempts": []
+      }
+    ],
+    "errors": [],
+    "summary": {
+      "discovered": 16,
+      "selected": 1,
+      "executed": 1,
+      "passed": 1,
+      "failed": 0,
+      "interrupted": 0,
+      "flaky": 0,
+      "skipped": 0
+    },
+    "limits": {
+      "maxAgentContextBytes": 16384,
+      "maxLedgerBytes": 8192,
+      "maxObservationBytes": 262144,
+      "maxEventsPerStep": 1000,
+      "maxModelTokensPerCall": 64000
+    },
+    "usage": {
+      "discoveredResults": 16,
+      "maxAgentContextBytes": 0,
+      "maxLedgerBytes": 0,
+      "maxObservationBytes": 0,
+      "artifactBytes": 0,
+      "downloads": 0,
+      "events": 3,
+      "modelTokens": 0,
+      "maxModelCallsInStep": 0,
+      "maxActionStepsInStep": 0
+    }
+  }
+}

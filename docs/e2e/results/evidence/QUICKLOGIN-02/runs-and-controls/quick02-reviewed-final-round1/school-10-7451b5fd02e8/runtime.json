@@ -1,0 +1,161 @@
+{
+  "authCommit": "870933794326b9d280dcf07f392c80c127fd7233",
+  "output": "<worktree>/.e2e/quick02-reviewed-final-round1/school-10-7451b5fd02e8",
+  "extensionPath": "dist",
+  "cleanup": "passed",
+  "extensionCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "sourceDirty": false,
+  "build": {
+    "extensionVersion": "0.4.8",
+    "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+    "protocolVersion": 3,
+    "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1"
+  },
+  "backgroundSha256": "3899dfb28ac0f83f35e6d161563bf0bdad58c670215555eb8eb29435e9288ac5",
+  "runnerExitCode": 0,
+  "deniedEgress": [
+    "https://accounts.google.com",
+    "https://update.googleapis.com",
+    "http://update.googleapis.com",
+    "https://accounts.google.com",
+    "https://accounts.google.com",
+    "https://accounts.google.com",
+    "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org",
+    "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org",
+    "https://accounts.google.com"
+  ],
+  "identities": 1,
+  "authNetwork": [
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/oauth2/authorize",
+      "status": 302,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/sign-in/email",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": true,
+      "bodyEncoding": "identity",
+      "jsonParsed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/oauth2/token",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false,
+      "bodyEncoding": "identity",
+      "jsonParsed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/registrations",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/168f4f62-c776-4169-82ff-485196f4f403/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/168f4f62-c776-4169-82ff-485196f4f403/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/168f4f62-c776-4169-82ff-485196f4f403/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    }
+  ],
+  "unexpectedDeniedEgress": [],
+  "school": {
+    "fixtureImage": "quicklogin-school-fixture:44073152-1240-4fe6-acfb-3fd326f280e9",
+    "deliveries": 3,
+    "acceptedDeliveries": 3,
+    "containerObjectsRemoved": true,
+    "proxyObjectsRemoved": true,
+    "imageRemoved": true,
+    "browser": [
+      {
+        "ok": 1,
+        "code": null,
+        "phase": null
+      },
+      {
+        "ok": 1,
+        "code": null,
+        "phase": null
+      },
+      {
+        "ok": 1,
+        "code": null,
+        "phase": null
+      }
+    ],
+    "school": [
+      {
+        "preDisposeProfiles": 0,
+        "preDisposeChromeProcesses": 0,
+        "browserLaunches": [
+          {
+            "pid": 23,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          },
+          {
+            "pid": 169,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          }
+        ]
+      },
+      {
+        "preDisposeProfiles": 0,
+        "preDisposeChromeProcesses": 0,
+        "browserLaunches": [
+          {
+            "pid": 23,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          },
+          {
+            "pid": 167,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          }
+        ]
+      }
+    ],
+    "removedContainerIds": [
+      "4f89e697f5d88c73a5e95365eab32c54e2f2089ecc2a2adb84af93d6a885c754",
+      "e83cb44f01c9648fec288420b06f000c41ef36b4f28c9e11fe390367b18fa2ad"
+    ],
+    "removedProxyIds": [
+      "5fc9b5aaf3a5b0da83e92f9b8c500adcb81625a128ff8b1ad5f3c29047a2e1f7",
+      "5ea731a571b567bacd575a37d6c9d9eb96061c4b9f6890c6915029efb36fd4e8"
+    ]
+  },
+  "primaryFailures": [],
+  "cleanupFailures": []
+}

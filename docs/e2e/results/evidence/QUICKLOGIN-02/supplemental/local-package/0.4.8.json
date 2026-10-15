@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "channel": "canary",
+  "version": "0.4.8",
+  "filename": "cqu-quicklogin-0.4.8-canary.zip",
+  "objectKey": "quicklogin/releases/0.4.8/cqu-quicklogin-0.4.8-canary.zip",
+  "size": 142522,
+  "sha256": "62602b9765a78fe5dbf55a392bad1111b0a5186b4dbeb7d8c5956b3f336a6194",
+  "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "protocolVersion": 3,
+  "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1",
+  "publishedAt": "2026-10-15T17:18:48+00:00",
+  "notes": [
+    "修复学校登录页改写辅助 Cookie 后，快捷登录可能把已被学校拒绝的旧会话当作新会话再次刷新页面的问题。学校恢复继续等待当前轮次的新会话写入与回执；本地学校会话 Cookie 确实丢失时仍可重新同步。"
+  ]
+}

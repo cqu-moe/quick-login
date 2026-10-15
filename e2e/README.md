@@ -85,7 +85,7 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 ## QUICKLOGIN-03 生命周期与撤销
 
-本票从未接受的02候选 `e6512e4cf7873828c31615243a010d800a4d6647` 起步，保持 Auth870 固定，不代为确认02验收。依赖和 Auth checkout 已物理 COW 复制到03专属目录，Git metadata 也独立。03没有生产成功开关或私有监听器调用；`src/`、manifest、版本和 lockfile 保持起点不变。
+本票从02候选 `e6512e4cf7873828c31615243a010d800a4d6647` 起步，随后按父任务固定指令私有合并02终点 `169f0fecacca3c9d3f3224b27b896b740b02d6f1`，保留 beforeClose 精确指标和失败 transport 诊断。Auth870 不变；02的既有完整证明与03的新增证明分别记录。依赖和 Auth checkout 已物理 COW 复制到03专属目录，Git metadata 也独立。03没有生产成功开关或私有监听器调用；`src/`、manifest、版本和 lockfile 保持起点不变。
 
 `device-lifecycle.e2e.ts` 与 `device-school.e2e.ts` 共八项，每项使用新 runtime、数据库、端口、profile；其中四项需要独占原生学校容器。框架默认负责浏览器生命周期、发现、报告及原生确认框，MV3/CDP 的既有能力例外保留。真实确认框只有 tester-army 一个处理者；额外原生 CDP 连接仅观察，避免其自动取消确认框。撤销必须有真实 DELETE 204、独立 Auth 读回和旧凭据拒绝，不能只看设备行消失。
 
@@ -114,8 +114,8 @@ npm run test:e2e:device-controls
 QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-quick03 node e2e/prepare-ci-artifacts.mjs quick03-round1 quick03-round2
 ```
 
-`device-controls.mjs` 保持原测试断言，只通过真实 Chrome API 删除唤醒 alarm，或持有真实 reconcile ACK 响应。两次都必须因指定缺失结果失败、runner 1、清理通过，才能记录控制成功。collector 对包含03的两轮额外要求这些同源控制。既有 zero/startup/provider/primary+cleanup 控制仍要求通过。全量入口会发现既有01/02与03；上述两轮只证明03八项，不重报未接受02的完整验收。
+`device-controls.mjs` 保持原测试断言，只通过真实 Chrome API 删除唤醒 alarm，或持有真实 reconcile ACK 响应。两次都必须因指定缺失结果失败、runner 1、清理通过，才能记录控制成功。collector 对包含03的两轮额外要求这些同源控制。既有 zero/startup/provider/primary+cleanup 控制仍要求通过。全量入口会发现既有01/02与03；上述两轮只证明03八项，不将继承02的完整验收冒称为03重跑。
 
 原生权限 allow/deny 为独立 [人工待验清单](QUICKLOGIN-03-manual.md)，没有自动化通过声明。实际大学账号、日常浏览器、真实学校长时效和发布不在本票证明内。
 
-学校 fixture 在固定 Auth Dockerfile 最后仅覆盖 Chromium executable wrapper，强制 headless/basic/mock-keychain 并 unset DISPLAY；不修改生产 Python 或 Auth checkout。外部 fixture 从实际 /proc cmdline 只汇总各 Chromium 主进程 PID 与安全参数布尔值，不保存完整参数或 profile 路径。邮件 poll 期间观察，最终清理必须同时具备非空真实 launch 记录、四项参数成立和 profile/Chrome 进程为零，否则 wrapper 失败。beforeClose 的 finally 在 dispose 前 capture 业务名称，覆盖生产直接启动后业务对象先消失的 proxy 清理边界。
+学校 fixture 在固定 Auth Dockerfile 最后仅覆盖 Chromium executable wrapper，强制 headless/basic/mock-keychain 并 unset DISPLAY；不修改生产 Python 或 Auth checkout。外部 fixture 从实际 /proc cmdline 只汇总各 Chromium 主进程 PID 与安全参数布尔值，不保存完整参数或 profile 路径。邮件 poll 期间观察，wrapper 要求非空真实 launch 记录及四项参数成立。preDisposeProfiles/preDisposeChromeProcesses 是 dispose 前的在途快照，允许真实后台 Workflow 尚在执行；最终清理由 dispose 后的业务容器/proxy 独立 absence、独占镜像删除及宿主临时目录删除证明，不能把该快照称为最终残留或最终零值。beforeClose 的 finally 在 dispose 前 capture 业务名称，覆盖生产直接启动后业务对象先消失的 proxy 清理边界。

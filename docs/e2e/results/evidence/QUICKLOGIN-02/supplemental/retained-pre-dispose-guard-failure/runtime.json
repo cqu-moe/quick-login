@@ -1,0 +1,179 @@
+{
+  "authCommit": "870933794326b9d280dcf07f392c80c127fd7233",
+  "output": "<worktree>/.e2e/quick02-safe-round1/school-7-3e61c1598507",
+  "extensionPath": "dist",
+  "cleanup": "failed: Native school browser lacks safe launch or final profile/process cleanup evidence",
+  "extensionCommit": "e6512e4cf7873828c31615243a010d800a4d6647",
+  "sourceDirty": false,
+  "build": {
+    "extensionVersion": "0.4.8",
+    "sourceCommit": "e6512e4cf7873828c31615243a010d800a4d6647",
+    "protocolVersion": 3,
+    "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1"
+  },
+  "backgroundSha256": "1dac46bfed18d28ab2ede23c7d67d9550eb76261fadc72877c79f1ea55aa4e25",
+  "runnerExitCode": 0,
+  "deniedEgress": [
+    "https://accounts.google.com",
+    "https://update.googleapis.com",
+    "http://update.googleapis.com",
+    "https://accounts.google.com",
+    "https://accounts.google.com",
+    "https://accounts.google.com",
+    "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org",
+    "https://igfidegfgfoofnoncpmbcokbffjmmook.chromiumapp.org",
+    "https://accounts.google.com",
+    "https://update.googleapis.com",
+    "http://update.googleapis.com"
+  ],
+  "identities": 1,
+  "authNetwork": [
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/oauth2/authorize",
+      "status": 302,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/sign-in/email",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": true,
+      "bodyEncoding": "identity",
+      "jsonParsed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/oauth2/token",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false,
+      "bodyEncoding": "identity",
+      "jsonParsed": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/registrations",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/c3f5fb4e-acf8-4f23-a15f-acd95c68d0bc/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/c3f5fb4e-acf8-4f23-a15f-acd95c68d0bc/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/c3f5fb4e-acf8-4f23-a15f-acd95c68d0bc/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cqu/quicklogin/devices/c3f5fb4e-acf8-4f23-a15f-acd95c68d0bc/receipts",
+      "status": 200,
+      "oauthError": null,
+      "codeIssued": false
+    }
+  ],
+  "unexpectedDeniedEgress": [],
+  "school": {
+    "fixtureImage": "quicklogin-school-fixture:6a6154a6-e112-451b-8a3a-fbdc20e11aee",
+    "deliveries": 3,
+    "acceptedDeliveries": 3,
+    "containerObjectsRemoved": true,
+    "proxyObjectsRemoved": true,
+    "imageRemoved": true,
+    "browser": [
+      {
+        "ok": 1,
+        "code": null,
+        "phase": null
+      },
+      {
+        "ok": 1,
+        "code": null,
+        "phase": null
+      },
+      {
+        "ok": 1,
+        "code": null,
+        "phase": null
+      }
+    ],
+    "school": [
+      {
+        "profiles": 1,
+        "chromeProcesses": 7,
+        "browserLaunches": [
+          {
+            "pid": 23,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          },
+          {
+            "pid": 167,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          },
+          {
+            "pid": 326,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          }
+        ]
+      },
+      {
+        "profiles": 0,
+        "chromeProcesses": 0,
+        "browserLaunches": [
+          {
+            "pid": 23,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          },
+          {
+            "pid": 166,
+            "headless": true,
+            "basicPasswordStore": true,
+            "mockKeychain": true,
+            "disposableProfile": true
+          }
+        ]
+      }
+    ],
+    "removedContainerIds": [
+      "5dc5f5250afed0d3671ded7aa535049387e836e424986af745ff743269cd4af9",
+      "3caa51258aa4a514b26aa831dc1c44a474ed2fb00a56af10d54589df1d854667"
+    ],
+    "removedProxyIds": [
+      "b6754806d718c7db3f11c41528e91e7e208a5659a85fffe37f93d5e7126d87db",
+      "3162f8c72cf742000841095a70b8fe3611131ac48a3da3573fad52841b6da1e7"
+    ]
+  },
+  "primaryFailures": [],
+  "cleanupFailures": [
+    "Native school browser lacks safe launch or final profile/process cleanup evidence"
+  ]
+}

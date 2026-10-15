@@ -1,0 +1,185 @@
+{
+  "rule": "Strip line-ending whitespace and extra EOF blank lines only in committed text copies; original raw and collector outputs remain unchanged.",
+  "files": [
+    {
+      "path": "runs-and-controls/lifecycle-1792084894864/cleanup-only/runner.log",
+      "originalSha256": "d8dfffcabcb2bd1b06b11b7e8837e91498b9ec0c3feb3f614708781cc2c9895f",
+      "committedSha256": "7d00454515938afeb361b73316aa35e866d0abed2280562d1a7f31ab648c60fa"
+    },
+    {
+      "path": "runs-and-controls/lifecycle-1792084894864/primary-and-cleanup/results/capability-tester-army-rides-a-persistent-f9665fe68c7a8dbc/trace.md",
+      "originalSha256": "1698a0d9572986aa566321e096c6d075ae571117808f2cb6797815d251a33989",
+      "committedSha256": "586fb298a9eea9c26df10310fdb9d636258513c85f206192992d03e5079aa3fe"
+    },
+    {
+      "path": "runs-and-controls/lifecycle-1792084894864/primary-and-cleanup/runner.log",
+      "originalSha256": "c4e8400cfbc7950ccf8d75b4a6d489824bd445644d19bf12c04f5374eee6ed9d",
+      "committedSha256": "8de0df8561d2ad89494fe4fad551857b52e4194e0a04046327ffe4a69b051c82"
+    },
+    {
+      "path": "runs-and-controls/lifecycle-1792084894864/provider-cleanup/runner.log",
+      "originalSha256": "6b2bebbee32cf2ab9d5ae903e7fa8e7fd8ec375d45dbbffedf45c5e1ba2c5384",
+      "committedSha256": "f7cfe9372831de978f305927ea888d6f22c4014c90bc079d8304846c8434bb39"
+    },
+    {
+      "path": "runs-and-controls/negative-1792084888301/run/results/capability-tester-army-rides-a-persistent-f9665fe68c7a8dbc/trace.md",
+      "originalSha256": "89081b9be91aae3cb65fe2b6cd52de108c75454266733cf41d352b0018803b1b",
+      "committedSha256": "32143c0b2c590c35a79c2fb27c72a5d474253afb65cbe8c9e2553367f7c9ea3a"
+    },
+    {
+      "path": "runs-and-controls/negative-1792084888301/run/runner.log",
+      "originalSha256": "9e47a33946b6bbb0a3f8385a709bd06c65d86e43d9eb120754450cb227e36dfc",
+      "committedSha256": "d7bb852e589ff5946a1cad377ecbf645957f6e6be89e02c258f8bb0c01d2cc05"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/authorization/runner.log",
+      "originalSha256": "dcaa6612a32ad38c9ff099c09bd7f683b94d5aec5ca0a555ad10104c711071b1",
+      "committedSha256": "5f7a6fb83c47a9b5393aa10d4260fe2368d9ac7ae4922496a3a6687aab0381fb"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-1-da65f4fccb8e/runner.log",
+      "originalSha256": "4577c79cc79318ab0da70ce4650f1e63a4165ce90237999cc5bc82689070084d",
+      "committedSha256": "6e216bd361215013955f98d9d0412d336e92db2ef05550e7bed0faf6814dded1"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-10-7451b5fd02e8/runner.log",
+      "originalSha256": "b4a8123990fdf8c7ea6a0e6a62b7965820cd249a9ddf1348243920d5205693e9",
+      "committedSha256": "8e8a6ef3cb9d3367672cd4825bffcc591e1f704ef2ded0e05595d9b2d0c603c4"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-2-4fb2dd0b0942/runner.log",
+      "originalSha256": "a92f2c1ae204cc959fe81b8b059b551d4444c072a9d4c9775a408057b39348f4",
+      "committedSha256": "b892e9fe0c20de92c579ea865b92f9e8d73f7a42d44ae6e5824b1df1f85269c8"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-3-d5e99da038ca/runner.log",
+      "originalSha256": "4719f0ae62da3176a1562f1d71c28b4fe8ecb80421bb0ce332ee06cb7cbf73c7",
+      "committedSha256": "5959d1318e27cded4489785612cd660eab32d98401c0f10fec3f2b69cfe2240e"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-4-f9776fab1d8e/runner.log",
+      "originalSha256": "945cf55f2e1e4fe00175e5858e5778dbd047605015185fe8a8c479230677d4d6",
+      "committedSha256": "746422e7c3b43b6da4a6afef3bdf08811945110f815f5a8e2f7146c86b63d6f8"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-5-8c1022ae52b3/runner.log",
+      "originalSha256": "5524a52628d506e135b655cbb7389f71521776afcca361203e73a234d6c7e10e",
+      "committedSha256": "1893d823fc55a5e897303f59cd7a23618357cec7d79787cdee8cf4801e5ff429"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-6-3c49d8f43660/runner.log",
+      "originalSha256": "ecccf0994a7ece919628def77bf46487160336e6226da6f6aa58f1c3ddcb7637",
+      "committedSha256": "dc13c80941490ff5b7e26839889e08fe2b3486beb4d1fbbd5e11c4c88c942761"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-7-3e61c1598507/runner.log",
+      "originalSha256": "8f642199bef875d54d8627e3269ecd2f776f17359aa4304667da0bfc3919d33d",
+      "committedSha256": "981381b41002335c1b36e3acff53aef86328f6e4a0de52274851d8232ac6df21"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-8-7ab53d631bee/runner.log",
+      "originalSha256": "f2a55a425e0772c4df68c6b196827238263a2ebcc33dc640cd466634337045c7",
+      "committedSha256": "f2879121f88f0d5be45791d87d08b7589245720b62635a76fe97a210c00647a9"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round1/school-9-56eb99564dc5/runner.log",
+      "originalSha256": "cdf763777c4b2c10c73c784afb620e3371fa97749233aac8e5e6d972f7c37f69",
+      "committedSha256": "d4242b742cdfdb122b7276211f1dcd83d346e5cb9b39ea8c1ed414bf08b39c24"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/authorization/runner.log",
+      "originalSha256": "cd189966245b2bedca7e0ec29c6acbfd46de1439f521dd3e89b3c91c78d7c095",
+      "committedSha256": "42f6b1602823bbc52f4abe53afb8d92aab687759ce19dbc0192fa7373d8ec9a8"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-1-da65f4fccb8e/runner.log",
+      "originalSha256": "378bea3e71780d48605cc2422cecbf36220d52361b9d5e119b1c4bd4bc6ce45b",
+      "committedSha256": "da914132c208313281e066b3ae77a40e7b6aeb4fe802cd58cb6c9edcbfb4e5f6"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-10-7451b5fd02e8/runner.log",
+      "originalSha256": "a3fadc9532cf8db1bf9699eb6564dc14010c167d855f8b12b14ea206b3fce029",
+      "committedSha256": "16126f601c113fdfa56f144af0e33889b6ccf599bb765f09a63d520d3c967bdf"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-2-4fb2dd0b0942/runner.log",
+      "originalSha256": "8ff8686d5209a35fb2397c161f82b6d729e6af3b111d3d076c7cc472feecbf2b",
+      "committedSha256": "dca0925c0ae17814d7dae6aacdace050c8cb6fd133cf3d71f61a498baaf61381"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-3-d5e99da038ca/runner.log",
+      "originalSha256": "23e403f2df7c5640048bd2c5bbaa79552e910d157105f68f35a40d537395a287",
+      "committedSha256": "52fccebb15b4dd3622faf5ce58c419f6bc296f1989dfd894ab660e0009a7be97"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-4-f9776fab1d8e/runner.log",
+      "originalSha256": "628994d5e16d7df32cd6ad5ef8884de79ce35808a3c02f698bb71476d62aa7a2",
+      "committedSha256": "0fffcc8506139803ade5129e44aee7063e9c0fa1ed4dd6402d990f6ed9a0af7c"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-5-8c1022ae52b3/runner.log",
+      "originalSha256": "b25d7eb3ded47225cb2faee9435844e0c88e749385784e7aab04941dafb512e1",
+      "committedSha256": "46aaf7685b4a99f864d4e3dc2be64739c565e92bf9aba7db10e6183637ad7f9a"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-6-3c49d8f43660/runner.log",
+      "originalSha256": "3f449a0571d5b2990d59b57b0fadfb0a4772d2766f9579784e5ad5148318e8f2",
+      "committedSha256": "9341699929110f2796fe07efad56aa03c7d4a21724c7649c49915d7aedef4c28"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-7-3e61c1598507/runner.log",
+      "originalSha256": "bdd71bceaa936a29b4dd2d18789747deb34eb971a032d78be2fc71ffba0b459f",
+      "committedSha256": "9ecf424e58d7000c25bdae265fbf5c62defa98556567f25f03ebf3177377ec11"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-8-7ab53d631bee/runner.log",
+      "originalSha256": "a31bc018ac8b9aee911bad499975ff560c3d8f62cb410ea20349eaa6dd540921",
+      "committedSha256": "e6bbb2cbe5aab668ebc2a2f8d6f9a6b7cb6ab98947845887841eb48dbea0e5c5"
+    },
+    {
+      "path": "runs-and-controls/quick02-reviewed-final-round2/school-9-56eb99564dc5/runner.log",
+      "originalSha256": "36881242dabb08f4e660155ebc7a9bb88e01425e619fd99205138e93960fce6a",
+      "committedSha256": "496b51b89072598728648d4be992719b54f2b1aae2c509b92610e94d90d8b2c1"
+    },
+    {
+      "path": "runs-and-controls/zero-1792084892254/run/runner.log",
+      "originalSha256": "fad4c39265c1925c2ef3f5580891ac1e7308fb02c137661c1b800b7985425215",
+      "committedSha256": "eff2920d45ca84ebd1204e5cbac11ff5b25990e5f6dcd1320466bd2cb2e37098"
+    },
+    {
+      "path": "supplemental/checks/e2e-types.log",
+      "originalSha256": "8c2709ffa2bd3d6bd8cc55832fd635375bc1fc6efcbc6c9f510aae043510d3e2",
+      "committedSha256": "425283a247d92e74e0d6974e9024bd26a0b8222b0f24e3804a2c512f32015aaf"
+    },
+    {
+      "path": "supplemental/checks/typecheck.log",
+      "originalSha256": "ed25ef90a9ce7b632d021c3b7b9701b8d2c55c5c80db7d8c4380136867893ac4",
+      "committedSha256": "5f27abd3d41d5a592fca4dbfcd802b5b78abc30bb444909e08994764fe728709"
+    },
+    {
+      "path": "supplemental/checks/unit.log",
+      "originalSha256": "a2250d688dfacd5c7a7a7038ec715ba6e110d13f5e4fe5c8c60173f9311129be",
+      "committedSha256": "7252960973c1b9ccc32aee860a773a5e7b2ed0a8f377f366f9eb296c52c55e43"
+    },
+    {
+      "path": "supplemental/focused-transport-diagnostic/runner.log",
+      "originalSha256": "fb66a9ed317978698c864ca658f3ca5c8374f78d36d7969d682de71963d7c8af",
+      "committedSha256": "8c78b747b8db95490e17b1f0a847b92e254e9719f946e6b31254a56d6cf607d0"
+    },
+    {
+      "path": "supplemental/owner-regression/runner.log",
+      "originalSha256": "d91b658c8776fdf5c26a7f11c47f945ddb396ec9b8dd89497215301bf00843a2",
+      "committedSha256": "61b3414d5b7dfd11cacf6e89b2beec061453fe9b70a1d9d31a4b99fb81a1c1bb"
+    },
+    {
+      "path": "supplemental/retained-pre-dispose-guard-failure/runner.log",
+      "originalSha256": "74cfa68d88e8c34d8d9f79aa5b15ee8da2230b90c5c8638181a4d51281e2c5b8",
+      "committedSha256": "8dd4ca38cf65898a61910b9440031597ab4b49b225a286ea016bedce488b82fc"
+    },
+    {
+      "path": "supplemental/retained-transport-500/runner.log",
+      "originalSha256": "4f2e18c9497663a905a7ba39a75ca4217ee1baf10c3a28490c9f2940f2491b18",
+      "committedSha256": "89e0933c7a29c350b70b462f050900837ef376d883439c5a2d5c45ee689e9301"
+    }
+  ]
+}

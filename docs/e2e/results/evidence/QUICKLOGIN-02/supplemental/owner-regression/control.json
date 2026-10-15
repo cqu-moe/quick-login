@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "authCommit": "870933794326b9d280dcf07f392c80c127fd7233",
+  "intentionalModification": "only src/background/sync.ts restored verbatim from 2baf0cc",
+  "preFixSourceSha256": "80fe6d7c1496cd56e21ba3fc30a69de448d38ddf3c4b7921ca064aa007556849",
+  "backgroundSha256": "25ad70475a7dfe87c1867c8efd3ed191f0f49598b8e300c080881dfedc9a9be5",
+  "actualWrapperExitCode": 1,
+  "intendedError": "Recovery navigated an old session before a fresh school login completed",
+  "summary": {
+    "discovered": 16,
+    "selected": 1,
+    "executed": 1,
+    "passed": 0,
+    "failed": 1,
+    "interrupted": 0,
+    "flaky": 0,
+    "skipped": 0
+  },
+  "cleanup": "passed",
+  "removedProxyIds": [
+    "8aa1a114f5342d9a83212d5642ef2a33687c986086077bbfe4fc24a266397035",
+    "894b79129364b0a6da7ae4e8224e86db5d95318e8b72a3c64c575b393ec174a5"
+  ]
+}

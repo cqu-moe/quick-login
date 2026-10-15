@@ -1,0 +1,10 @@
+{
+  "status": "local proof candidate only; not published",
+  "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "path": ".e2e/local-candidates/QUICKLOGIN-02-e1fde7d/cqu-quicklogin-0.4.8-canary.zip",
+  "files": 14,
+  "bytes": 142522,
+  "crc": "passed",
+  "sha256": "62602b9765a78fe5dbf55a392bad1111b0a5186b4dbeb7d8c5956b3f336a6194",
+  "backgroundSha256": "3899dfb28ac0f83f35e6d161563bf0bdad58c670215555eb8eb29435e9288ac5"
+}
