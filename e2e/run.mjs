@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const startedAt = new Date().toISOString();
 const args = process.argv.slice(2);
@@ -33,6 +33,7 @@ else {
   } else {
     const output = resolve(process.env.QUICKLOGIN_E2E_OUTPUT || `.e2e/run-${Date.now()}`);
     if (!output.startsWith(resolve('.e2e') + '/')) throw new Error('E2E output must be a child of .e2e');
+    await mkdir(dirname(output), { recursive: true });
     await mkdir(output);
     await writeFile(join(output, 'discovery.json'), discovery.stdout);
     const base = pairs.filter(pair => !independent.includes(pair));
