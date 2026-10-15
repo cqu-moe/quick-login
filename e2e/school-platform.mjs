@@ -1,19 +1,21 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 // Configuration and external mail transport only; production handlers run unchanged.
 export async function schoolPlatform(authRoot, fixtureDirectory) {
   const { schoolContainerCleanup } = await import(pathToFileURL(join(authRoot, 'e2e/school/containers.mjs')).href);
-  const docker = args => execFileSync('docker', args, { cwd: authRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000 }).trim();
+  const docker = (args, input) => execFileSync('docker', args, { input, cwd: authRoot, encoding: 'utf8', stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'], timeout: 120_000 }).trim();
   const base = execFileSync(process.execPath, ['--input-type=module', '-e', "import {browserBase} from './e2e/school/image.mjs'; process.stdout.write(browserBase())"], { cwd: authRoot, encoding: 'utf8' }).trim();
   const image = `quicklogin-school-fixture:${randomUUID()}`;
   const interceptor = 'cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8';
   const containerCleanup = schoolContainerCleanup({ docker, image, interceptor });
   docker(['image', 'inspect', base]); docker(['image', 'inspect', interceptor]);
   const rawSocket = process.env.AUTH_SCHOOL_DOCKER_SOCKET || docker(['context', 'inspect', '--format', '{{.Endpoints.docker.Host}}']);
-  docker(['build', '--platform', 'linux/amd64', '--build-context', `school-fixture=${fixtureDirectory}`, '--build-arg', `BASE=${base}`, '--build-arg', `RUN_ID=${randomUUID()}`, '-t', image, '-f', 'e2e/school/Dockerfile', '.']);
+  const dockerfile = readFileSync(join(authRoot, 'e2e/school/Dockerfile'), 'utf8') + '\nCOPY --from=school-fixture chrome.sh /fixture/chrome.sh\n';
+  docker(['build', '--platform', 'linux/amd64', '--build-context', `school-fixture=${fixtureDirectory}`, '--build-arg', `BASE=${base}`, '--build-arg', `RUN_ID=${randomUUID()}`, '-t', image, '-f', '-', '.'], dockerfile);
   let mf, timer, pumping = false;
   const users = new Map(), errors = [], sensitive = new Set();
   const outcomes = { fixtureImage: image, deliveries: 0, acceptedDeliveries: 0, containerObjectsRemoved: false, proxyObjectsRemoved: false, imageRemoved: false };
@@ -89,7 +91,7 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
         outcomes.school = [];
         for (const userId of users.keys()) {
           const value = await control(userId, 'control', { hold: false, holdLogin: false, holdMail: false });
-          outcomes.school.push({ profiles: value.profiles, chromeProcesses: value.chromeProcesses });
+          outcomes.school.push({ profiles: value.profiles, chromeProcesses: value.chromeProcesses, browserLaunches: value.browserLaunches });
         }
       } finally {
         containerCleanup.capture();

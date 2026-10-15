@@ -22,6 +22,7 @@ mail = []
 sessions = set()
 codes = {}
 generation = 0
+browser_launches = {}
 KEY = b"0123456789abcdef"
 
 
@@ -179,18 +180,33 @@ async def control(request):
         if set(updates) - allowed:
             raise web.HTTPBadRequest()
         state.update(updates)
+    chrome = observe_browsers()
+    return web.json_response({"events":events,"state":state,
+      "profiles":len(list(Path('/app/runtime').glob('cqu-cdp-*'))),"chromeProcesses":chrome,
+      "browserLaunches":list(browser_launches.values())})
+
+
+def observe_browsers():
     chrome = 0
     for process in Path('/proc').iterdir():
         try:
-            binary = (process / 'cmdline').read_bytes().split(b'\0')[0]
-            chrome += int(binary.startswith(b'/opt/chrome/'))
+            args = (process / 'cmdline').read_bytes().split(b'\0')
+            chrome += int(args[0].startswith(b'/opt/chrome/'))
+            if args[0] == b'/opt/chrome/chrome-linux64/chrome' and not any(arg.startswith(b'--type=') for arg in args):
+                browser_launches[process.name] = {
+                    "pid":int(process.name),
+                    "headless":b'--headless=new' in args,
+                    "basicPasswordStore":b'--password-store=basic' in args,
+                    "mockKeychain":b'--use-mock-keychain' in args,
+                    "disposableProfile":any(arg.startswith(b'--user-data-dir=/app/runtime/cqu-cdp-') for arg in args),
+                }
         except (OSError, ValueError):
             pass
-    return web.json_response({"events":events,"state":state,
-      "profiles":len(list(Path('/app/runtime').glob('cqu-cdp-*'))),"chromeProcesses":chrome})
+    return chrome
 
 
 async def drain(_request):
+    observe_browsers()
     if state["holdMail"]:
         record("mail_held")
         while state["holdMail"]:

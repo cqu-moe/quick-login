@@ -143,6 +143,10 @@ try {
     if (school && (school.proxyObjectsRemoved !== true || !Array.isArray(school.removedProxyIds) || !school.removedProxyIds.length)) {
       throw new Error("Native school proxy cleanup lacks actual removed-proxy evidence");
     }
+    if (school && (!school.school?.length || school.school.some(value =>
+      value.profiles !== 0 || value.chromeProcesses !== 0 || !value.browserLaunches?.length ||
+      value.browserLaunches.some(launch => !launch.headless || !launch.basicPasswordStore || !launch.mockKeychain || !launch.disposableProfile)
+    ))) throw new Error("Native school browser lacks safe launch or final profile/process cleanup evidence");
     if (unexpectedDeniedEgress.length) {
       throw new Error(`Unexpected browser egress denied (${unexpectedDeniedEgress.join(", ")})`);
     }
