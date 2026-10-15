@@ -52,15 +52,15 @@ export async function revoke(settings: Page, deviceId: string) {
   const observeDialog = () => {};
   settings.on('dialog', observeDialog);
   try {
-  await settings.goto(`https://auth.cqu.moe/settings?quickloginDevice=${deviceId}`);
-  const row = settings.getByRole('list', { name: '快捷登录设备' }).getByRole('listitem').filter({ hasText: '当前插件' });
-  await row.getByRole('button', { name: /的更多操作$/ }).click();
-  const deleted = settings.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname === `/api/v1/cqu/quicklogin/devices/${deviceId}`);
-  await settings.getByRole('menuitem', { name: '退出设备', exact: true }).click();
-  expect((await deleted).status()).toBe(204);
-  // Pinned Auth overview intentionally omits revoked rows; the extension owns
-  // the visible revoked state. Assert the actual website removal here.
-  await row.waitFor({ state: 'hidden' });
+    await settings.goto(`https://auth.cqu.moe/settings?quickloginDevice=${deviceId}`);
+    const row = settings.getByRole('list', { name: '快捷登录设备' }).getByRole('listitem').filter({ hasText: '当前插件' });
+    await row.getByRole('button', { name: /的更多操作$/ }).click();
+    const deleted = settings.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname === `/api/v1/cqu/quicklogin/devices/${deviceId}`);
+    await settings.getByRole('menuitem', { name: '退出设备', exact: true }).click();
+    expect((await deleted).status()).toBe(204);
+    // Pinned Auth overview intentionally omits revoked rows; the extension owns
+    // the visible revoked state. Assert the actual website removal here.
+    await row.waitFor({ state: 'hidden' });
   } finally { settings.off('dialog', observeDialog); }
 }
 

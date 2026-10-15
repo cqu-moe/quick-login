@@ -114,8 +114,8 @@ test('QUICKLOGIN-03 actual Auth device revocation rejects old resource and refre
         method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ grant_type: 'refresh_token', client_id: 'cqu-quicklogin-chrome', refresh_token: token.refreshToken, resource: 'https://auth.cqu.moe/api/auth' }),
       });
-      const resourceBody = await resource.json() as { code?: string };
-      const refreshBody = await refresh.json() as { error?: string; code?: string };
+      const resourceBody = await resource.json().catch(() => ({ code: 'NON_JSON_RESPONSE' })) as { code?: string };
+      const refreshBody = await refresh.json().catch(() => ({ code: 'NON_JSON_RESPONSE' })) as { error?: string; code?: string };
       return { resource: resource.status, refresh: refresh.status, resourceCode: resourceBody.code ?? 'unknown', refreshCode: refreshBody.error ?? refreshBody.code ?? 'unknown' };
     }, { deviceId: before.deviceId!, token: oldCredentials });
     await recordEvent('revoked-credential-readback', { ...rejected });

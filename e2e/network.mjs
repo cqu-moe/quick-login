@@ -64,9 +64,11 @@ export async function createAuthTls({ outputDir, workerPort, schoolRequest, resp
         });
       }
       const headers = { ...fromClient.headers, host: "auth.cqu.moe", "accept-encoding": "identity" };
+      // Workerd closes idle HTTP sockets independently of Node's default pool;
+      // a revoked-token probe reproduced ECONNRESET on reuse. No request retry.
       const upstream = httpRequest({
         host: "127.0.0.1", port: workerPort, method: fromClient.method,
-        path: fromClient.url, headers,
+        path: fromClient.url, headers, agent: false,
       }, async response => {
         // Installing an observation data listener must not drain response bytes
         // while a genuine upstream response waits behind the transport gate.
@@ -115,7 +117,8 @@ export async function createAuthTls({ outputDir, workerPort, schoolRequest, resp
         toClient.writeHead(response.statusCode ?? 502, response.headers);
         response.pipe(toClient);
       });
-      upstream.on("error", () => {
+      upstream.on("error", error => {
+        observations.push({ method: fromClient.method, path: requestUrl.pathname, status: 502, transportFailure: error.code ?? 'UNKNOWN', oauthError: null, codeIssued: false });
         toClient.writeHead(502, { "content-type": "text/plain" }).end("local auth unavailable");
         fromClient.destroy();
       });

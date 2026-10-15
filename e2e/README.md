@@ -102,6 +102,8 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 真实 alarm 等待期间 popup 导航到同扩展的静态 manifest，消除 popup 五秒轮询唤醒；只读 native storage 不发送产品消息。CDP 观察 stopped → running 的原生事件，唤醒时间不得早于实际 scheduledAt。journal 断点仅定位 TGC 崩溃边界，最终断言仍是 Cookie、journal、ACK 和业务读回。
 
+TLS proxy 对本地 workerd 每次建立独立 HTTP socket，不使用 Node 默认 keep-alive 池。旧 refresh 的真实负读回曾连续在复用的 upstream 连接得到 ECONNRESET/代理502；fresh socket 探针恢复严格403 DEVICE_REVOKED/400 INVALID_GRANT。没有自动重试 token、替换成功响应或接受502；代理只保留方法、path、状态和 transport error code，便于失败分层。
+
 ```sh
 QUICKLOGIN_E2E_OUTPUT=.e2e/quick03-round1 node e2e/run.mjs --grep '^QUICKLOGIN-03'
 QUICKLOGIN_E2E_OUTPUT=.e2e/quick03-round2 node e2e/run.mjs --grep '^QUICKLOGIN-03'
