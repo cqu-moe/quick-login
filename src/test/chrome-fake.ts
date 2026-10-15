@@ -111,6 +111,9 @@ export function installChromeFake() {
       sendMessage: async () => ({ kind: "idle" }),
     },
     tabs: {
+      onUpdated: event(),
+      onRemoved: event(),
+      sendMessage: async () => undefined,
       update: async (tabId: number, properties: chrome.tabs.UpdateProperties) => {
         tabUpdates.push({ tabId, properties });
         return { id: tabId, ...properties } as chrome.tabs.Tab;

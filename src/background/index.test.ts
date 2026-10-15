@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
 import { sync } from "./sync";
+import { initialLocalState, LOCAL_STATE_KEY } from "./storage";
 
 vi.mock("./sync", () => ({
   setEnvelopeWriter: vi.fn(),
@@ -23,6 +24,22 @@ describe("background startup", () => {
   it("synchronizes immediately when the service worker starts", async () => {
     await import("./index");
     await vi.waitFor(() => expect(sync).toHaveBeenCalledWith("startup"));
+  });
+
+  it("notifies waiting documents of private storage changes using only an invalidation message", async () => {
+    const registration=vi.spyOn(chrome.storage.onChanged,"addListener");
+    const notify=vi.spyOn(chrome.tabs,"sendMessage");
+    await import("./index");
+    const listener=registration.mock.calls[0][0];
+    const before={...initialLocalState(),loginRecovery:{id:"round-a",rejectedTuple:null,appliedExportId:null,
+      failed:false,pages:[{tabId:7,documentId:"document-a",navigated:false}]}};
+    const after={...before,localError:"SCHOOL_UNREACHABLE"};
+    listener({[LOCAL_STATE_KEY]:{oldValue:before,newValue:after}},"local");
+    expect(notify).toHaveBeenCalledExactlyOnceWith(7,{type:"QUICKLOGIN_STATE_CHANGED"},{documentId:"document-a"});
+    listener({[LOCAL_STATE_KEY]:{oldValue:after,newValue:{...after,loginRecovery:null}}},"local");
+    expect(notify).toHaveBeenCalledTimes(2);
+    listener({"unrelated":{oldValue:before,newValue:after}},"local");
+    expect(notify).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -53,6 +70,7 @@ describe("background popup messages", () => {
       lastError: null,
       lastConfirmedAt: null,
       nextAttemptAt: null,
+      recoveryFailed: false,
     }));
   });
 

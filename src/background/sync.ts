@@ -145,7 +145,9 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
         if (state.localGeneration !== fence) return state;
         return currentCookiesVerified && state.receipt
           ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() } }
-          : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle" };
+          : { ...state,receipt:null,pendingAck:false,appliedVersion:null,localWriteState:"idle",
+            loginRecovery: state.loginRecovery && sameTuple(state.loginRecovery.rejectedTuple, state.receipt)
+              ? { ...state.loginRecovery, rejectedTuple:null, appliedExportId:null } : state.loginRecovery };
       });
     }
     const result = await api.reconcile();
@@ -186,7 +188,10 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     if (local.localWriteState === "foreign_session" && !hasManagedSwitch(local)) {
       return { outcome: "needs_input" };
     }
-    const userRecovery = !hasManagedSwitch(local) && ((reason === "login_form" && currentCookiesVerified) ||
+    const rejectedHere = local.schoolAccess === "login_form_seen" && !!local.loginRecovery && !local.loginRecovery.failed;
+    const rejectedCurrent = currentCookiesVerified && sameTuple(local.receipt, tupleForSnapshot(remote)) &&
+      (!local.loginRecovery || sameTuple(local.loginRecovery.rejectedTuple, local.receipt));
+    const userRecovery = !hasManagedSwitch(local) && (((reason === "login_form" || rejectedHere) && rejectedCurrent) ||
       (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen")));
     const waiting = remote.cloud.retryAt !== null && Date.now() < remote.cloud.retryAt;
     if ((userRecovery && remote.capabilities.canRetry && !waiting) ||
@@ -200,7 +205,7 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
           downloadRetries:0,writeRetries:0,nextAttemptAt:null,navigatedTabId:null } }));
       }
       const response = await api.operate(userRecovery ? "retry_session" : "ensure_session",remote,
-        `${remote.identity.deviceId}:${remote.versions.generation}:${remote.versions.bindingEpoch}:${local.recovery!.id}`);
+        `${remote.identity.deviceId}:${remote.versions.generation}:${remote.versions.bindingEpoch}:${local.loginRecovery?.id ?? local.recovery!.id}`);
       local = await adopt(response.snapshot,local.localGeneration);
       remote = local.snapshot!;
     }
@@ -210,6 +215,7 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     }
     if (local.receipt && sameTuple(local.receipt,tupleForSnapshot(remote)) && local.localWriteState === "ready") {
       if (local.pendingAck) await ackCurrent(local);
+      if (local.schoolAccess === "login_form_seen") await schedule(remote.presentation.nextCheckAt ?? Date.now()+PREPARING_SYNC_DELAY_MS);
       return { outcome: "success", noOp: true };
     }
     const generationFence = local.localGeneration;
@@ -259,10 +265,13 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     });
     local = await updateLocalState((state) => {
       if (state.localGeneration !== generationFence || !state.enabledIntent || state.manualOverride) return state;
+      const recovered = !state.loginRecovery || (!state.loginRecovery.failed && !sameTuple(state.loginRecovery.rejectedTuple, envelope));
       return { ...state,managedSwitch:null,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
         bindingEpoch:envelope.bindingEpoch,credentialRevision:envelope.credentialRevision,
         sessionVersion:envelope.sessionVersion,exportId:envelope.exportId,result:"applied",verifiedAt:Date.now() },
-        pendingAck:true,appliedVersion:envelope.sessionVersion,localWriteState:"ready",schoolAccess:"unverified",
+        pendingAck:true,appliedVersion:envelope.sessionVersion,localWriteState:"ready",
+        schoolAccess:recovered ? "unverified" : state.schoolAccess,
+        loginRecovery:state.loginRecovery && recovered ? { ...state.loginRecovery,appliedExportId:envelope.exportId } : state.loginRecovery,
         recovery:{ ...round,phase:"finished" } };
     });
     if (local.localGeneration === generationFence) await ackCurrent(local);
@@ -332,7 +341,7 @@ export async function setEnabled(enabled: boolean,expectedConnectIntentId?:strin
     return { ...state,enabledIntent:enabled,
     connectIntentId:null,managedSwitch:null,
     localGeneration:state.localGeneration+1,pendingCommand:{ id:crypto.randomUUID(),enabled },
-    pendingOperation:enabled ? null : "disable",receipt:null,pendingAck:false,recovery:null,
+    pendingOperation:enabled ? null : "disable",receipt:null,pendingAck:false,recovery:null,loginRecovery:null,
     localWriteState:"idle",localError:null };
   });
   if (!accepted) return false;
@@ -342,17 +351,24 @@ export async function setEnabled(enabled: boolean,expectedConnectIntentId?:strin
 }
 export async function enterManualMode(): Promise<void> {
   await updateLocalState((state) => ({ ...state,manualOverride:true,localGeneration:state.localGeneration+1,
-    connectIntentId:null,managedSwitch:null,
+    connectIntentId:null,managedSwitch:null,loginRecovery:null,
     receipt:null,pendingAck:false,recovery:state.recovery ? { ...state.recovery,phase:"manual_required" } : null }));
   void sync("popup");
 }
+export async function prepareAutomaticMode(): Promise<void> {
+  await updateLocalState((state) => ({ ...state,manualOverride:false,recovery:null,loginRecovery:null,localError:null,nextAttemptAt:null }));
+}
 export async function resumeAutomaticMode(): Promise<boolean> {
-  await updateLocalState((state) => ({ ...state,manualOverride:false,recovery:null,localError:null,nextAttemptAt:null }));
+  await prepareAutomaticMode();
   await sync("user_retry");
   return true;
 }
 export async function retryAutomaticNow(): Promise<boolean> {
-  const state=await updateLocalState((current) => ({ ...current,nextAttemptAt:null,localError:null }));
+  const state=await updateLocalState((current) => ({ ...current,nextAttemptAt:null,localError:null,
+    ...(current.loginRecovery?.failed && !current.manualOverride ? {recovery:null,loginRecovery:{
+      ...current.loginRecovery,id:crypto.randomUUID(),failed:false,appliedExportId:null,rejectedTuple:current.receipt,
+      pages:current.loginRecovery.pages.map(page=>({...page,navigated:false})),
+    }} : {}) }));
   if (!state.manualOverride) {
     await sync("user_retry");
     return true;
@@ -374,8 +390,4 @@ export async function switchToManagedOnce(): Promise<boolean> {
   if (!accepted) return false;
   await sync("user_retry");
   return true;
-}
-export async function markManualRequired(): Promise<void> {
-  await updateLocalState((state) => ({ ...state,schoolAccess:"login_form_seen",
-    recovery:state.recovery ? { ...state.recovery,phase:"manual_required" } : null }));
 }

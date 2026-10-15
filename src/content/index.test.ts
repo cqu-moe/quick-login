@@ -1,5 +1,25 @@
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {installChromeFake} from "../test/chrome-fake";
+type RuntimeListener=(message:unknown,sender:chrome.runtime.MessageSender)=>void;
+function installStateNotification(){
+ const runtimeListeners=new Set<RuntimeListener>(),storageListeners=new Set<()=>void>();
+ Object.assign(chrome.runtime,{onMessage:{
+  addListener(listener:RuntimeListener){runtimeListeners.add(listener);},
+  removeListener(listener:RuntimeListener){runtimeListeners.delete(listener);},
+  hasListener(listener:RuntimeListener){return runtimeListeners.has(listener);},
+ }});
+ Object.assign(chrome,{storage:{...chrome.storage,onChanged:{
+  addListener(listener:()=>void){storageListeners.add(listener);},
+  removeListener(listener:()=>void){storageListeners.delete(listener);},
+  hasListener(listener:()=>void){return storageListeners.has(listener);},
+ }}});
+ return {
+  storageListeners,
+  notify(extensionId=chrome.runtime.id){
+   runtimeListeners.forEach(listener=>listener({type:"QUICKLOGIN_STATE_CHANGED"},{id:extensionId} as chrome.runtime.MessageSender));
+  },
+ };
+}
 beforeEach(()=>{
  vi.resetModules();vi.useFakeTimers();installChromeFake();
  vi.stubGlobal("location",new URL("https://sso.cqu.edu.cn/login"));
@@ -56,6 +76,99 @@ it("does not show stale automatic progress after the user starts typing",async()
  finish({kind:"navigating"});
  await vi.advanceTimersByTimeAsync(0);
  expect(document.body.textContent).not.toContain("正在恢复快捷登录");
+});
+it("shows recovery progress and refreshes notified state without restarting login",async()=>{
+ const states=installStateNotification();
+ const sent: string[]=[];
+ Object.assign(chrome.runtime,{sendMessage:vi.fn(async(message:{type:string})=>{
+  sent.push(message.type);
+  if(message.type==="LOGIN_FORM_VISIBLE") return {kind:"recovering",message:"正在恢复快捷登录。"};
+  return sent.filter(type=>type==="GET_UI_STATE" || type==="CHECK_STATE").length===1
+   ? {kind:"recovering",message:"正在确认学校登录。"}
+   : {kind:"navigating"};
+ })});
+ await import("./index");
+ await vi.advanceTimersByTimeAsync(0);
+ expect(states.storageListeners.size).toBe(0);
+ expect(document.body.textContent).toContain("正在恢复快捷登录。");
+ expect(document.querySelector<HTMLButtonElement>('[data-action="ENTER_MANUAL"]')!.hidden).toBe(false);
+ expect(document.querySelector<HTMLButtonElement>('[data-action="RETRY_AUTOMATIC"]')!.hidden).toBe(true);
+
+ for(let i=0;i<3;i++) states.notify("other-extension");
+ await vi.advanceTimersByTimeAsync(150);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE"]);
+
+ for(let i=0;i<3;i++) states.notify();
+ await vi.advanceTimersByTimeAsync(150);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE","GET_UI_STATE"]);
+ expect(document.body.textContent).toContain("正在确认学校登录。");
+
+ await vi.advanceTimersByTimeAsync(4850);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE","GET_UI_STATE","CHECK_STATE"]);
+ expect(document.body.textContent).toContain("正在恢复快捷登录，请稍候。");
+});
+it("lets notifications observe a popup retry after manual_required but not direct editing",async()=>{
+ const states=installStateNotification();
+ const sent:string[]=[];
+ Object.assign(chrome.runtime,{sendMessage:vi.fn(async(message:{type:string})=>{
+  sent.push(message.type);
+  if(message.type==="LOGIN_FORM_VISIBLE") return {kind:"manual_required",message:"请手动登录。"};
+  if(message.type==="GET_UI_STATE") return {kind:"recovering",message:"正在应用重试结果。"};
+  return {kind:"manual_required",message:"已切换手动登录。"};
+ })});
+ await import("./index");
+ await vi.advanceTimersByTimeAsync(0);
+ expect(states.storageListeners.size).toBe(0);
+ states.notify();
+ await vi.advanceTimersByTimeAsync(150);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE","GET_UI_STATE"]);
+ expect(document.body.textContent).toContain("正在应用重试结果。");
+
+ document.querySelector("input")!.dispatchEvent(new Event("input",{bubbles:true}));
+ await vi.advanceTimersByTimeAsync(0);
+ for(let i=0;i<3;i++) states.notify();
+ await vi.advanceTimersByTimeAsync(6000);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE","GET_UI_STATE","ENTER_MANUAL"]);
+});
+it.each(["recovering","manual_required"])("keeps a trailing read after a stale %s reply",async(kind)=>{
+ const states=installStateNotification();
+ let finishGet!: (value:unknown)=>void;
+ let getRequests=0;
+ Object.assign(chrome.runtime,{sendMessage:vi.fn(async(message:{type:string})=>{
+  if(message.type==="LOGIN_FORM_VISIBLE") return {kind:"recovering",message:"正在恢复快捷登录。"};
+  if(message.type!=="GET_UI_STATE") return {kind:"recovering",message:"正在恢复。"};
+  if(++getRequests===1) return new Promise(resolve=>{finishGet=resolve;});
+  return {kind:"navigating"};
+ })});
+ await import("./index");
+ await vi.advanceTimersByTimeAsync(0);
+ states.notify();
+ await vi.advanceTimersByTimeAsync(150);
+ expect(getRequests).toBe(1);
+
+ states.notify();
+ finishGet({kind,message:"仍在恢复学校登录。"});
+ await vi.advanceTimersByTimeAsync(1000);
+ expect(getRequests).toBe(2);
+ expect(document.body.textContent).toContain("正在恢复快捷登录，请稍候。");
+});
+it("reads the latest recovery state on visibility return after missing a hidden-page notification",async()=>{
+ const states=installStateNotification();
+ const send=vi.fn(async(message:{type:string})=>message.type==="LOGIN_FORM_VISIBLE"
+  ? {kind:"manual_required",message:"请手动登录。"}
+  : {kind:"recovering",message:"正在应用重试结果。"});
+ Object.assign(chrome.runtime,{sendMessage:send});
+ await import("./index");
+ await vi.advanceTimersByTimeAsync(0);
+ const hidden=vi.spyOn(document,"hidden","get").mockReturnValue(true);
+ states.notify();
+ await vi.advanceTimersByTimeAsync(1000);
+ expect(send).toHaveBeenCalledTimes(1);
+ hidden.mockReturnValue(false);
+ document.dispatchEvent(new Event("visibilitychange"));
+ await vi.advanceTimersByTimeAsync(150);
+ expect(send).toHaveBeenLastCalledWith({type:"GET_UI_STATE"});
+ expect(document.body.textContent).toContain("正在应用重试结果。");
 });
 it("resumes detection after a back/forward cache restore",async()=>{
  const send=vi.fn(async()=>({kind:"idle"}));Object.assign(chrome.runtime,{sendMessage:send});

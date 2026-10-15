@@ -360,3 +360,13 @@ ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；�
 - CI 的公开 HTTP 验收遇到 Cloudflare challenge，已在真实浏览器补验：公开元数据为 0.4.5；携带现有登录会话的下载接口返回 HTTP 200 ZIP，保存后的字节与正式包完全一致，CRC、manifest、build-info 的版本/提交/协议指纹均通过；省略凭据时返回 HTTP 401，未遇到 challenge。浏览器点击下载的自动化事件未捕获到文件，实际字节验证使用同源会话 fetch，不将其表述为点击流程验收。
 - 主分支 CI 产物与正式 canary 字节一致，已保存上述不可变本地包及 `releases/0.4.5.json`；未重新构造一个不同的本地候选包。
 - 本轮动效/故障回归详见 [验收记录](../acceptance/2026-10-13-motion-responsiveness.md)。真实 Chrome 已安装扩展重载、学校 SSO 尚未验收；Auth 源码与 Worker 未修改。Chrome Web Store 未操作、未上传、未送审。
+
+## 2026-10-15 0.4.7 学校登录恢复候选
+
+- 工作区：`codex/quicklogin-login-recovery-state`，基线 `c410e127f908a11e25608a8c7e5f81d9d00fd8c9`。本次修改尚未提交；此基线不代表修复后的发布提交。
+- 学校登录表单即时撤销 ready/usable，后台安全通知与前台 5 秒检查更新进度。本轮新会话写入、读回及 ACK 后才刷新等待文档；再次出现表单停止自动刷新。离开 SSO 或关闭标签页清理该页面轮次，不据此宣称业务登录成功。
+- 验证：23 个测试文件、171 项测试通过；typecheck、build、check:package、契约指纹及三处版本一致检查通过。官网 typecheck/build/check 通过；10 项发布脚本测试通过。新增状态通知不开放可信存储、不新增扩展权限。
+- 本地构建：`dist/`；目标正式包名 `cqu-quicklogin-0.4.7-canary.zip`。未创建发布 ZIP，SHA-256 待正式发布记录；未提交的本地 build-info 中 sourceCommit 仍是基线，不能作为修复产物的发布来源证明。
+- 待发布：提交/PR/CI、合并触发官网 canary 后记录实际提交及包 SHA，再独立验证安装扩展和 `my.cqu.edu.cn`。当前用户安装仍按诊断时 0.4.6 记录，本地通过不等于已升级。
+- Auth 源码和 Worker 未改动；未执行商店上传、送审或发布。
+- 诊断和回归入口：`docs/research/2026-10-15-ready-status/README.md`。

@@ -24,6 +24,7 @@ export const initialLocalState = (): LocalState => ({
   nextAttemptAt: null,
   localError: null,
   schoolAccess: "unverified",
+  loginRecovery: null,
   networkFailures: 0,
   pendingCommand: null,
   deviceId: null,

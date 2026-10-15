@@ -5,15 +5,17 @@ import {
   resumeAutomaticMode,
   setEnabled,
   switchToManagedOnce,
+  prepareAutomaticMode,
   sync,
 } from "./sync";
-import { readLocalState, updateLocalState } from "./storage";
-import { markManualRequired } from "./sync";
+import { readLocalState } from "./storage";
 import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
 import { config } from "../shared/config";
 import { localCookieState } from "./api-v3";
 import { recordFailure } from "./sync";
-import type { PopupInput } from "../popup/view-model";
+import { derivePopupView, type PopupInput } from "../popup/view-model";
+import type { LocalState } from "../shared/contracts";
+import { navigateRecoveredPage, observeSchoolLogin } from "./school-recovery";
 import { derivePresentation } from "../shared/protocol-v3.generated";
 import {
   captureQuickloginOperation,
@@ -38,6 +40,15 @@ export type BackgroundMessage =
 
 const loginFormFlights = new Map<string, Promise<LoginRecoveryResult>>();
 
+function popupInput(state: LocalState): PopupInput {
+  return { deviceId:state.deviceId,snapshot:state.snapshot,
+    local:{ authorization:state.authorization,observation:state.observation,protocolSupport:state.protocolSupport,
+      ...(state.deviceId ? {enabledIntent:state.enabledIntent} : {}),mode:state.manualOverride ? "manual" : "automatic",
+      cookieState:localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
+    recoveryFailed:state.loginRecovery?.failed ?? false,
+    lastError:state.localError,lastConfirmedAt:state.lastConfirmedAt,nextAttemptAt:state.nextAttemptAt };
+}
+
 function validSsoSender(sender: chrome.runtime.MessageSender): sender is chrome.runtime.MessageSender & {
   tab: chrome.tabs.Tab & { id: number };
   url: string;
@@ -57,44 +68,27 @@ async function processContentMessage(
     await enterManualMode();
     return { kind: "manual_required", message: "已切换手动登录。" };
   }
+  const page = {tabId:sender.tab.id,documentId:sender.documentId ?? null};
   if (message.type === "RETRY_AUTOMATIC") {
-    await resumeAutomaticMode();
-  } else if (message.type === "LOGIN_FORM_VISIBLE") {
-    const before = await readLocalState();
-    if (before.recovery?.phase === "navigated" &&
-        before.recovery.navigatedTabId === sender.tab.id &&
-        (!sender.documentId || before.recovery.navigatedDocumentId !== sender.documentId)) {
-      await markManualRequired();
-      return {
-        kind: "manual_required",
-        message: "快捷登录未成功，请在学校页面手动登录。",
-      };
-    }
-    await sync("login_form");
+    await prepareAutomaticMode();
   }
-  const after = await readLocalState();
-  if (after.recovery?.phase === "finished" && after.localWriteState === "ready" &&
-      after.enabledIntent && !after.manualOverride && !after.pendingAck) {
-    let navigationAccepted=false;
-    await updateLocalState((state) => {
-      if (state.localGeneration !== after.localGeneration || !state.enabledIntent || state.manualOverride || state.pendingAck ||
-          state.recovery?.id !== after.recovery?.id || state.recovery?.phase !== "finished" || state.localWriteState !== "ready") return state;
-      navigationAccepted=true;
-      return { ...state,recovery:{
-        ...state.recovery,
-        phase: "navigated",
-        navigatedTabId: sender.tab.id,
-        navigatedDocumentId: sender.documentId ?? null,
-      }};
-    });
-    if (!navigationAccepted) return {kind:"idle"};
-    await chrome.tabs.update(sender.tab.id, { url: sender.url });
+  const isObservation = message.type === "LOGIN_FORM_VISIBLE" || message.type === "RETRY_AUTOMATIC";
+  if (isObservation) await observeSchoolLogin(page);
+  let after = await readLocalState();
+  if (after.loginRecovery?.failed || after.manualOverride) {
+    return {kind:"manual_required",message:"快捷登录未成功，请在学校页面手动登录，或重试快捷登录。"};
+  }
+  if (!after.enabledIntent || !after.deviceId) return {kind:"idle"};
+  if (await navigateRecoveredPage(page,sender.url)) {
     return { kind: "navigating" };
   }
-  if (after.recovery?.phase === "manual_required" || after.manualOverride) {
-    return { kind: "manual_required", message: "请继续在学校页面手动登录。" };
+  if (message.type !== "GET_UI_STATE") {
+    // UI requests never wait on school/network work. Safe notifications carry progress.
+    void sync(message.type === "RETRY_AUTOMATIC" ? "user_retry" : isObservation ? "login_form" : "popup").catch(recordFailure);
   }
-  return { kind: "idle" };
+  after = await readLocalState();
+  const view = derivePopupView(popupInput(after));
+  return {kind:"recovering",message:[view.heading,view.description].filter(Boolean).join("。")};
 }
 
 export function handleContentMessage(
@@ -198,12 +192,7 @@ export async function handleMessage(message: BackgroundMessage) {
     case "RETRY_LOCAL": void sync("popup").catch(recordFailure); return { accepted: true };
     case "GET_UI_STATE": {
       const state = await readLocalState();
-      return { deviceId:state.deviceId,snapshot:state.snapshot,
-        local:{ authorization:state.authorization,observation:state.observation,protocolSupport:state.protocolSupport,
-          ...(state.deviceId ? {enabledIntent:state.enabledIntent} : {}),mode:state.manualOverride ? "manual" : "automatic",
-          cookieState:localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
-        lastError:state.localError,lastConfirmedAt:state.lastConfirmedAt,nextAttemptAt:state.nextAttemptAt,
-      } satisfies PopupInput;
+      return popupInput(state);
     }
   }
 }

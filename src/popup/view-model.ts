@@ -8,6 +8,7 @@ export interface PopupInput {
   lastError: ReasonCode | null;
   lastConfirmedAt: number | null;
   nextAttemptAt: number | null;
+  recoveryFailed?: boolean;
 }
 export interface PopupView {
   heading:string;description:string;tone:"ready"|"busy"|"attention"|"neutral";
@@ -15,7 +16,16 @@ export interface PopupView {
   actions:PopupAction[];actionTarget?:ActionTarget;
 }
 export function derivePopupView(input: PopupInput): PopupView {
-  const state=derivePresentation(input.snapshot,input.local);
+  const rejected = input.local.schoolAccess === "login_form_seen";
+  // A local login form is newer evidence than the cloud's estimated expiry.
+  const snapshot = rejected && input.snapshot ? { ...input.snapshot,
+    capabilities:{ ...input.snapshot.capabilities,canUseExistingSession:false } } : input.snapshot;
+  let state=derivePresentation(snapshot,input.local);
+  if (rejected && state.statusCode === "unknown" && state.reasonCode === null) {
+    state = input.recoveryFailed
+      ? { ...state,title:"快捷登录未成功",detail:"请在学校页面手动登录，或重试快捷登录。",actionCode:"retry_session" }
+      : { ...state,statusCode:"refreshing",title:"正在恢复学校登录",detail:"学校登录已失效，正在获取新的登录状态。",actionCode:"none" };
+  }
   const actions:Partial<Record<typeof state.actionCode,PopupAction>>={
     connect_auth:"login",update_extension:"update",open_auth:"open_settings",manage_devices:"open_settings",
     resume_automatic:"resume",switch_to_quicklogin:"switch_managed",reconcile:"retry",bind_school:"open_settings",
