@@ -110,7 +110,9 @@ try {
   const report = JSON.parse(await readFile(join(output, "report.json"), "utf8"));
   const discovered = await execute(process.execPath, ["node_modules/e2e/dist/cli/bin.js", "list", "--config", "e2e.config.ts",
     "--reporter", "json", ...process.argv.slice(2)], { env: { ...process.env, E2E_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" } });
-  await writeFile(join(output, "discovery.json"), discovered.stdout);
+  const full = await execute(process.execPath, ["node_modules/e2e/dist/cli/bin.js", "list", "--config", "e2e.config.ts", "--reporter", "json"],
+    { env: { ...process.env, E2E_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" } });
+  await writeFile(join(output, "discovery.json"), JSON.stringify({ ...JSON.parse(discovered.stdout), all: JSON.parse(full.stdout).pairs }, null, 2) + "\n");
   report.run.viewport = viewport;
   evidence.selection = selectionOf(report);
   evidence.viewportObservations = await readFile(join(output, "artifacts/viewports.jsonl"), "utf8")

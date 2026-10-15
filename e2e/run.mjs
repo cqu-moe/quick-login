@@ -36,7 +36,9 @@ else {
     if (!output.startsWith(resolve('.e2e') + '/')) throw new Error('E2E output must be a child of .e2e');
     await mkdir(dirname(output), { recursive: true });
     await mkdir(output);
-    await writeFile(join(output, 'discovery.json'), discovery.stdout);
+    const full = await command(['node_modules/e2e/dist/cli/bin.js', 'list', '--config', 'e2e.config.ts', '--reporter', 'json'], {}, true);
+    if (full.code) throw new Error('Unfiltered framework discovery failed');
+    await writeFile(join(output, 'discovery.json'), JSON.stringify({ ...JSON.parse(discovery.stdout), all: JSON.parse(full.stdout).pairs }, null, 2) + '\n');
     const base = pairs.filter(pair => !independent.includes(pair));
     const groups = [...(base.length ? [{ name: 'authorization', pairs: base, school: false }] : []), ...independent.map((pair, index) => ({ name: `isolated-${index + 1}-${pair.id.slice(0, 12)}`, pairs: [pair], school: school.includes(pair) }))];
     const executionArgs = args.filter((arg, index) => arg !== '--grep' && !arg.startsWith('--grep=') && args[index - 1] !== '--grep');
