@@ -56,9 +56,29 @@ test('QUICKLOGIN-03 website revoke clears only truly managed Cookie values and p
     expect(before.managed.length >= 3).toBe(true);
     await protectedValues(['manual-before-revoke']);
     await popup.evaluate(() => chrome.cookies.set({ url: 'https://sso.cqu.edu.cn/login', name: 'SESSION', path: '/', secure: true, httpOnly: true, value: 'manual-before-revoke' }));
+    const replaced = await popup.evaluate(async () => (await chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn', name: 'SESSION' }))
+      .map(cookie => ({ name: cookie.name, domain: cookie.domain, path: cookie.path, storeId: cookie.storeId, manual: cookie.value === 'manual-before-revoke' })));
+    await recordEvent('manual-cookie-before-reconcile', { cookies: JSON.stringify(replaced) });
+    expect(replaced.some(cookie => cookie.manual)).toBe(true);
+    // An ordinary popup reconciliation can happen before the website request.
+    // Observe that real path so preserving the replacement cannot depend on
+    // winning the race against the next poll.
+    await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
+    await until(() => localState(popup), state => state.receipt?.result === 'foreign' || state.localWriteState === 'foreign_session' ||
+      (!!state.receipt && state.receipt.exportId !== before.receipt?.exportId && !state.pendingAck));
+    const afterReconcile = await popup.evaluate(async () => (await chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn', name: 'SESSION' }))
+      .map(cookie => ({ name: cookie.name, domain: cookie.domain, path: cookie.path, storeId: cookie.storeId, manual: cookie.value === 'manual-before-revoke' })));
+    await recordEvent('manual-cookie-after-reconcile', { cookies: JSON.stringify(afterReconcile) });
+    expect(afterReconcile.some(cookie => cookie.manual)).toBe(true);
+    expect((await localState(popup)).receipt?.result).toBe('foreign');
+    expect((await localState(popup)).receipt?.verifiedAt).toBe(null);
     await revoke(settings, before.deviceId!);
     await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
-    await until(() => localState(popup), state => state.authorization === 'revoked');
+    await until(() => popup.evaluate(async () => {
+      const stored = await chrome.storage.local.get(['quicklogin.state.v2', 'quicklogin.tokens']);
+      const state = stored['quicklogin.state.v2'] as { authorization?: string } | undefined;
+      return state?.authorization === 'revoked' && !stored['quicklogin.tokens'];
+    }), Boolean);
     const values = await popup.evaluate(async managed => {
       const cookies = await chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' });
       return {

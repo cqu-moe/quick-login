@@ -62,6 +62,15 @@ test('QUICKLOGIN-02 disabling sync while a real export response is delayed cance
 
 test('QUICKLOGIN-02 two waiting school documents each navigate once after a new acknowledged write', { timeout: 240_000 }, async ({ app }) => {
   const { popup, context } = await connectSchool(app, 'school-tabs');
+  await protectedValues(['local-rotation-before-recovery']);
+  await popup.evaluate(async () => {
+    await chrome.cookies.set({ url: 'https://sso.cqu.edu.cn/', name: 'SESSION', path: '/',
+      value: 'local-rotation-before-recovery', secure: true, httpOnly: true, sameSite: 'lax' });
+    await chrome.runtime.sendMessage({ type: 'CHECK_STATE' });
+  });
+  await until(() => localState(popup), state => state.receipt?.result === 'foreign');
+  expect((await localState(popup)).receipt?.verifiedAt).toBe(null);
+  expect(await popup.evaluate(async () => (await chrome.cookies.get({ url: 'https://sso.cqu.edu.cn/', name: 'SESSION' }))?.value === 'local-rotation-before-recovery')).toBe(true);
   const first = await beginHeldRecovery(popup, context, 'tab-first');
   const second = await openSchoolForm(context, 'tab-second');
   let firstLoads = 0, secondLoads = 0;

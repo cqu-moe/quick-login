@@ -321,14 +321,20 @@ async function applyEnvelopeUnlocked(
   }
 }
 
-export async function verifyManagedCookies(): Promise<boolean> {
+export async function inspectManagedCookies(): Promise<"verified" | "missing" | "changed"> {
   const state = await readLocalState();
-  if (!state.managed.some((cookie) => cookie.name === "SOURCEID_TGC")) return false;
+  if (!state.managed.some((cookie) => cookie.name === "SOURCEID_TGC")) return "missing";
+  let missing = false;
   for (const entry of state.managed) {
     const current = await getExact(entry);
-    if (!current || await digestCookie(current) !== entry.digest) return false;
+    if (!current) missing = true;
+    else if (await digestCookie(current) !== entry.digest) return "changed";
   }
-  return true;
+  return missing ? "missing" : "verified";
+}
+
+export async function verifyManagedCookies(): Promise<boolean> {
+  return await inspectManagedCookies() === "verified";
 }
 
 async function clearOwnedCookiesUnlocked(): Promise<void> {
