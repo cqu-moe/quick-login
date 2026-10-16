@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "missing-auth",
+      "wrapperExitCode": 1,
+      "runnerExitCode": null,
+      "cleanup": "passed",
+      "bothFailuresRetained": false
+    },
+    {
+      "name": "cleanup-only",
+      "wrapperExitCode": 1,
+      "runnerExitCode": 0,
+      "cleanup": "failed: Browser profile cleanup failed: residual state remains",
+      "bothFailuresRetained": false
+    },
+    {
+      "name": "primary-and-cleanup",
+      "wrapperExitCode": 1,
+      "runnerExitCode": 1,
+      "cleanup": "failed: Browser profile cleanup failed: residual state remains",
+      "bothFailuresRetained": true
+    },
+    {
+      "name": "provider-cleanup",
+      "wrapperExitCode": 1,
+      "runnerExitCode": 0,
+      "cleanup": "passed",
+      "bothFailuresRetained": false
+    }
+  ],
+  "controlledResiduesRemoved": true
+}

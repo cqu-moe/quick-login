@@ -26,6 +26,7 @@ export function localCookieState(state: LocalState) {
   if (state.localError === "LOCAL_PERMISSION_DENIED") return "permission_denied" as const;
   if (state.localWriteState === "error") return "write_failed" as const;
   if (state.localWriteState === "writing") return "applying" as const;
+  if (state.receipt?.result === "foreign") return "foreign" as const;
   if (state.receipt?.result === "applied" && state.localWriteState === "ready") return "applied" as const;
   return "unknown" as const;
 }

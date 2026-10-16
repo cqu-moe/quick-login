@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a1409e-9362-716e-be4e-ab3d9adb51ec · targets: desktop
+
+ ✓ target "desktop" command ready 90ms
+ ✓ |desktop| e2e/school-guards.e2e.ts (1 test) 41.90s
+   ✓ QUICKLOGIN-02 foreign cookies and ambiguous domain/path ownership survive sync and disable 41.90s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:31:36
+   Duration  42.34s (startup 90ms)

@@ -1,6 +1,6 @@
 {
   "name": "cqu-quicklogin",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,12 +14,22 @@
     "build:website": "vite build --config website/vite.config.ts",
     "typecheck:website": "tsc --noEmit -p website/tsconfig.json",
     "check:website": "node scripts/check-website.mjs",
-    "deploy:website": "wrangler deploy"
+    "deploy:website": "wrangler deploy",
+    "typecheck:e2e": "tsc --noEmit -p e2e/tsconfig.json",
+    "test:e2e": "npm run typecheck:e2e && node e2e/run.mjs",
+    "test:e2e:self-check": "node e2e/self-check.mjs",
+    "test:e2e:zero": "node e2e/zero-check.mjs",
+    "test:e2e:lifecycle": "node e2e/lifecycle-check.mjs",
+    "test:e2e:device-controls": "node e2e/device-controls.mjs",
+    "prepare:e2e-artifacts": "node e2e/prepare-ci-artifacts.mjs"
   },
   "devDependencies": {
+    "@e2e-dev/web": "0.15.0",
     "@types/chrome": "^0.2.9",
     "@types/node": "^22.20.2",
+    "e2e": "0.21.0",
     "jsdom": "^30.0.1",
+    "playwright-core": "1.64.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.0",

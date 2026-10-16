@@ -1,0 +1,3 @@
+
+> cqu-quicklogin@0.4.8 typecheck:e2e
+> tsc --noEmit -p e2e/tsconfig.json

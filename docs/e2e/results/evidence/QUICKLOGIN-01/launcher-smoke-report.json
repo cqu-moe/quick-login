@@ -1,0 +1,48 @@
+{
+  "kind": "single-launch-headless-extension-smoke",
+  "status": "passed",
+  "launchAttempts": 1,
+  "timeoutMs": 30000,
+  "requiredFlags": [
+    "--headless=new",
+    "--password-store=basic",
+    "--use-mock-keychain"
+  ],
+  "authSuiteRun": false,
+  "screenshotsTaken": false,
+  "externalRequestsBlocked": 5,
+  "primaryFailures": [],
+  "cleanupFailures": [],
+  "actualProcessCommand": "<playwright-cache>/chromium-1248/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing --headless=new --password-store=basic --use-mock-keychain --user-data-dir=<worktree>/.e2e/launcher-smoke-1792069690453/profiles/chromium-g8tFxz --no-first-run --no-default-browser-check --disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --disable-features=AutofillServerCommunication --metrics-recording-only --no-pings --check-for-update-interval=2147483647 --disable-extensions-except=<worktree>/dist --load-extension=<worktree>/dist --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 --proxy-server=127.0.0.1:57256 about:blank",
+  "mainPid": 69591,
+  "profile": ".e2e/launcher-smoke-1792069690453/profiles/chromium-g8tFxz",
+  "processFlagsVerified": true,
+  "extensionId": "igfidegfgfoofnoncpmbcokbffjmmook",
+  "serviceWorkerUrl": "chrome-extension://igfidegfgfoofnoncpmbcokbffjmmook/background.js",
+  "serviceWorkerRuntimeIdVerified": true,
+  "browserVersion": "156.0.8078.4",
+  "build": {
+    "extensionVersion": "0.4.7",
+    "sourceCommit": "549bcb08d47ab3b9a0d1431b84c7a0ea41ba1110",
+    "protocolVersion": 3,
+    "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1"
+  },
+  "batchPidsBeforeClose": [
+    69591,
+    69615,
+    69616,
+    69617,
+    69618,
+    69630,
+    69631,
+    69632,
+    69637,
+    69641,
+    69642,
+    69643
+  ],
+  "batchPidsAfterClose": [],
+  "profileRemoved": true,
+  "elapsedMs": 1407,
+  "originalReportSha256": "09de0312e0079d1dbcd7470b92aeef281c1d28dd0feeeaa9b44141c3c891290d"
+}

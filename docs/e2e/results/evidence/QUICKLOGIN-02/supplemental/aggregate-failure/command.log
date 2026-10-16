@@ -1,0 +1,6 @@
+[quicklogin-e2e] isolated runtime school-1-da65f4fccb8e (1 tests)
+[quicklogin-e2e] 0/2 independent runtime tests passed; cleanup passed
+Command failed: git -C <worktree>/.e2e/missing-auth-source rev-parse HEAD
+fatal: cannot change to '<worktree>/.e2e/missing-auth-source': No such file or directory
+
+[quicklogin-e2e] cleanup passed

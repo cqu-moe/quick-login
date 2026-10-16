@@ -1,0 +1,140 @@
+name: Extension E2E
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  journeys:
+    name: Real MV3 journeys (${{ matrix.suite }}, ${{ matrix.viewport }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [core, devices]
+        viewport: [desktop, mobile]
+        include:
+          - suite: core
+            selector: --grep-invert
+          - suite: devices
+            selector: --grep
+    env:
+      E2E_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      WRANGLER_SEND_METRICS: "false"
+      PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
+      QUICKLOGIN_E2E_AUTH_PATH: ${{ github.workspace }}/.e2e-auth
+      QUICKLOGIN_E2E_AUTH_COMMIT: 870933794326b9d280dcf07f392c80c127fd7233
+      QUICKLOGIN_E2E_VIEWPORT: ${{ matrix.viewport }}
+      QUICKLOGIN_E2E_SUITE: ${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+      - name: Checkout pinned Auth dependency
+        run: |
+          git init .e2e-auth
+          git -C .e2e-auth remote add origin https://github.com/cqu-moe/auth.git
+          git -C .e2e-auth fetch --depth 1 origin "$QUICKLOGIN_E2E_AUTH_COMMIT"
+          git -C .e2e-auth checkout --detach FETCH_HEAD
+          test "$(git -C .e2e-auth rev-parse HEAD)" = "$QUICKLOGIN_E2E_AUTH_COMMIT"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          package_json_file: .e2e-auth/frontend/package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22.22.3"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck:e2e
+      - run: npx --no-install e2e-web install chromium --with-deps
+      - run: npm run build
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ""
+          VITE_POSTHOG_HOST: ""
+      - name: Require denied CONNECT reset survival and tunnel cleanup
+        if: matrix.suite == 'core'
+        run: node e2e/network-reset-check.mjs .e2e/network-reset-control
+      - name: Keep CONNECT reset control evidence
+        if: always() && matrix.suite == 'core'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quicklogin-network-control-${{ github.sha }}-${{ matrix.viewport }}
+          path: .e2e/network-reset-control/control.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve business and closed-page capture failures
+        if: matrix.suite == 'core'
+        run: node --experimental-strip-types e2e/artifact-failure-check.ts .e2e/artifact-failure-control
+      - name: Keep artifact-capture control evidence
+        if: always() && matrix.suite == 'core'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quicklogin-capture-control-${{ github.sha }}-${{ matrix.viewport }}
+          path: .e2e/artifact-failure-control/control.json
+          if-no-files-found: error
+          retention-days: 14
+      - run: npm ci
+        working-directory: .e2e-auth
+      - run: pnpm install --frozen-lockfile
+        working-directory: .e2e-auth/frontend
+      - run: pnpm run build
+        working-directory: .e2e-auth/frontend
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ""
+          VITE_POSTHOG_HOST: ""
+      - name: Build actual pinned Auth browser runtime
+        working-directory: .e2e-auth
+        run: node e2e/school/build.mjs
+      - name: Pull pinned native container interceptor
+        run: docker pull cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8
+      - name: Run first independent E2E journey
+        run: node e2e/run.mjs ${{ matrix.selector }} '^QUICKLOGIN-03 '
+        env:
+          QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-1
+      - name: Run second independent E2E journey
+        run: node e2e/run.mjs ${{ matrix.selector }} '^QUICKLOGIN-03 '
+        env:
+          QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-2
+      - name: Require expected assertion failure
+        run: node e2e/self-check.mjs
+      - name: Require zero-selection failure
+        run: node e2e/zero-check.mjs
+      - name: Require startup, cleanup and combined failures
+        run: node e2e/lifecycle-check.mjs
+      - name: Require native alarm and genuine pending ACK failure controls
+        if: matrix.suite == 'devices'
+        run: node e2e/device-controls.mjs
+      - name: Prepare sanitized evidence even after a failure
+        if: always()
+        run: node e2e/prepare-ci-artifacts.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: quicklogin-e2e-${{ github.sha }}-${{ matrix.suite }}-${{ matrix.viewport }}
+          path: ci-e2e-artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  quicklogin:
+    name: Real MV3 Auth, school cookies and recovery
+    needs: journeys
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Require every suite and its two-round artifact admission
+        env:
+          SUITES_RESULT: ${{ needs.journeys.result }}
+        run: test "$SUITES_RESULT" = success

@@ -6,6 +6,7 @@ import { snapshot, readySnapshot, envelope, receipt } from "../test/protocol-fix
 import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } from "./storage";
 import { setEnabled, setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
 import { JOURNAL_KEY } from "./cookie-journal";
+import { observeSchoolLogin } from "./school-recovery";
 import * as api from "./api-v3";
 import * as telemetry from "../shared/posthog";
 import type { DeviceSnapshot, OperationResponse } from "../shared/protocol-v3.generated";
@@ -39,6 +40,43 @@ beforeEach(async () => {
     return {accepted:true,exportId:applied.exportId,acceptedTuple:applied,reportEpoch:local.reportEpoch,
       clientReportSeq:local.clientReportSeq,receivedAt:Date.now(),reasonCode:null,snapshot:snapshot()};
   });
+});
+
+it.each(["new-session", "school-form"])("does not let a prior local rotation block %s", async transition => {
+  const first = envelope();
+  first.cookies.push({ ...first.cookies[0], name: "SESSION", value: "initial-auxiliary" });
+  vi.mocked(api.exportSession).mockResolvedValue(first);
+  setEnvelopeWriter(applyEnvelope);
+  await sync("startup");
+  await chrome.cookies.set({ url: "https://sso.cqu.edu.cn/", name: "SESSION", path: "/",
+    value: "locally-rotated", secure: true, httpOnly: true, sameSite: "lax" });
+  await sync("popup");
+  await sync("popup");
+  expect(fake.getCookie("SESSION")?.value).toBe("locally-rotated");
+  expect((await readLocalState()).receipt?.result).not.toBe("applied");
+
+  if (transition === "school-form") {
+    await observeSchoolLogin({ tabId: 7, documentId: "new-school-document" });
+    await sync("login_form");
+    expect(api.operate).toHaveBeenCalledWith("retry_session", expect.anything(), expect.any(String));
+    expect((await readLocalState()).snapshot?.cloud.state).toBe("logging_in");
+  } else {
+    const next = snapshot();
+    next.versions.sessionVersion++;
+    next.versions.deviceRevision++;
+    vi.mocked(api.reconcile).mockResolvedValue({ centralUserId: "central-user-a", snapshot: next, receiptAck: null });
+    vi.mocked(api.exportSession).mockResolvedValue({ ...first, sessionVersion: 8, exportId: "next-export",
+      cookies: first.cookies.map(cookie => ({ ...cookie, value: "new-server-session" })) });
+    vi.mocked(api.acknowledge).mockImplementation(async applied => {
+      const local = await readLocalState();
+      return { accepted: true, exportId: applied.exportId, acceptedTuple: applied, reportEpoch: local.reportEpoch,
+        clientReportSeq: local.clientReportSeq, receivedAt: Date.now(), reasonCode: null, snapshot: next };
+    });
+    await sync("alarm");
+    expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("new-server-session");
+    expect(fake.getCookie("SESSION")?.value).toBe("new-server-session");
+    expect(await readLocalState()).toMatchObject({ receipt: { result: "applied", sessionVersion: 8 }, pendingAck: false });
+  }
 });
 
 it("records disconnected and throttled sync checks as no-ops", async () => {

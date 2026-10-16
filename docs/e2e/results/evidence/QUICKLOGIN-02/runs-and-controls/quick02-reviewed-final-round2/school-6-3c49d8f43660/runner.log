@@ -1,0 +1,12 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a140a2-f811-7217-88d1-8d82fda27e73 · targets: desktop
+
+ ✓ target "desktop" command ready 90ms
+ ✓ |desktop| e2e/school-guards.e2e.ts (1 test) 68.50s
+   ✓ QUICKLOGIN-02 an expired genuine export cannot write cookies or send a success receipt 68.50s
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:36:24
+   Duration  68.93s (1m 9s, startup 90ms)

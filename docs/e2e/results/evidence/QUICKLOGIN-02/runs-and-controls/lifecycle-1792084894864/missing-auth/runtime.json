@@ -1,0 +1,22 @@
+{
+  "authCommit": "870933794326b9d280dcf07f392c80c127fd7233",
+  "output": "<worktree>/.e2e/lifecycle-1792084894864/missing-auth",
+  "extensionPath": "dist",
+  "cleanup": "passed",
+  "extensionCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+  "sourceDirty": false,
+  "build": {
+    "extensionVersion": "0.4.8",
+    "sourceCommit": "e1fde7ddf48c48fb3bc06250aadd568be46e1c93",
+    "protocolVersion": 3,
+    "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1"
+  },
+  "backgroundSha256": "3899dfb28ac0f83f35e6d161563bf0bdad58c670215555eb8eb29435e9288ac5",
+  "startupCleanupErrors": [],
+  "deniedEgress": [],
+  "unexpectedDeniedEgress": [],
+  "primaryFailures": [
+    "Command failed: git -C <worktree>/.e2e/lifecycle-1792084894864/missing-auth-source rev-parse HEAD\nfatal: cannot change to '<worktree>/.e2e/lifecycle-1792084894864/missing-auth-source': No such file or directory\n"
+  ],
+  "cleanupFailures": []
+}

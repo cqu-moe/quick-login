@@ -1,0 +1,169 @@
+{
+  "implementationCommit": "81e0e6912235e470e8dc4ba4a43918afab352acd",
+  "authCommit": "d9bf0c5e6d5cc459029da6a345991b8d0f13f514",
+  "independentRuns": [
+    {
+      "directory": ".e2e/sol-final-run-1",
+      "runId": "01a13fca-65a2-7735-bbdc-9fd346c92e4d",
+      "startedAt": "2026-10-15T13:39:51.626Z",
+      "finishedAt": "2026-10-15T13:40:01.574Z",
+      "ci": true,
+      "summary": {
+        "discovered": 6,
+        "selected": 6,
+        "executed": 6,
+        "passed": 6,
+        "failed": 0,
+        "interrupted": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "extensionCommit": "81e0e6912235e470e8dc4ba4a43918afab352acd",
+      "authCommit": "d9bf0c5e6d5cc459029da6a345991b8d0f13f514",
+      "build": {
+        "extensionVersion": "0.4.7",
+        "sourceCommit": "81e0e6912235e470e8dc4ba4a43918afab352acd",
+        "protocolVersion": 3,
+        "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1"
+      },
+      "backgroundSha256": "f09114aaf620e0ae8a4d71b2d7d1d5e996d6a975f57897d9acc5c4955bf6a95d",
+      "oauth": {
+        "authorizationRequests": 5,
+        "successfulTokenExchanges": 2
+      },
+      "sourceDirty": false,
+      "cleanup": "passed",
+      "unexpectedDeniedEgress": [],
+      "rawReportSha256": "659fbfeec6b4b231961c1ad97a2132464dae3047f1300f7430ff6a516fce717a",
+      "rawRuntimeSha256": "bac377b85f1fe515abafd9d0b025548e9af70e77cc65a5afaf4f23261e803a13"
+    },
+    {
+      "directory": ".e2e/sol-final-run-2",
+      "runId": "01a13fcb-172a-7ae2-b956-5b1d158a0293",
+      "startedAt": "2026-10-15T13:40:37.017Z",
+      "finishedAt": "2026-10-15T13:40:45.643Z",
+      "ci": true,
+      "summary": {
+        "discovered": 6,
+        "selected": 6,
+        "executed": 6,
+        "passed": 6,
+        "failed": 0,
+        "interrupted": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "extensionCommit": "81e0e6912235e470e8dc4ba4a43918afab352acd",
+      "authCommit": "d9bf0c5e6d5cc459029da6a345991b8d0f13f514",
+      "build": {
+        "extensionVersion": "0.4.7",
+        "sourceCommit": "81e0e6912235e470e8dc4ba4a43918afab352acd",
+        "protocolVersion": 3,
+        "contractDigest": "d08b76f3df71879dcedb754b6df0f01eb0da912a5c1f00495283f3512a21cec1"
+      },
+      "backgroundSha256": "f09114aaf620e0ae8a4d71b2d7d1d5e996d6a975f57897d9acc5c4955bf6a95d",
+      "oauth": {
+        "authorizationRequests": 5,
+        "successfulTokenExchanges": 2
+      },
+      "sourceDirty": false,
+      "cleanup": "passed",
+      "unexpectedDeniedEgress": [],
+      "rawReportSha256": "fb4270fb60aa2de628715b2df90a17f076f50a3974d73a0a86c839436d4df76d",
+      "rawRuntimeSha256": "1534d9a29ed9a2538b1848e414818cefa5c2c4395734aedf0781faf4d65c848e"
+    }
+  ],
+  "negativeControl": {
+    "directory": ".e2e/negative-1792071706926",
+    "summary": {
+      "discovered": 6,
+      "selected": 1,
+      "executed": 1,
+      "passed": 0,
+      "failed": 1,
+      "interrupted": 0,
+      "flaky": 0,
+      "skipped": 0
+    },
+    "runnerExitCode": 1,
+    "error": {
+      "category": "test",
+      "code": "ASSERTION_FAILED",
+      "message": "expected \"forced-negative-control\" to be \"expected-failure\"",
+      "retryable": false,
+      "phase": "body",
+      "source": {
+        "file": "e2e/capability.e2e.ts",
+        "line": 21,
+        "column": 39
+      }
+    },
+    "cleanup": "passed"
+  },
+  "zeroControl": {
+    "directory": ".e2e/zero-1792071746492",
+    "runnerExitCode": 2,
+    "cleanup": "passed"
+  },
+  "lifecycleControl": {
+    "directory": ".e2e/lifecycle-1792071807243",
+    "status": "passed",
+    "checks": [
+      {
+        "name": "missing-auth",
+        "wrapperExitCode": 1,
+        "runnerExitCode": null,
+        "cleanup": "passed",
+        "bothFailuresRetained": false
+      },
+      {
+        "name": "cleanup-only",
+        "wrapperExitCode": 1,
+        "runnerExitCode": 0,
+        "cleanup": "failed: Browser profile cleanup failed: residual state remains",
+        "bothFailuresRetained": false
+      },
+      {
+        "name": "primary-and-cleanup",
+        "wrapperExitCode": 1,
+        "runnerExitCode": 1,
+        "cleanup": "failed: Browser profile cleanup failed: residual state remains",
+        "bothFailuresRetained": true
+      }
+    ],
+    "controlledResiduesRemoved": true
+  },
+  "finalProcessReadback": {
+    "checkedAt": "2026-10-15T13:46:28.421566+00:00",
+    "ownedChromiumProcesses": [],
+    "scope": "Only this ticket worktree profile paths"
+  },
+  "localVerification": {
+    "typecheck": 0,
+    "typecheckE2e": 0,
+    "unitTests": {
+      "exitCode": 0,
+      "passed": 171
+    },
+    "releaseTests": {
+      "exitCode": 0,
+      "passed": 10
+    },
+    "build": 0,
+    "packageCheck": 0,
+    "yamlParser": "PyYAML passed",
+    "npmCi": "dry-run --offline --ignore-scripts passed; fresh install not rerun"
+  },
+  "publication": {
+    "directory": ".e2e/published-sol-final",
+    "exitCode": 0,
+    "copiedFiles": 37,
+    "problems": [],
+    "failureCaseDirectory": ".e2e/published-sol-failure",
+    "failureCaseExitCode": 1,
+    "failedScreenshotRetained": true
+  },
+  "remoteCI": "not run",
+  "independentReview": "parent arranged",
+  "pushOrMerge": "not performed"
+}

@@ -1,0 +1,17 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a14095-6345-7be3-b23f-f5469e5fc51b · targets: desktop
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Run Errors 1 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ ERROR  configuration error NO_TESTS (collection)
+16 tests were collected but none is runnable: 16 have titles matching none of /^QUICKLOGIN01_ZERO_SELECTION$/; pass --pass-with-no-tests to allow this
+
+
+ Test Files  no test files
+      Tests  no tests executed
+     Errors  1 error
+   Start at  01:21:34
+   Duration  23ms
+     Report  (not written)

@@ -1,0 +1,34 @@
+
+ RUN  e2e v0.21.0 <worktree>
+      run 01a14095-549d-7247-a2bc-8bd58201659e · targets: desktop
+
+ ✓ target "desktop" command ready 89ms
+ ❯ |desktop| e2e/capability.e2e.ts (1 test | 1 failed) 716ms
+   × tester-army rides a persistent Chromium context and loads the real MV3 extension 716ms
+     → expected "forced-negative-control" to be "expected-failure"
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |desktop| e2e/capability.e2e.ts > tester-army rides a persistent Chromium context and loads the real MV3 extension
+ASSERTION_FAILED: expected "forced-negative-control" to be "expected-failure"
+ ❯ e2e/capability.e2e.ts:21:39
+     19|   expect(await popup.evaluate(() => chrome.runtime.id)).toBe(extensio…
+     20|   if (process.env.QUICKLOGIN_E2E_BREAK_ASSERTION === "1") {
+     21|     expect("forced-negative-control").toBe("expected-failure");
+       |                                       ^
+     22|   }
+     23| });
+ ❯ at chrome-extension://igfidegfgfoofnoncpmbcokbffjmmook/popup.html
+ ❯ trace .e2e/negative-1792084888301/run/results/capability-tester-army-rides-a-persistent-f9665fe68c7a8dbc/trace.md
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 0 passed (1)
+      Tests  1 failed | 0 passed (1)
+   Start at  01:21:31
+   Duration  1.15s (startup 89ms)
+     Traces  .e2e/negative-1792084888301/run/results/ (1 page, trace.md in each test's directory)
+
+[quicklogin-e2e] runner exited with 1
+[quicklogin-e2e] cleanup passed
