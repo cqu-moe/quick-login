@@ -1,0 +1,84 @@
+name: Publish Chrome Web Store
+on:
+  workflow_run:
+    workflows: ["Publish canary"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quicklogin-canary-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: quicklogin-release
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Check store configuration
+        env:
+          PROVIDER: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          PUBLISHER: ${{ vars.CWS_PUBLISHER_ID }}
+          UPLOAD_KEY_SHA256: ${{ secrets.CWS_UPLOAD_KEY_SHA256 || vars.CWS_UPLOAD_KEY_SHA256 }}
+        run: |
+          if [ -z "$PROVIDER" ] || [ -z "$SERVICE_ACCOUNT" ] || [ -z "$PUBLISHER" ] || [ -z "$UPLOAD_KEY_SHA256" ]; then
+            echo '::error::Configure quicklogin-release environment; see docs/operations/quicklogin-webstore-cd.md.'
+            exit 1
+          fi
+      - run: python3 -m pip install --disable-pip-version-check awscli==1.42.49
+      - name: Prepare the latest verified Canary candidate
+        id: candidate
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_MAX_ATTEMPTS: "3"
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$AWS_ACCESS_KEY_ID" && test -n "$AWS_SECRET_ACCESS_KEY" && test -n "$R2_BUCKET" && test -n "$R2_ACCOUNT_ID"
+          python3 scripts/prepare_webstore.py --bucket "$R2_BUCKET" \
+            --endpoint "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+      - name: Sign and verify the CRX upload
+        env:
+          RECORD_PATH: ${{ steps.candidate.outputs.record }}
+          CWS_UPLOAD_PRIVATE_KEY: ${{ secrets.CWS_UPLOAD_PRIVATE_KEY }}
+          CWS_UPLOAD_KEY_SHA256: ${{ secrets.CWS_UPLOAD_KEY_SHA256 || vars.CWS_UPLOAD_KEY_SHA256 }}
+        run: python3 scripts/sign_webstore.py --record "$RECORD_PATH"
+      - name: Authenticate with a short-lived Google service account token
+        id: google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Upload or wait for the active review
+        env:
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.candidate.outputs.source_commit }}
+          RECORD_PATH: ${{ steps.candidate.outputs.record }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+          CWS_UPLOAD_KEY_SHA256: ${{ secrets.CWS_UPLOAD_KEY_SHA256 || vars.CWS_UPLOAD_KEY_SHA256 }}
+        run: |
+          python3 scripts/webstore.py --record "$(dirname "$RECORD_PATH")/signed-package.json" \
+            --version "$RELEASE_VERSION" --source-commit "$SOURCE_COMMIT"

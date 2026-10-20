@@ -9,7 +9,9 @@
 - Build versioned canary archives as `releases/cqu-quicklogin-<version>-canary.zip`. Package only the contents of `dist/`, and never overwrite an older versioned archive.
 - Before release, run `npm run typecheck`, `npm test`, `npm run build`, and `npm run check:package`. Verify the ZIP contents, embedded manifest version, archive integrity, and SHA-256.
 - Update `docs/operations/quicklogin-release.md` and `docs/operations/quicklogin-handoff.md` with the extension commit, package name and SHA-256. For Auth changes, also record the Auth commit and deployed Worker version.
-- Keep release evidence separate: a Git push, local canary ZIP, unpacked-extension reload, Cloudflare Worker deployment, and Chrome Web Store publication are different states. Chrome Web Store upload or publication always requires an explicit request naming the store action.
+- Keep release evidence separate: a Git push, local canary ZIP, unpacked-extension reload, Cloudflare Worker deployment, store upload, review submission, and store publication are different states.
+- Chrome Web Store CD is authorized to upload the latest verified Canary, submit for review, and publish on approval while preserving Unlisted visibility. PRs still set versions and release notes. An active review waits; only the newest candidate is submitted afterward. Rejection or policy warnings require operator attention. Manual store changes outside this flow need explicit authorization.
+- For store CD setup, waiting/retry behavior, Verified CRX Uploads, or signing-key recovery, read [store CD operations](../operations/quicklogin-webstore-cd.md).
 
 
 发布与回滚操作及历史证据见 [运维记录](../operations/quicklogin-release.md)。文档整理本身不改变扩展行为，无需增加版本。

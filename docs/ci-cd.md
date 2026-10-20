@@ -71,6 +71,8 @@ node -e "if (!process.version.startsWith('v22.')) throw new Error('QuickLogin re
 
 版本发布仍由现有 `Publish canary` 工作流执行：先完整验证，再构建带发布说明的正式 canary ZIP，创建不可变版本标签，条件写入私有 R2，读回包和元数据后推进 canary 指针。本文的 CI ZIP 不参与该流程，也不会 bump 业务版本。
 
-`Roll back canary` 仍只能从 main 手动 dispatch，按已发布版本读取并校验 R2 对象后显式恢复指针；它不删除或覆盖历史包。Chrome Web Store 上传和发布仍必须单独人工授权。
+`Roll back canary` 仍只能从 main 手动 dispatch，按已发布版本读取并校验 R2 对象后显式恢复指针；它不删除或覆盖历史包。
+
+`Publish Chrome Web Store` 在 Canary 工作流成功后及每 30 分钟运行一次，也可从 main 手动触发。它与 Canary 发布、回滚共用同一个并发组，从私有 R2 当前 Canary 指针读取最新候选，校验元数据、ZIP、摘要与来源后生成并签名商店 CRX。已有版本待审时正常结束，下次重新读取最新候选；不撤审、不逐个补发中间版本。拒审、政策告警或不认识的状态使任务失败。用户已授权这条流程自动上传、送审、获批后发布，保持 Unlisted。配置与恢复见 [商店 CD 运维](operations/quicklogin-webstore-cd.md)。
 
 现有发布环境与配置项只记录名称：GitHub environment `quicklogin-release`；变量 `POSTHOG_PROJECT_TOKEN`、`R2_BUCKET`；secrets `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`CLOUDFLARE_ACCOUNT_ID`。官网部署由 Cloudflare Git integration 持有部署权限，当前没有对应的 GitHub Actions website 环境。
