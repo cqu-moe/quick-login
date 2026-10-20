@@ -1,3 +1,15 @@
+# 2026-10-20 0.4.9 商店自动 CD 已启用并送审
+
+- [PR #30](https://github.com/cqu-moe/quick-login/pull/30) 合入自动 CD；[PR #31](https://github.com/cqu-moe/quick-login/pull/31) 修复 Chrome CRX 合法目录条目校验。发布工具提交 `d3643ced9f1be2935d631a6a2924ce55582919b3`，扩展仍使用已发布 Canary 的源码 `8a42236dad09566255d165142a3b361e9c0676fd`，未重新构建运行代码。
+- [首次成功运行 39443868183](https://github.com/cqu-moe/quick-login/actions/runs/39443868183)：R2 包和不可变元数据校验、RSA CRX3 签名及逐文件比对、Google OIDC、真实上传、`DEFAULT_PUBLISH` 送审均成功；2026-10-20 22:57（Asia/Shanghai）API 回读 0.4.9 `PENDING_REVIEW`。获批后自动发布，不把送审当作已上架。未修改既有 Unlisted 分发设置。
+- 本次实际上传 `cqu-quicklogin-0.4.9-webstore.crx`：153440 bytes，SHA-256 `387e800f47c321baeff57a58e97345502ec73c9ff19e1025aa65c4f4d458eefa`。准备 ZIP：151052 bytes，SHA-256 `882a77516ec43926eb01069d3e320b7774e9241bbfb32d5803a49d8b4732cc90`。这些摘要来自上传前验证；Google API 不提供远端包摘要。
+- [重复检查 39444049036](https://github.com/cqu-moe/quick-login/actions/runs/39444049036) 成功，22:58 仍回读 `PENDING_REVIEW`，已有版本分支未上传或再次送审。重复签名的本地 CRX 可能因 Chrome ZIP 时间戳而有不同摘要，不代表商店包被替换。
+- `webstore.yml` 已启用：Canary 成功后检查，另在每小时第 17、47 分钟检查；审核中保留最新 R2 候选，拒审/政策告警停止变更。Google 身份联合、商店服务账号、用户自行配置的 Verified CRX Uploads 及签名 Secret 均已通过真实流程。
+- 验证边界：PR #30 四组两轮 MV3 E2E 全部通过；目录修复的 CI 通过 186 项单测、30 项发布测试和构建检查，真实完整本地包签名也通过。该打包工具小修复未重新等待完整 E2E；扩展运行代码未变。首次失败运行 39443083971 在签名目录校验处停止，未调用 Google API；真实大学 SSO、商店获批和商店安装后的业务行为仍未验收。Auth 代码与 Worker 未修改。浏览器任务页在最终核对前已关闭，送审结果使用 Google API 回读证据。
+- 配置、暂停与恢复见 [商店 CD 运维](quicklogin-webstore-cd.md)。
+
+---
+
 # 2026-10-16 QUICKLOGIN-02 / 0.4.8 本地验证完成，未发布
 
 - 可执行源码 `e1fde7ddf48c48fb3bc06250aadd568be46e1c93`；实际固定 Auth `870933794326b9d280dcf07f392c80c127fd7233`。两轮全新真实扩展/内部 Auth/原生容器/学校替身业务各16/16；40业务容器、40proxy、20镜像已独立确认消失。合成学校通过不代表真实大学登录通过。

@@ -49,7 +49,7 @@ R2 仍使用已有 `R2_BUCKET`、`CLOUDFLARE_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、
 
 2026-10-20 已创建 Google Cloud 项目 `cqu-quicklogin-cd`（编号 `555328388321`）、服务账号 `quicklogin-webstore@cqu-quicklogin-cd.iam.gserviceaccount.com` 和 WIF provider `projects/555328388321/locations/global/workloadIdentityPools/github/providers/quicklogin`。已为该仓库的联合主体授予该服务账号的 `roles/iam.workloadIdentityUser`；服务账号已在商店发布者设置绑定；三个身份相关 GitHub environment variables 已配置。
 
-用户自行配置上传私钥和指纹，均存为 `quicklogin-release` 的 Secret；后台已显示已登记的 Verified CRX Uploads 公钥。真实 OIDC、上传和送审验收仍需以工作流运行结果为准。
+用户自行配置上传私钥和指纹，均存为 `quicklogin-release` 的 Secret；后台已显示已登记的 Verified CRX Uploads 公钥。[首次成功运行](https://github.com/cqu-moe/quick-login/actions/runs/39443868183) 已完成真实 OIDC、签名上传及自动发布送审，0.4.9 回读为 `PENDING_REVIEW`；[重复运行](https://github.com/cqu-moe/quick-login/actions/runs/39444049036) 命中已有待审版本并正常结束。完整包摘要与验收边界见 [发布记录](quicklogin-release.md)。
 
 ## Verified CRX Uploads
 

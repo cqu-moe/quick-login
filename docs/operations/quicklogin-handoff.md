@@ -1,3 +1,11 @@
+# 2026-10-20 商店自动发布交接
+
+0.4.9 已由自动 CD 上传签名 CRX 并提交审核，Google API 于 22:57、22:58（Asia/Shanghai）两次确认 `PENDING_REVIEW`，获批后自动发布，未修改 Unlisted 设置。扩展源码 `8a42236dad09566255d165142a3b361e9c0676fd`；上传 `cqu-quicklogin-0.4.9-webstore.crx`（153440 bytes），SHA-256 `387e800f47c321baeff57a58e97345502ec73c9ff19e1025aa65c4f4d458eefa`。
+
+PR 定版本、Canary 成功后自动检查商店；有版本待审时等待，每半小时取最新候选。工作流已 active；拒审或政策告警需人工处理，不会自动撤审。真实上传与幂等检查已通过；获批、商店安装及真实学校 SSO 仍待验收。运行链接与详细边界见 [发布记录](quicklogin-release.md)，配置与暂停见 [CD 运维](quicklogin-webstore-cd.md)。
+
+---
+
 # 2026-10-16 QUICKLOGIN-02 / 0.4.8 本地验证完成，未发布
 
 - 可执行源码 `e1fde7ddf48c48fb3bc06250aadd568be46e1c93`；实际固定 Auth `870933794326b9d280dcf07f392c80c127fd7233`。两轮全新真实扩展/内部 Auth/原生容器/学校替身业务各16/16；40业务容器、40proxy、20镜像已独立确认消失。合成学校通过不代表真实大学登录通过。
