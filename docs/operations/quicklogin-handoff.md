@@ -370,3 +370,11 @@ Canary 后端与 Ego Lite Chromium 实际路径已通过；Google Chrome 最终�
 - 官网生产 [构建 724b083c-d3ef-4d2e-a3d7-34f3badb2b48](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/724b083c-d3ef-4d2e-a3d7-34f3badb2b48) 成功；真实浏览器读回 [下载页](https://quicklogin.cqu.moe/download/) 的 0.4.7、正式包名及 SHA，更新记录显示本次修复。
 - 本地验证：23 个文件 / 171 项测试、10 项发布脚本测试，扩展与官网 typecheck、build、包/页面检查通过。规范与需求审查中的页面生命周期问题已修复。
 - 安装扩展升级与 `my.cqu.edu.cn` 真实学校登录验收仍待单独执行；本次发布不会自动更新用户当前安装。Auth 源码和 Worker 未变更，Chrome Web Store 未上传、送审或发布。
+
+## 2026-10-20 0.4.9 PostHog 修复发布交接
+
+- [PR #29](https://github.com/cqu-moe/quick-login/pull/29) 已合并；源码/标签 `v0.4.9`：`8a42236dad09566255d165142a3b361e9c0676fd`。
+- 正式包：`releases/cqu-quicklogin-0.4.9-canary.zip`，151421 bytes；SHA-256：`c38a7d458a86635c65ffab8aa1283a145d0b42d2810fd22424eccd410f62a669`。实际认证下载与 CI 包一致，CRC/manifest/build-info 已通过；认证 200、匿名 401。
+- PR 常规检查及四组两轮 MV3 E2E 全部通过；主分支普通检查、canary 发布和官网生产构建成功。生产版本 `54be953c-85ca-4692-a8e8-2cd5aac34e58` 为 100% 流量。
+- 官网真实事件在 `2026-10-20 12:15:09.138 +08:00` 入库：SDK `1.438.12`、release `0.4.9+8a42236dad09566255d165142a3b361e9c0676fd`、代理标记 `https://p.cqu.moe`；测试标识、GeoIP 禁用和个人资料禁用均保留。
+- 代理告警待每日重新计算，未手动关闭。已安装扩展重载、真实学校 SSO 仍待独立验证；Auth 和 Chrome Web Store 未操作。流水线及部署证据见同期 `quicklogin-release.md`。

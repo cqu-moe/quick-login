@@ -390,3 +390,14 @@ ZIP integrity 均通过。仍需在 Chrome 对 unpacked 扩展执行 Reload；�
 - 官网生产 [构建 724b083c-d3ef-4d2e-a3d7-34f3badb2b48](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/724b083c-d3ef-4d2e-a3d7-34f3badb2b48) 成功；真实浏览器读回 [下载页](https://quicklogin.cqu.moe/download/) 的 0.4.7、正式包名及 SHA，更新记录显示本次修复。
 - 本地验证：23 个文件 / 171 项测试、10 项发布脚本测试，扩展与官网 typecheck、build、包/页面检查通过。规范与需求审查中的页面生命周期问题已修复。
 - 安装扩展升级与 `my.cqu.edu.cn` 真实学校登录验收仍待单独执行；本次发布不会自动更新用户当前安装。Auth 源码和 Worker 未变更，Chrome Web Store 未上传、送审或发布。
+
+## 2026-10-20 0.4.9 PostHog 代理诊断正式发布
+
+- [PR #29](https://github.com/cqu-moe/quick-login/pull/29) 在常规检查、四组两轮 MV3 E2E 和规范/需求审查通过后 squash 合并。源码/标签 `v0.4.9`：`8a42236dad09566255d165142a3b361e9c0676fd`。
+- 正式包：`releases/cqu-quicklogin-0.4.9-canary.zip`，151421 bytes；SHA-256：`c38a7d458a86635c65ffab8aa1283a145d0b42d2810fd22424eccd410f62a669`。
+- [PR Checks 39366188236](https://github.com/cqu-moe/quick-login/actions/runs/39366188236)、[PR E2E 39366188123](https://github.com/cqu-moe/quick-login/actions/runs/39366188123)、[主分支 Checks 39368261491](https://github.com/cqu-moe/quick-login/actions/runs/39368261491) 和 [Publish canary 39368261478](https://github.com/cqu-moe/quick-login/actions/runs/39368261478) 均成功。合并树与通过 PR E2E 的树完全一致；R2 包与 canary 通道已读回。
+- 真实浏览器认证下载 HTTP 200 ZIP，匿名下载 401；实际包与主分支 CI 逐字节一致，SHA、CRC、14 个文件、manifest 0.4.9 和 build-info 来源/协议/契约指纹均通过。未覆盖旧包。
+- 官网 [生产构建 27b0b1ce-bc80-47b7-ae97-7da033eabb24](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/27b0b1ce-bc80-47b7-ae97-7da033eabb24) 成功；部署 `9c84b3b2-11eb-4647-8f80-65072fe9f3b5` 将版本 `54be953c-85ca-4692-a8e8-2cd5aac34e58` 投放到 100%。浏览器下载页显示正式版本/包名/SHA，主模块 `assets/main-tLKDSPjQ.js` 与 CI 官网包的模块名一致。
+- PostHog 662666 在 `2026-10-20 12:15:09.138 +08:00` 收到官网 `$pageview`：release=`0.4.9+8a42236dad09566255d165142a3b361e9c0676fd`，SDK=`1.438.12`，`$lib_custom_api_host=https://p.cqu.moe`，`is_test=true`、`$geoip_disable=true`、`$process_person_profile=false`。查询入库有数分钟延迟。
+- 代理健康问题 `01a13ede-c153-7488-91d1-52456f34684c` 仍 active，等每日重新计算，未手动关闭。[审计 notebook](https://us.posthog.com/project/662666/notebooks/dHB8mFAz) 保留历史报告并记录修复复核。
+- 本地 186 项应用测试、10 项发布测试、两套 typecheck/build、包和官网检查均通过。已安装扩展重载与真实学校 SSO 未验收；Auth 源码/Worker 和 Chrome Web Store 未操作。

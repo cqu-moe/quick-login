@@ -10,7 +10,7 @@
 
 ## 结论
 
-已在本地修复代理检测标记被脱敏器删除的问题，并将 `posthog-js` 从 `1.433.5` 升至 `1.438.12`。原报告的两项 error 未被证据支持：CI 已注入配置，退出和换账号也使用独立身份。修复尚未提交或部署，线上健康告警仍为 active。
+已通过 PR #29 合并并发布 `0.4.9`，修复代理检测标记被脱敏器删除的问题，并将 `posthog-js` 从 `1.433.5` 升至 `1.438.12`。原报告的两项 error 未被证据支持：CI 已注入配置，退出和换账号也使用独立身份。官网真实事件已入库并携带正确代理标记；健康告警仍等待下一轮每日检查。
 
 | 原检查 | 复核结果 | 证据与处置 |
 | --- | --- | --- |
@@ -18,7 +18,7 @@
 | 退出或换账号没有 reset，导致身份串用 | 原结论不成立 | `src/shared/posthog.ts` 按 distinct ID 创建内存客户端。真实 SDK 请求测试经过 `clearDeviceAuthorization()`，身份依次为账号 A、安装 ID、账号 B，actor type 依次为 user、installation、user；没有产生身份合并事件。 |
 | SDK 版本过期 | 已修复，本地验证通过 | npm 注册表确认 `1.438.12`；`package.json` 和 `package-lock.json` 已同步更新，仅升级现有 PostHog 依赖及其关联包。 |
 | 缺少 signup 事件 | 不适用于当前边界 | `registerSavedAuthorization()` 注册设备，并可复用已有授权；它不证明创建了新账号。`loginInteractive()` 已上报 `quicklogin_operation_completed`，operation=connect，并区分 success/failure。账号创建归独立 Auth 服务；未添加会把重连误计为注册的事件。 |
-| 未检测到反向代理 | 已复现并修复代码；线上待发布 | 真实 SDK 生成 `$lib_custom_api_host=https://p.cqu.moe`，但共享脱敏器删除了它。现在仅保留这个精确、已批准的 origin；带凭据、query 或其他域名的值仍丢弃。官网 `$pageview` 和扩展事件均验证了实际请求载荷。 |
+| 未检测到反向代理 | 已发布并读回官网真实事件 | 现在仅保留精确、已批准的 `$lib_custom_api_host=https://p.cqu.moe`。官网真实 `$pageview` 已入库；扩展事件通过真实 SDK 的本地请求测试，未重载用户已安装扩展。 |
 | 无法读取错误追踪建议 | 权限盲点已解除 | 本次 CLI 能读取四项项目建议。source_maps 与 long_running_issues 均为 completed；alerts 和 rate_limits 未完成，属于共享项目的配置建议。未自动添加告警接收者或设置会丢弃事件的项目配额。 |
 
 ## 根因和复现
@@ -63,4 +63,10 @@ npm test -- src/shared/posthog-privacy.sdk.test.ts
 
 ## 发布跟进
 
-2026-10-20 用户已授权提交并部署；版本更新为 `0.4.9`，将通过 PR 检查、合并和既有 canary/官网发布流程交付。此处保留前述本地验证时的历史边界；正式提交、包校验值和部署验收记录见 `docs/operations/quicklogin-release.md` 与 `docs/operations/quicklogin-handoff.md`。
+2026-10-20 用户授权后，[PR #29](https://github.com/cqu-moe/quick-login/pull/29) 在全部 PR 检查与两轮 MV3 E2E 通过后合并；源码及标签 `v0.4.9` 为 `8a42236dad09566255d165142a3b361e9c0676fd`。主分支普通检查、canary 发布及官网生产构建均成功。
+
+正式包 `cqu-quicklogin-0.4.9-canary.zip` 为 151421 bytes，SHA-256 `c38a7d458a86635c65ffab8aa1283a145d0b42d2810fd22424eccd410f62a669`。真实浏览器认证下载返回 200、匿名下载返回 401；实际字节与主分支 CI 包一致，CRC、manifest 和 build-info 全部通过。
+
+官网生产版本 `54be953c-85ca-4692-a8e8-2cd5aac34e58` 已部署到 100% 流量。PostHog 在 `2026-10-20 12:15:09.138 +08:00` 收到官网 `$pageview`：release=`0.4.9+8a42236dad09566255d165142a3b361e9c0676fd`，SDK=`1.438.12`，`$lib_custom_api_host=https://p.cqu.moe`，`is_test=true`、`$geoip_disable=true`、`$process_person_profile=false`。
+
+完整证据见 `docs/operations/quicklogin-release.md` 与 `docs/operations/quicklogin-handoff.md`。健康告警待每日重新计算，未手动关闭；已安装扩展重载、真实学校 SSO 和 Chrome Web Store 均未操作。
