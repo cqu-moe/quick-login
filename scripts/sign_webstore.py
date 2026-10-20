@@ -149,11 +149,13 @@ def _zip_files(payload: bytes) -> Dict[str, bytes]:
         for info in archive.infolist():
             name = info.filename
             path = PurePosixPath(name)
-            if (name.endswith("/") or not path.parts or path.is_absolute()
+            if (not path.parts or path.is_absolute()
                     or ".." in path.parts or "\\" in name or name in files):
                 raise ValueError("Invalid ZIP entry")
             if info.create_system == 3 and stat.S_ISLNK(info.external_attr >> 16):
                 raise ValueError("ZIP symlink is not allowed")
+            if info.is_dir():
+                continue
             files[name] = archive.read(info)
     return files
 

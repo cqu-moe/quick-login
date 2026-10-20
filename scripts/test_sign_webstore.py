@@ -46,6 +46,7 @@ class SignWebstoreTests(unittest.TestCase):
             },
             "build-info.json": {"extensionVersion": "0.4.9", "sourceCommit": COMMIT},
             "background.js": "/* synthetic runtime */",
+            "assets/nested/runtime.js": "/* nested runtime asset */",
         }
         with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for name, content in files.items():
@@ -84,6 +85,18 @@ class SignWebstoreTests(unittest.TestCase):
                     sign_webstore.read_verified_crx(payload, FIXTURE_KEY_SHA256)
         with self.assertRaises(ValueError):
             sign_webstore.read_verified_crx(crx, "0" * 64)
+
+    def test_ignores_safe_directories_but_rejects_directory_traversal(self):
+        for name in ('assets/', '../escape/'):
+            with self.subTest(name=name):
+                payload = io.BytesIO()
+                with zipfile.ZipFile(payload, 'w') as archive:
+                    archive.writestr(name, b'')
+                if name == 'assets/':
+                    self.assertEqual(sign_webstore._zip_files(payload.getvalue()), {})
+                else:
+                    with self.assertRaises(ValueError):
+                        sign_webstore._zip_files(payload.getvalue())
 
     def test_rejects_protobuf_length_past_remaining_bytes(self):
         with self.assertRaises(ValueError):
