@@ -9,7 +9,7 @@
     "build": "vite build",
     "check:package": "npm run check:contract && node scripts/check-package.mjs",
     "check:contract": "node scripts/check-contract.mjs",
-    "test:release": "python3 -m unittest discover -s scripts -p 'test_release.py'",
+    "test:release": "python3 -m unittest discover -s scripts -p 'test_*.py'",
     "dev:website": "vite --config website/vite.config.ts",
     "build:website": "vite build --config website/vite.config.ts",
     "typecheck:website": "tsc --noEmit -p website/tsconfig.json",

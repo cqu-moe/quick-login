@@ -1,6 +1,6 @@
 # CQU 快捷登录 · Chrome Web Store 提交材料
 
-更新日期：2026-10-14（Asia/Shanghai）。状态：0.4.6 已上传并提交 Google 审核，选择审核通过后自动发布；后台显示待审核，当前已发布版本为 0.4.4（Unlisted）。
+更新日期：2026-10-20（Asia/Shanghai）。后台核验：0.4.6 已发布，分发仍为 Unlisted。正在接入自动 CD 与 Verified CRX Uploads，启用与真实上传结果须另行记录。
 
 本文件集中维护商店文案、权限说明、数据申报和待办；版本更新说明仍以 `docs/releases/X.Y.Z.md` 为准。以下内容依据 0.4.6 源码、正式包、实际商店状态及官方文档整理，待确认项不能当作已满足的承诺。
 
@@ -79,6 +79,8 @@ CQU 快捷登录为重庆大学统一认证同步登录状态，减少打开学�
 远程代码字段草稿：No. All executable JavaScript, including the analytics library, is bundled in the extension package. Remote requests exchange authorization/session data and diagnostics, not executable scripts. Remote dependency loading, surveys, session recording and remote feature flags are disabled in the analytics configuration.
 
 商店包通过 scripts/package-webstore.py 从 dist 生成，仅移除 canary 公钥字段；ZIP 内容、版本、来源提交和 CRC 在上传前核验。
+
+自动 CD 从私有 R2 已验证的 Canary 包生成商店包，使用专用 RSA 密钥签名 CRX3 后上传。已授权自动送审和获批后发布；存在待审版本时等待，并在后续检查中只提交最新候选。认证、签名配置和拒审处理见 [商店 CD 运维](docs/operations/quicklogin-webstore-cd.md)。签名密钥由用户自行生成和配置。
 
 ## 隐私与数据申报
 
@@ -160,11 +162,11 @@ Chrome Web Store 拒绝 ZIP 中的 manifest.key；源清单与 canary 保留原�
 
 | 版本 | 日期 | 商店状态 | 说明 |
 | --- | --- | --- | --- |
-| 0.4.6 | 2026-10-14 | 待审核，获批后自动发布；当前线上0.4.4 | 更新说明见 `docs/releases/0.4.6.md` |
+| 0.4.6 | 2026-10-20 核验 | 已发布（Unlisted） | 更新说明见 `docs/releases/0.4.6.md` |
 | 0.4.4 | 2026-10-14核验 | 已发布（Unlisted） | 本次后台实际读回 |
 | 0.4.3 | 2026-10-10 | 历史送审记录，已被后续版本替代 | 更新说明见 `docs/releases/0.4.3.md` |
 
-0.4.6 审核反馈：尚无。Google 已接受提交，状态为“待审核”；提交、包、Auth 部署与验收边界见 [发布证据](docs/operations/quicklogin-release.md)。
+0.4.6 于 2026-10-20 后台核验为已发布；此前提交、包、Auth 部署与验收边界见 [发布证据](docs/operations/quicklogin-release.md)。
 
 ## 官方依据
 
