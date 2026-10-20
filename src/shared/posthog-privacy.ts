@@ -86,6 +86,10 @@ export function sanitizePostHogEvent<T extends EventLike>(event: T | null, surfa
       new Set([...PAGEVIEW_KEYS])
     );
   }
+  // Proxy health checks need this SDK marker; retain only our approved origin.
+  if (properties.$lib_custom_api_host === "https://p.cqu.moe") {
+    allowedProperties.$lib_custom_api_host = properties.$lib_custom_api_host;
+  }
   allowedProperties.$geoip_disable = true;
   return {
     event: event.event,
