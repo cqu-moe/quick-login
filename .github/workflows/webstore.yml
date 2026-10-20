@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: quicklogin-canary-publish
+  group: quicklogin-webstore-publish
   cancel-in-progress: false
 jobs:
   publish:
