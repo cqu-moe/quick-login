@@ -1,3 +1,15 @@
+# 2026-10-21 0.5.0 官网 Canary 正式发布；商店等待既有审核
+
+- [PR #32](https://github.com/cqu-moe/quick-login/pull/32) 全部 7 项检查通过后 squash 合并；源码及标签 `v0.5.0` 为 `0b6ba77e54555558bb2b8251dd2fc1682d9530cb`。本次仍为协议 v3，Auth 源码/Worker、权限和数据申报不变。
+- PR 的[常规检查](https://github.com/cqu-moe/quick-login/actions/runs/39462177720)及[四组两轮真实 MV3 E2E](https://github.com/cqu-moe/quick-login/actions/runs/39462178071)通过。首轮 CI 的移动端设备组在第二轮最后一个场景、扩展连接前，隔离学校绑定返回 `BROWSER_DEADLINE`；账号数量 0、无扩展 Auth 请求，容器/proxy/镜像清理通过。失败证据 artifact `12284465557` 保留；仅受控重跑失败组及汇总一次，两轮业务、原生 alarm/ACK 负向控制和证据准入全部通过，没有改代码或放宽断言。
+- [主分支常规检查 39468618529](https://github.com/cqu-moe/quick-login/actions/runs/39468618529)与[Canary 发布 39468618619](https://github.com/cqu-moe/quick-login/actions/runs/39468618619)成功。正式包 `cqu-quicklogin-0.5.0-canary.zip`：152024 bytes，SHA-256 `59df7e4469f389239349ff471a4d5b2e782cf21abea50f536d37ba1e812e0b8f`。R2 包、不可变记录及渠道读回通过，不能套用下方本地候选摘要。
+- 现有 Auth 浏览器会话实际下载 200 ZIP，匿名下载 401；公开元数据为 0.5.0、上述大小及 SHA。实际 ZIP 与主分支 CI archive 逐字节相同，14 个运行文件、CRC、manifest 0.5.0、build-info 源码/协议/契约和逐文件内容全部核验通过。CI runner 的公开请求被 Cloudflare challenge 拦截，已补这层真实浏览器验收。
+- 官网生产[构建 195bbf4d-f0d5-49c6-8994-7ba7dc4e5002](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/195bbf4d-f0d5-49c6-8994-7ba7dc4e5002)成功；Worker 版本 `ed62fc94-e34d-43b5-bee8-5aa34ff0eb2c` 为 100% 流量。下载页显示 0.5.0；实际加载的公开脚本读回 `0.5.0+0b6ba77e54555558bb2b8251dd2fc1682d9530cb`，与 CI 官网脚本逐字节一致。
+- [商店 CD 39468811125](https://github.com/cqu-moe/quick-login/actions/runs/39468811125)成功完成候选准备、签名验证和 Google 状态查询，实际返回 `WAITING_REVIEW`、`reviewVersions: ["0.4.9"]`。**0.5.0 尚未上传、送审或上架**；保持已有 0.4.9 审核、Unlisted 和最新候选，不撤审、不并行上传。准备的商店 ZIP 为 151654 bytes，SHA-256 `14047d877ddc30f12db8fbd506ec7173adbcb30b685f4707be2e6b6dfe1a846e`；签名 CRX 为 154069 bytes，SHA-256 `49848c938083a6b21c8676fd80ee1c94219aeb2ce9d59bf06fcae2557a61ed38`，这些是已准备文件的摘要，不能称为已上传回执。
+- [主分支原生 E2E 39468618618](https://github.com/cqu-moe/quick-login/actions/runs/39468618618)已在发布提交上全部通过：四组各两轮独立业务、原生 alarm/ACK 负向控制、证据准入及最终汇总成功。本次发布不等于已安装扩展自动升级或真实大学 SSO 验收。浏览器安全策略禁止扩展管理页访问，未绕过。主目录 fast-forward 因未跟踪的 `posthog-audit-report.md` 会被覆盖而中止，原文件保持不动；发布和证据记录在独立工作树完成。
+
+---
+
 # 2026-10-21 0.5.0 商店自动更新候选
 
 - 候选源码 `619e8d1f41f585ca885a9091261f157cec67908e`，分支 `codex/extension-auto-update`。Chrome 负责商店检查及下载；下载就绪后等待授权、后台同步、Cookie 写入和 ACK 完成，再自动重载应用。服务端要求升级时自动检查，持久化升级状态在 worker 重启后也会检查；现有更新按钮返回结果，连续检查合并并使用 session 冷却。

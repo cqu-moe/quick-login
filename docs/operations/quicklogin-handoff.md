@@ -1,3 +1,15 @@
+# 2026-10-21 0.5.0 正式 Canary 与商店等待交接
+
+[PR #32](https://github.com/cqu-moe/quick-login/pull/32) 的 7 项检查全通过后已合并，发布源码/标签 `v0.5.0`：`0b6ba77e54555558bb2b8251dd2fc1682d9530cb`。正式包 `cqu-quicklogin-0.5.0-canary.zip`，152024 bytes，SHA-256 `59df7e4469f389239349ff471a4d5b2e782cf21abea50f536d37ba1e812e0b8f`。主分支常规检查和 Canary 发布成功；实际认证下载 200、匿名 401，CRC/14 文件/manifest/build-info 与 CI 字节比对全部通过。
+
+官网 Worker `ed62fc94-e34d-43b5-bee8-5aa34ff0eb2c` 已承接 100% 流量；页面显示 0.5.0，已加载公开脚本读回相同发布提交并与 CI 脚本一致。PR 的移动端设备组曾在扩展连接前遇到隔离学校 `BROWSER_DEADLINE`，保留失败证据后只重跑失败组一次，所有两轮业务、原生 alarm/ACK 负向控制和汇总通过；未修改断言。[主分支原生 E2E 39468618618](https://github.com/cqu-moe/quick-login/actions/runs/39468618618)也已在发布提交上完成四组各两轮、负向控制、证据准入及最终汇总，全部通过。
+
+商店 CD [39468811125](https://github.com/cqu-moe/quick-login/actions/runs/39468811125)返回 `WAITING_REVIEW`，待审版本为 0.4.9；0.5.0 尚未上传、送审或上架。保持原审核及 Unlisted，后续只提交最新已核验候选，不撤审。签名候选 CRX 为 154069 bytes，SHA-256 `49848c938083a6b21c8676fd80ee1c94219aeb2ce9d59bf06fcae2557a61ed38`；它是准备产物，不是已上传证明。后续真实上传后单独记录实际回执。
+
+已安装扩展的真实自动升级与大学 SSO 未验收；浏览器安全策略禁止扩展管理页访问，未绕过。主目录存在未跟踪报告冲突，fast-forward 已中止并保留原文件；使用独立工作树继续，详情与链接见[发布记录](quicklogin-release.md)。下方本地候选仅为历史，不能用于正式包校验。
+
+---
+
 # 2026-10-21 0.5.0 商店自动更新候选交接
 
 候选源码 `619e8d1f41f585ca885a9091261f157cec67908e`，本地包 `releases/cqu-quicklogin-0.5.0-canary.zip`（151270 bytes），SHA-256 `232b93b5c0006cd8b84166548677150d58238b17905289879ca76eaef45cf0cf`。已通过 203 项应用测试、30 项发布工具测试、类型/构建/包/官网检查和两轴审查；包的 CRC、版本、来源及逐文件比对通过。正式 Canary 需在合并后按发布提交重新构建，不能复用本地候选摘要。
