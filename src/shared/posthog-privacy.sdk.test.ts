@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PostHog } from "posthog-js/dist/module.no-external";
 let PostHogClass: typeof PostHog;
 import { sanitizePostHogEvent, type EventLike } from "./posthog-privacy";
+import { installChromeFake } from "../test/chrome-fake";
 
 type RawEvent = EventLike & {
   uuid?: string;
@@ -15,9 +16,11 @@ const rawEvents: RawEvent[] = [];
 const sanitizedEvents: RawEvent[] = [];
 const requests: Array<{ url: string; body: unknown }> = [];
 let client: PostHog | null = null;
+const identityClients: PostHog[] = [];
 
 beforeEach(async () => {
   vi.resetModules();
+  vi.unstubAllEnvs();
   rawEvents.length = 0;
   sanitizedEvents.length = 0;
   requests.length = 0;
@@ -30,14 +33,17 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await client?.shutdown();
+  await Promise.all(identityClients.splice(0).map(instance => instance.shutdown()));
   client = null;
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
-function initClient(surface: "extension" | "web" = "extension"): PostHog {
+function initClient(surface: "extension" | "web" = "extension", apiHost = "https://p.cqu.moe"): PostHog {
   client = new PostHogClass();
   client.init(token, {
-    api_host: "https://p.cqu.moe",
+    api_host: apiHost,
     bootstrap: { distinctID: "central-user-a" },
     persistence: "memory",
     autocapture: false,
@@ -70,12 +76,13 @@ function requestBody(body: unknown): Record<string, unknown> {
 }
 
 describe("real posthog-js event sanitization", () => {
-  it("preserves transport identity while removing SDK top-level person data and unknown properties", async () => {
-    const instance = initClient();
-    instance.capture("quicklogin_operation_completed", {
+  it.each(["extension", "web"] as const)("preserves %s transport metadata while removing person data and unknown properties", async (surface) => {
+    const instance = initClient(surface);
+    const eventName = surface === "web" ? "$pageview" : "quicklogin_operation_completed";
+    instance.capture(eventName, {
       telemetry_version: 2,
       product: "quicklogin",
-      surface: "extension",
+      surface,
       operation: "sync",
       outcome: "failure",
       email: "user@example.com",
@@ -90,6 +97,7 @@ describe("real posthog-js event sanitization", () => {
     const raw = rawEvents[0]!;
     expect(raw.properties.token).toBe(token);
     expect(raw.properties.distinct_id).toBe("central-user-a");
+    expect(raw.properties.$lib_custom_api_host).toBe("https://p.cqu.moe");
     expect(raw.$set).toBeDefined();
     expect(raw.$set_once).toBeDefined();
 
@@ -98,6 +106,7 @@ describe("real posthog-js event sanitization", () => {
     expect(sanitized.properties.token).toBe(token);
     expect(sanitized.properties.$geoip_disable).toBe(true);
     expect(sanitized.properties.distinct_id).toBe("central-user-a");
+    expect(sanitized.properties.$lib_custom_api_host).toBe("https://p.cqu.moe");
     expect(sanitized.properties.$current_url).toBe("https://quicklogin.cqu.moe/");
     expect(sanitized.properties.email).toBeUndefined();
     expect(sanitized.properties.cookie).toBeUndefined();
@@ -111,9 +120,54 @@ describe("real posthog-js event sanitization", () => {
       if (!request.url.includes("/e/") || request.body === undefined) return false;
       const payload = requestBody(request.body) as { batch: Array<{ event: string; properties: Record<string, unknown> }> };
       const event = payload.batch[0]!;
-      return event.event === "quicklogin_operation_completed" &&
-        event.properties?.token === token && event.properties?.distinct_id === "central-user-a";
+      return event.event === eventName &&
+        event.properties?.token === token && event.properties?.distinct_id === "central-user-a" &&
+        event.properties?.$lib_custom_api_host === "https://p.cqu.moe";
     }), JSON.stringify(requests)).toBe(true));
+  });
+
+  it.each([
+    "https://p.cqu.moe/?token=secret-token",
+    "https://secret-token@p.cqu.moe",
+    "https://unapproved.example.com",
+  ])("does not retain an unapproved custom API host: %s", (host) => {
+    const instance = initClient("extension", host);
+    instance.capture("quicklogin_operation_completed");
+    expect(rawEvents[0]!.properties.$lib_custom_api_host).toBe(host);
+    expect(sanitizedEvents[0]!.properties.$lib_custom_api_host).toBeUndefined();
+  });
+
+  it("isolates real SDK events across authorization clearing and account switching", async () => {
+    vi.stubGlobal("chrome", undefined);
+    installChromeFake();
+    vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", token);
+    vi.stubEnv("VITE_POSTHOG_ALLOW_NON_PRODUCTION", "true");
+    vi.stubGlobal("__QUICKLOGIN_BUILD_ID__", "test-build");
+    const initialize = PostHogClass.prototype.init;
+    vi.spyOn(PostHogClass.prototype, "init").mockImplementation(function (this: PostHog, key, config, name) {
+      identityClients.push(this);
+      return initialize.call(this, key, { ...config, api_transport: "fetch", disable_compression: true }, name);
+    });
+    const { initialLocalState, LOCAL_STATE_KEY } = await import("../background/storage");
+    const { clearDeviceAuthorization } = await import("../background/auth");
+    const { captureQuickloginOperation: capture } = await import("./posthog");
+    const localState = { ...initialLocalState(), installationId: "installation-a", deviceId: "device-a", authorization: "authorized" };
+    await chrome.storage.local.set({ [LOCAL_STATE_KEY]: { ...localState, centralUserId: "central-user-a" } });
+    capture("sync", { outcome: "success", trigger: "user", durationMs: 1 });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+
+    await clearDeviceAuthorization();
+    capture("connect", { outcome: "failure", trigger: "user", durationMs: 1 });
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+
+    await chrome.storage.local.set({ [LOCAL_STATE_KEY]: { ...localState, centralUserId: "central-user-b" } });
+    capture("connect", { outcome: "success", trigger: "user", durationMs: 1 });
+    await vi.waitFor(() => expect(requests).toHaveLength(3));
+
+    const events = requests.flatMap(request => (requestBody(request.body) as { batch: RawEvent[] }).batch);
+    expect(events.map(event => event.properties.distinct_id)).toEqual(["central-user-a", "installation-a", "central-user-b"]);
+    expect(events.map(event => event.properties.actor_type)).toEqual(["user", "installation", "user"]);
+    expect(events.map(event => event.event)).toEqual(Array(3).fill("quicklogin_operation_completed"));
   });
 
   it("keeps only minimal identify association fields", () => {
