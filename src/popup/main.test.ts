@@ -40,6 +40,26 @@ afterEach(() => {
 });
 
 describe("popup responsiveness", () => {
+  it.each([
+    ["no_update", "商店暂未提供可用更新"],
+    ["throttled", "刚刚检查过更新"],
+    ["failed", "暂时无法检查更新"],
+    ["manual_update", "当前为开发版"],
+  ])("checks for extension updates and retains the %s result while state refreshes", async (updateStatus, notice) => {
+    const input: PopupInput = { ...readyInput, local: { ...readyInput.local, protocolSupport: "client_update_required" } };
+    const { send } = setup(async ({ type }) => type === "CHECK_EXTENSION_UPDATE" ? { ok: true, updateStatus } : input);
+    await import("./main");
+    await flush();
+    document.querySelector<HTMLButtonElement>("button")!.click();
+    expect(heading()).toBe("正在检查更新");
+    await flush();
+    expect(send).toHaveBeenCalledWith({ type: "CHECK_EXTENSION_UPDATE" });
+    expect(document.querySelector(".status-description")?.textContent).toContain(notice);
+    await vi.advanceTimersByTimeAsync(5_100);
+    expect(document.querySelector(".status-description")?.textContent).toContain(notice);
+    expect(document.querySelector("button")?.getAttribute("aria-disabled")).toBe("false");
+  });
+
   it("renders the ready view without redundant device copy or management", async () => {
     setup(async () => readyInput);
     await import("./main");

@@ -1,3 +1,13 @@
+# 2026-10-21 0.5.0 商店自动更新候选
+
+- 候选源码 `619e8d1f41f585ca885a9091261f157cec67908e`，分支 `codex/extension-auto-update`。Chrome 负责商店检查及下载；下载就绪后等待授权、后台同步、Cookie 写入和 ACK 完成，再自动重载应用。服务端要求升级时自动检查，持久化升级状态在 worker 重启后也会检查；现有更新按钮返回结果，连续检查合并并使用 session 冷却。
+- 本地候选 `releases/cqu-quicklogin-0.5.0-canary.zip`：151270 bytes，SHA-256 `232b93b5c0006cd8b84166548677150d58238b17905289879ca76eaef45cf0cf`。14 个运行文件、CRC、manifest 0.5.0、build-info 源码/协议/契约及 dist 逐文件字节核对通过。此包为未启用诊断 token 的本地候选，正式发布包应由合并提交重新构建，不能套用此摘要。
+- 203 项应用测试、30 项发布工具测试、扩展/官网/E2E 类型检查、扩展及官网构建/包与页面检查通过。原先缺失的下载就绪应用和升级检查测试先红后绿；真实 Cookie 写入并挂起 ACK 时不提前重载、OAuth 完成/取消后再更新、worker 重启、检查并发与限频均有回归。规范与需求两轴审查完成；持久化升级状态漏检已修复。
+- 2026-10-21 公开商店页实际读回 0.4.9、更新日期 2026-10-20。本机 Chrome 磁盘中此商店 ID 的 manifest 为 0.4.6，update_url 为 Google 官方地址；这不能证明运行中的已加载版本或停留原因。浏览器工具安全策略拒绝访问 `chrome://extensions`，未通过其他途径绕过；真实商店更新及学校 SSO 仍未验收。
+- 本候选尚未合并 main、晋级官网 Canary、上传商店或送审。旧版获得新逻辑前仍依赖 Chrome 原生更新机制。Auth 源码和 Worker 未改动，扩展权限及数据申报不变。
+
+---
+
 # 2026-10-20 0.4.9 商店自动 CD 已启用并送审
 
 - [PR #30](https://github.com/cqu-moe/quick-login/pull/30) 合入自动 CD；[PR #31](https://github.com/cqu-moe/quick-login/pull/31) 修复 Chrome CRX 合法目录条目校验。发布工具提交 `d3643ced9f1be2935d631a6a2924ce55582919b3`，扩展仍使用已发布 Canary 的源码 `8a42236dad09566255d165142a3b361e9c0676fd`，未重新构建运行代码。

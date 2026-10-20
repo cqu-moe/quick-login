@@ -42,6 +42,32 @@ beforeEach(async () => {
   });
 });
 
+it("finishes a real cookie write and its pending ACK before applying a downloaded extension update", async () => {
+  setEnvelopeWriter(applyEnvelope);
+  let finishAck!: () => void;
+  const gate = new Promise<void>(resolve => { finishAck = resolve; });
+  const acknowledge = vi.mocked(api.acknowledge).getMockImplementation()!;
+  vi.mocked(api.acknowledge).mockImplementation(async applied => {
+    await gate;
+    return acknowledge(applied);
+  });
+  const reload = vi.spyOn(chrome.runtime, "reload");
+  const before = await readLocalState();
+  const syncing = sync("alarm");
+  await vi.waitFor(async () => expect(await readLocalState()).toMatchObject({ pendingAck: true }));
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe(envelope().cookies[0].value);
+  const { applyAvailableUpdate } = await import("./updates");
+  applyAvailableUpdate();
+  expect(reload).not.toHaveBeenCalled();
+  finishAck();
+  await syncing;
+  expect(reload).toHaveBeenCalledOnce();
+  expect(await readLocalState()).toMatchObject({
+    deviceId: before.deviceId, installationId: before.installationId, pendingAck: false,
+    receipt: { result: "applied" },
+  });
+});
+
 it.each(["new-session", "school-form"])("does not let a prior local rotation block %s", async transition => {
   const first = envelope();
   first.cookies.push({ ...first.cookies[0], name: "SESSION", value: "initial-auxiliary" });

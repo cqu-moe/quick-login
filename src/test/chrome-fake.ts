@@ -104,6 +104,9 @@ export function installChromeFake() {
     runtime: {
       id: "test-extension",
       getManifest:()=>({version:"0.2.0"}),
+      reload: () => undefined,
+      requestUpdateCheck: async () => ({ status: "no_update" }),
+      onUpdateAvailable: event(),
       onInstalled: event(),
       onStartup: event(),
       onMessage: event(),

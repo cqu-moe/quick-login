@@ -5,6 +5,7 @@ import * as api from "./api-v3";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
 import { clearOwnedCookies, inspectManagedCookies, inspectLocalTgc } from "./cookie-store";
+import { withUpdateGuard } from "./updates";
 import {
   captureQuickloginOperation,
   durationFrom,
@@ -354,13 +355,13 @@ export function sync(reason: SyncReason): Promise<void> {
     if (reason === "user_retry" || reason === "enable" || reason === "login_form") pendingReasons.add(reason);
     return syncFlight;
   }
-  syncFlight = (async () => {
+  syncFlight = withUpdateGuard(async () => {
     await runSync(reason);
     while (pendingReasons.size) {
       const next = pendingReasons.values().next().value!;
       pendingReasons.delete(next); await runSync(next);
     }
-  })().finally(() => { syncFlight=null; });
+  }).finally(() => { syncFlight=null; });
   return syncFlight;
 }
 

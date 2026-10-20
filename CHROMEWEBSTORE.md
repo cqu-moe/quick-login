@@ -1,6 +1,6 @@
 # CQU 快捷登录 · Chrome Web Store 提交材料
 
-更新日期：2026-10-20（Asia/Shanghai）。后台核验：0.4.6 已发布，分发为 Unlisted；0.4.9 已经自动 CD 签名上传并送审，Google API 两次回读 `PENDING_REVIEW`，获批后自动发布。Verified CRX Uploads 已启用；详见 [发布记录](docs/operations/quicklogin-release.md)。
+更新日期：2026-10-21（Asia/Shanghai）。公开商店页已读回 0.4.9，更新日期为 2026-10-20；此前的 `PENDING_REVIEW` 是历史送审状态。0.5.0 自动更新增强目前为本地候选，待发布。分发维持 Unlisted，Verified CRX Uploads 已启用；详见 [发布记录](docs/operations/quicklogin-release.md)。
 
 本文件集中维护商店文案、权限说明、数据申报和待办；版本更新说明仍以 `docs/releases/X.Y.Z.md` 为准。以下内容依据 0.4.6 源码、正式包、实际商店状态及官方文档整理，待确认项不能当作已满足的承诺。
 
@@ -11,6 +11,8 @@
 商店 Item ID：`ainapeknaclcpoioimonkodmoakhacjd`。已提交商品详情、隐私申报、普通审核账号及不公开分发；账号密码只填 Google 保密测试字段。最终源提交、包摘要和发布证据统一记录到 `docs/operations/quicklogin-release.md` 与 `quicklogin-handoff.md`。
 
 本地和实际 Ego 浏览器已验证授权恢复弹窗，不代表学校 SSO 或商店签名安装验收。审核账号没有学校绑定，用户明确要求只提供普通测试账号；如审核需要完整学校登录，需要审核员自己的合法重庆大学账号。
+
+0.5.0 候选通过 Chrome 原生商店检查和下载，在现有授权、同步及 Cookie 操作结束后自动应用已下载的更新；服务要求升级时主动检查，原“更新插件”按钮显示检查结果。没有新增权限、主机访问范围或数据申报项。首次获得 0.5.0 仍依赖旧版的 Chrome 原生更新机制，不能将本地候选当成已安装更新。
 
 ## 商店文案（可复制草稿）
 
@@ -162,7 +164,8 @@ Chrome Web Store 拒绝 ZIP 中的 manifest.key；源清单与 canary 保留原�
 
 | 版本 | 日期 | 商店状态 | 说明 |
 | --- | --- | --- | --- |
-| 0.4.9 | 2026-10-20 | 已签名上传、待审核，获批后自动发布 | [自动 CD 运行](https://github.com/cqu-moe/quick-login/actions/runs/39443868183) |
+| 0.5.0 | 2026-10-21 | 本地候选，尚未送审 | 自动应用已下载的商店更新，检查入口与限频 |
+| 0.4.9 | 2026-10-21 核验 | 公开商店页已发布 | 页面版本 0.4.9、更新日期 2026-10-20；历史[送审运行](https://github.com/cqu-moe/quick-login/actions/runs/39443868183) |
 | 0.4.6 | 2026-10-20 核验 | 已发布（Unlisted） | 更新说明见 `docs/releases/0.4.6.md` |
 | 0.4.4 | 2026-10-14核验 | 已发布（Unlisted） | 本次后台实际读回 |
 | 0.4.3 | 2026-10-10 | 历史送审记录，已被后续版本替代 | 更新说明见 `docs/releases/0.4.3.md` |

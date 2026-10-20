@@ -17,6 +17,7 @@ import { derivePopupView, type PopupInput } from "../popup/view-model";
 import type { LocalState } from "../shared/contracts";
 import { navigateRecoveredPage, observeSchoolLogin } from "./school-recovery";
 import { derivePresentation } from "../shared/protocol-v3.generated";
+import { checkForExtensionUpdate, withUpdateGuard } from "./updates";
 import {
   captureQuickloginOperation,
   durationFrom,
@@ -29,6 +30,7 @@ export type BackgroundMessage =
   | { type: "CHECK_STATE" }
   | { type: "RETRY_LOCAL" }
   | { type: "OPEN_EXTENSION_SETTINGS" }
+  | { type: "CHECK_EXTENSION_UPDATE" }
   | { type: "OPEN_SCHOOL_MANUAL" }
   | { type: "LOGIN" }
   | { type: "SET_ENABLED"; enabled: boolean }
@@ -139,7 +141,7 @@ export async function handleMessage(message: BackgroundMessage) {
     operation: () => Promise<unknown>,
     noOp?: (result: unknown) => boolean
   ) => {
-    void tracked(name, operation, noOp).catch(recordFailure);
+    void withUpdateGuard(() => tracked(name, operation, noOp).catch(recordFailure));
     return { accepted:true };
   };
   switch (message.type) {
@@ -171,6 +173,11 @@ export async function handleMessage(message: BackgroundMessage) {
     }
     case "OPEN_EXTENSION_SETTINGS":
       await chrome.tabs.create({url:`chrome://extensions/?id=${chrome.runtime.id}`}); return {ok:true};
+    case "CHECK_EXTENSION_UPDATE": {
+      const updateStatus = await checkForExtensionUpdate();
+      if (updateStatus === "manual_update") await chrome.tabs.create({url:`chrome://extensions/?id=${chrome.runtime.id}`});
+      return { ok: true, updateStatus };
+    }
     case "OPEN_SCHOOL_MANUAL":
       await enterManualMode();
       await chrome.tabs.create({url:"https://sso.cqu.edu.cn/login"}); return {ok:true};
