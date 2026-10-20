@@ -1,6 +1,7 @@
 import "./style.css";
 import { sendUiMessage } from "../shared/ui-message";
 import { derivePopupView, type PopupAction, type PopupInput, type PopupView } from "./view-model";
+import type { ExtensionUpdateStatus } from "../background/updates";
 
 const app = document.querySelector<HTMLElement>("#app")!;
 const labels: Record<PopupAction, string> = {
@@ -11,7 +12,14 @@ const labels: Record<PopupAction, string> = {
 const messages: Record<PopupAction, string> = {
   login: "LOGIN", open_settings: "OPEN_SETTINGS", resume: "RESUME",
   switch_managed: "SWITCH_TO_MANAGED", retry: "SYNC", retry_local: "RETRY_LOCAL",
-  update: "OPEN_EXTENSION_SETTINGS", fix_permissions: "OPEN_EXTENSION_SETTINGS", manual_login: "OPEN_SCHOOL_MANUAL",
+  update: "CHECK_EXTENSION_UPDATE", fix_permissions: "OPEN_EXTENSION_SETTINGS", manual_login: "OPEN_SCHOOL_MANUAL",
+};
+const updateNotices: Record<ExtensionUpdateStatus, string> = {
+  update_available: "新版已下载，当前操作完成后会自动更新。",
+  no_update: "商店暂未提供可用更新，Chrome 会继续自动检查。",
+  throttled: "刚刚检查过更新，Chrome 会继续自动检查，请稍后再试。",
+  failed: "暂时无法检查更新，请确认网络可以访问 Chrome 应用商店后重试。",
+  manual_update: "当前为开发版，请更新安装目录并重新加载。",
 };
 
 // Mount once: refreshing state must not replace the focused control or restart a spinner.
@@ -49,6 +57,7 @@ let readAgain = false;
 let readTimer = 0;
 let checkPending = false;
 let foregroundTimer = 0;
+let updateNotice = "";
 
 function setText(element: HTMLElement, value: string): void {
   if (element.textContent !== value) element.textContent = value;
@@ -56,10 +65,12 @@ function setText(element: HTMLElement, value: string): void {
 function renderView(next: PopupView): void {
   const focused = document.activeElement;
   view = next;
+  if (!next.actions.includes("update")) updateNotice = "";
   status.dataset.tone = next.tone;
   setText(title, next.heading);
-  setText(description, next.description);
-  description.hidden = !next.description;
+  const detail = updateNotice || next.description;
+  setText(description, detail);
+  description.hidden = !detail;
   const action = next.actions[0];
   button.hidden = !action && !readRetry;
   setText(button, readRetry ? "重新检查" : action ? labels[action] : "");
@@ -130,9 +141,10 @@ async function runAction(message: Record<string, unknown>, heading: string, chec
   const signal = lifetime.signal;
   renderView(pendingView(heading, checked));
   try {
-    const response = await sendUiMessage<{ accepted?: boolean; ok?: boolean } | undefined>(message, signal);
+    const response = await sendUiMessage<{ accepted?: boolean; ok?: boolean; updateStatus?: ExtensionUpdateStatus } | undefined>(message, signal);
     if (signal.aborted) return;
     if (response?.accepted !== true && response?.ok !== true) throw new Error("ACTION_NOT_ACCEPTED");
+    if (response.updateStatus) updateNotice = updateNotices[response.updateStatus];
     actionPending = false;
     await refresh();
   } catch {
@@ -149,7 +161,7 @@ button.addEventListener("click", () => {
   const action = view.actions[0];
   if (!action) return;
   const heading = action === "login" ? "正在连接" : action === "open_settings" ? "正在打开 Auth" :
-    action === "update" || action === "fix_permissions" ? "正在打开扩展设置" :
+    action === "update" ? "正在检查更新" : action === "fix_permissions" ? "正在打开扩展设置" :
     action === "manual_login" ? "正在打开学校登录" : "正在同步";
   void runAction({ type: messages[action] }, heading);
 });

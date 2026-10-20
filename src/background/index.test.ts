@@ -6,6 +6,8 @@ import { initialLocalState, LOCAL_STATE_KEY } from "./storage";
 vi.mock("./sync", () => ({
   setEnvelopeWriter: vi.fn(),
   sync: vi.fn().mockResolvedValue(undefined),
+  setEnabled: vi.fn().mockResolvedValue(true),
+  recordFailure: vi.fn().mockResolvedValue(undefined),
 }));
 
 beforeEach(() => {
@@ -40,6 +42,99 @@ describe("background startup", () => {
     expect(notify).toHaveBeenCalledTimes(2);
     listener({"unrelated":{oldValue:before,newValue:after}},"local");
     expect(notify).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("extension updates", () => {
+  beforeEach(() => {
+    vi.spyOn(chrome.runtime, "getManifest").mockReturnValue({
+      ...chrome.runtime.getManifest(), update_url: "https://clients2.google.com/service/update2/crx",
+    });
+  });
+
+  it("applies a downloaded update after the current synchronization finishes, without replacing device data", async () => {
+    let finish!: () => void;
+    vi.mocked(sync).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const state = initialLocalState();
+    await chrome.storage.local.set({ [LOCAL_STATE_KEY]: state });
+    const reload = vi.spyOn(chrome.runtime, "reload");
+    const updates = vi.spyOn(chrome.runtime.onUpdateAvailable, "addListener");
+    await import("./index");
+    await vi.waitFor(() => expect(sync).toHaveBeenCalled());
+    for (const [listener] of updates.mock.calls) listener({ version: "0.5.0" });
+    expect(reload).not.toHaveBeenCalled();
+    finish();
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    for (const [listener] of updates.mock.calls) listener({ version: "0.5.0" });
+    expect(reload).toHaveBeenCalledOnce();
+    expect((await chrome.storage.local.get(LOCAL_STATE_KEY))[LOCAL_STATE_KEY]).toEqual(state);
+  });
+
+  it("waits for a detached popup operation after its acceptance response before applying an update", async () => {
+    const { setEnabled } = await import("./sync");
+    let finish!: (value: boolean) => void;
+    vi.mocked(setEnabled).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const reload = vi.spyOn(chrome.runtime, "reload");
+    const updates = vi.spyOn(chrome.runtime.onUpdateAvailable, "addListener");
+    const listener = await messageListener();
+    const response = vi.fn();
+    listener({ type: "SET_ENABLED", enabled: false }, {
+      id: chrome.runtime.id, url: `chrome-extension://${chrome.runtime.id}/popup.html`,
+    }, response);
+    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ accepted: true }));
+    for (const [onUpdate] of updates.mock.calls) onUpdate({ version: "0.5.0" });
+    expect(reload).not.toHaveBeenCalled();
+    finish(true);
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
+  });
+
+  it.each([false, true])("waits for authorization and its cleanup before updating (cancel: %s)", async cancel => {
+    const auth = await import("./auth");
+    let finish!: () => void;
+    let fail!: (error: Error) => void;
+    vi.spyOn(auth, "loginInteractive").mockImplementation(() => new Promise((resolve, reject) => {
+      finish = resolve; fail = reject;
+    }));
+    const reload = vi.spyOn(chrome.runtime, "reload");
+    const updates = vi.spyOn(chrome.runtime.onUpdateAvailable, "addListener");
+    const listener = await messageListener();
+    const response = vi.fn();
+    listener({ type: "LOGIN" }, {
+      id: chrome.runtime.id, url: `chrome-extension://${chrome.runtime.id}/popup.html`,
+    }, response);
+    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ accepted: true }));
+    for (const [onUpdate] of updates.mock.calls) onUpdate({ version: "0.5.0" });
+    expect(reload).not.toHaveBeenCalled();
+    if (cancel) fail(new Error("User cancelled"));
+    else finish();
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    if (cancel) expect((await chrome.storage.local.get(LOCAL_STATE_KEY))[LOCAL_STATE_KEY]).toMatchObject({
+      authorization: "disconnected", connectIntentId: null,
+    });
+  });
+
+  it("checks the store automatically when the server requires an upgrade and coalesces repeat requests", async () => {
+    const check = vi.spyOn(chrome.runtime, "requestUpdateCheck").mockImplementation(async () => ({ status: "no_update" }));
+    const changed = vi.spyOn(chrome.storage.onChanged, "addListener");
+    await import("./index");
+    const before = initialLocalState();
+    const after = { ...before, protocolSupport: "client_update_required" as const };
+    const listener = changed.mock.calls[0][0];
+    listener({ [LOCAL_STATE_KEY]: { oldValue: before, newValue: after } }, "local");
+    await vi.waitFor(() => expect(check).toHaveBeenCalledOnce());
+    listener({ [LOCAL_STATE_KEY]: { oldValue: after, newValue: after } }, "local");
+    listener({ [LOCAL_STATE_KEY]: { oldValue: before, newValue: after } }, "local");
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(check).toHaveBeenCalledOnce();
+  });
+
+  it("checks a persisted upgrade requirement when the worker restarts without a storage transition", async () => {
+    await chrome.storage.local.set({ [LOCAL_STATE_KEY]: {
+      ...initialLocalState(), protocolSupport: "client_update_required",
+    } });
+    const check = vi.spyOn(chrome.runtime, "requestUpdateCheck").mockImplementation(async () => ({ status: "no_update" }));
+    await import("./index");
+    await vi.waitFor(() => expect(check).toHaveBeenCalledOnce());
   });
 });
 

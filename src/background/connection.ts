@@ -2,6 +2,7 @@ import { loginInteractive } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
 import { setEnabled } from "./sync";
 import { SYNC_ALARM } from "../shared/config";
+import { withUpdateGuard } from "./updates";
 
 let activeConnectionId: string | null = null;
 
@@ -28,8 +29,8 @@ export async function requestConnection(resume?: Parameters<typeof loginInteract
   try {
     await updateLocalState((state)=>({...state,connectIntentId:id,authorization:"authorizing",localError:null}));
   } catch (error) { activeConnectionId = null; throw error; }
-  void loginInteractive(resume).then(async()=>{
+  void withUpdateGuard(() => loginInteractive(resume).then(async()=>{
     await setEnabled(true,id);
-  }).catch(() => abandonConnection(id)).finally(() => { if (activeConnectionId === id) activeConnectionId = null; });
+  }).catch(() => abandonConnection(id)).finally(() => { if (activeConnectionId === id) activeConnectionId = null; }));
   return {accepted:true};
 }
