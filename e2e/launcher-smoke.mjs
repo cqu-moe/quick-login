@@ -12,7 +12,7 @@ import { extensionBrowser } from "./browser.ts";
 const execute = promisify(execFile);
 const started = performance.now();
 const output = resolve(".e2e/launcher-smoke-" + Date.now());
-await mkdir(output, { mode: 0o700 });
+await mkdir(output, { mode: 0o700, recursive: true });
 process.env.QUICKLOGIN_E2E_ARTIFACTS = output;
 delete process.env.QUICKLOGIN_E2E_TLS_SPKI;
 delete process.env.QUICKLOGIN_E2E_PROXY;
@@ -130,6 +130,30 @@ try {
   assert.equal(await bounded(worker.evaluate(() => chrome.runtime.id), 2000), "igfidegfgfoofnoncpmbcokbffjmmook");
   const page = await context.newPage();
   await page.goto("chrome-extension://igfidegfgfoofnoncpmbcokbffjmmook/popup.html", { waitUntil: "domcontentloaded", timeout: 3000 });
+  // Observe the toolbar popup through an extension tab; do not force its viewport.
+  await bounded(worker.evaluate(() => chrome.action.openPopup()), 3000);
+  await page.waitForFunction(() => chrome.extension.getViews({ type: "popup" })[0]?.document.querySelector("button")?.textContent === "连接 Auth", undefined, { timeout: 3000 });
+  evidence.popupLayouts = [];
+  for (const colorScheme of ["light", "dark"]) {
+    const layout = await page.evaluate(colorScheme => {
+      const popup = chrome.extension.getViews({ type: "popup" })[0];
+      const document = popup.document;
+      document.documentElement.dataset.theme = colorScheme;
+      return {
+        width: popup.innerWidth,
+        height: popup.innerHeight,
+        bodyWidth: document.body.getBoundingClientRect().width,
+        contentWidth: document.documentElement.scrollWidth,
+        contentHeight: document.documentElement.scrollHeight,
+      };
+    }, colorScheme);
+    evidence.popupLayouts.push({ colorScheme, ...layout });
+    assert.equal(layout.width, 390, `${colorScheme} toolbar popup must retain its original width`);
+    assert.equal(layout.bodyWidth, 390);
+    assert.equal(layout.height, 468, `${colorScheme} toolbar popup must retain its original height`);
+    assert.equal(layout.contentWidth, layout.width, "Popup must not scroll horizontally");
+    assert.equal(layout.contentHeight, layout.height, "Popup must not scroll vertically");
+  }
   const extensionId = await bounded(page.evaluate(() => chrome.runtime.id), 2000);
   assert.equal(extensionId, "igfidegfgfoofnoncpmbcokbffjmmook");
   controller.signal.throwIfAborted();

@@ -126,6 +126,8 @@ QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-quick03 node e2e/prepare-ci-artifacts.
 
 ## Desktop / mobile viewport gate
 
+`npm run build && npm run test:popup` 独立检查工具栏弹窗：通过 `chrome.action.openPopup()` 打开真实弹窗，再从同扩展标签页用 `chrome.extension.getViews({ type: "popup" })` 只读测量尺寸。浅色和深色均须保持 390×468、无水平或垂直滚动；不设置弹窗 viewport。0.5.1 的 `min(390px, 100vw)` 在该测试中实际得到 190px 宽并失败，恢复固定宽度后通过。官网响应式覆盖仅放在 `website/src/popup-preview.css`，不得为了官网改变扩展面板尺寸或布局。CI 在 core/desktop 分片执行并保存报告；这是无 Auth/Docker 的 UI 边界验证，不代表登录业务验收。
+
 `QUICKLOGIN_E2E_VIEWPORT=desktop`（默认）令实际 Auth / 学校页面为1440×900；`mobile` 为390×844。两者都加载同一个真实 Chromium MV3 扩展、复用全部业务断言。popup 保留产品390px宽度，测试页viewport为390×720；手机视口只表示窄屏布局，不代表手机Chrome扩展支持、触摸设备或真机验收。原生 OAuth 窗口和额外标签不继承框架当前页的viewport，因此共享页面入口在导航/输入前调用真实 Playwright viewport API，再独立读取页面 `innerWidth/innerHeight` 及 visualViewport。没有mock尺寸、修改学校响应或产品源码。
 
 `artifacts/viewports.jsonl` 记录实际attempt ID、页面类型和无query的路径、预期/实际尺寸；不记录账号、Cookie或页面内容。runner将这些读回与真实selected attempts关联，缺少读回、错误target或尺寸均失败。每组保留框架JSON discovery，aggregate保留完整选择和各组读回。

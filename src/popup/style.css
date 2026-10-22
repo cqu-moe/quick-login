@@ -16,7 +16,8 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { width: min(390px, 100vw); margin: 0; background: var(--surface); -webkit-font-smoothing: antialiased; }
+/* Chrome sizes the action popup from this width; viewport units collapse it. */
+body { width: 390px; margin: 0; background: var(--surface); -webkit-font-smoothing: antialiased; }
 main {
   display: grid;
   grid-template-rows: auto 1fr auto;
