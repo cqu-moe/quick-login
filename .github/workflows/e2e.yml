@@ -71,6 +71,7 @@ jobs:
         with:
           name: quicklogin-popup-layout-${{ github.sha }}
           path: .e2e/launcher-smoke-*/report.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
       - name: Require denied CONNECT reset survival and tunnel cleanup
