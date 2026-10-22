@@ -1,3 +1,16 @@
+# 2026-10-22 0.5.2 正式 Canary 与三项蓝色素材送审
+
+- [PR #35](https://github.com/cqu-moe/quick-login/pull/35) 的 7 项检查全部通过后 squash 合并；发布源码及标签 `v0.5.2`：`543e85cc7684c8f1eea55fb0a59c899fa3babe33`。只恢复工具栏弹窗 390×468，官网响应式覆盖独立保留；协议、权限、Auth 和 Cookie 行为不变。
+- PR [常规检查 39762971794](https://github.com/cqu-moe/quick-login/actions/runs/39762971794)与[四组两轮 MV3 E2E 39762971728](https://github.com/cqu-moe/quick-login/actions/runs/39762971728)全绿。新增原生工具栏弹窗门禁在 Linux 上通过，浅深主题均为 390×468、无溢出，报告 artifact `12418214190`；旧样式在本地明确失败 `190 !== 390`。首轮仅报告上传忽略隐藏目录失败，补 `include-hidden-files: true` 后全套重跑通过，未放宽断言。
+- [主分支常规检查 39766123425](https://github.com/cqu-moe/quick-login/actions/runs/39766123425)及[Canary 发布 39766123403](https://github.com/cqu-moe/quick-login/actions/runs/39766123403)成功。正式 `cqu-quicklogin-0.5.2-canary.zip`：152810 bytes，SHA-256 `6f43a6f4f63c7061e7cb06de7536bba27ceaf4b132dddf18e35434c2d3381ddc`。本地候选 `9444ce52…` 未覆盖，不能混用摘要。
+- 现有 Auth 浏览器会话同源下载 200、匿名下载 401；公开元数据、CRC、14 个运行文件、manifest 0.5.2、build-info 源码与主分支 CI ZIP 逐字节匹配。实际下载包再次加载隔离 Chromium，原生浅深主题均为 390×468，进程及 profile 清理通过。官网跨域下载事件未被工具捕获，未将事件超时称为成功；认证下载证据来自 Auth 同源真实 HTTP 响应。
+- 官网生产[构建 0b50787e-694b-40cd-946b-97422319956e](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/0b50787e-694b-40cd-946b-97422319956e)成功。浏览器实际加载 `main-RrCabluH.js`，内含 `0.5.2+543e85cc7684c8f1eea55fb0a59c899fa3babe33`，与 CI 官网脚本逐字节一致，SHA-256 `ae7d3250ff56879d37c1f2e134ac6331b5ad52ec5f83b12e39b49bb21061ce8b`。官网 CSP 不允许页面内 fetch 本站脚本，验收读取的是浏览器已加载资源，没有更改 CSP。
+- 商店图标 `public/icons/icon-128.png`、`store-assets/screenshot-ready.png`、`store-assets/promo-small.png` 已从仓库上传、保存并刷新核对；旧橙色截图已移除。素材是独立商品详情，不随扩展 ZIP 自动替换。操作前暂停商店 CD、确认无运行中的上传；保存后恢复，工作流已为 active。
+- [商店 CD 39766956536](https://github.com/cqu-moe/quick-login/actions/runs/39766956536)成功签名上传并以 `DEFAULT_PUBLISH` 送审。2026-10-22 18:57:53（Asia/Shanghai）API 回读 0.5.2 `PENDING_REVIEW`，后台同样显示“待审核”；保持 Unlisted、获批后自动发布。上传 CRX：154849 bytes，SHA-256 `c1ff50807489dca6bb2d497bbb947f5a133c351d89456e086af56d5bcd4d3bfa`；商店准备 ZIP：152440 bytes，SHA-256 `925d68fe0ae38b566f66231f2492b3def16c4d39b4b1fc893a5e0b1a7c583a91`。Google 状态接口不返回远端包摘要，以上是流水线上传前校验值。
+- 合并提交的完整 [E2E 39766123150](https://github.com/cqu-moe/quick-login/actions/runs/39766123150)另行记录结果；生产复验不冒充学校 SSO 或已安装商店版升级验收。当前送审不等于商店已上架。
+
+---
+
 # 2026-10-22 0.5.1 蓝色品牌与首页交互候选
 
 - 可执行源码 `4bcb99afdad9bc72cdd19ff7e49e128a91bef474`；官网与插件接入 theme 1.2.0，19 份官方品牌素材核验通过。保留协议 v3、设备授权、Cookie 所有权和现有权限，Auth 源码与 Worker 未改。
