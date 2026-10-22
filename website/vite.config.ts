@@ -41,6 +41,7 @@ export default defineConfig({
       input: Object.fromEntries(
         [
           "index",
+          "popup-preview",
           "download/index",
           "faq/index",
           "privacy/index",

@@ -27,6 +27,7 @@ for (const name of await publicFiles(new URL("../website/dist/", import.meta.url
 
 const pages = [
   "index.html",
+  "popup-preview.html",
   "download/index.html",
   "faq/index.html",
   "privacy/index.html",

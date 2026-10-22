@@ -1,6 +1,6 @@
 {
   "name": "cqu-quicklogin",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -36,6 +36,7 @@
     "wrangler": "4.142.0"
   },
   "dependencies": {
+    "@cqu-moe/theme": "file:.design/cqu-moe-theme-1.2.0.tgz",
     "posthog-js": "^1.438.12"
   }
 }
