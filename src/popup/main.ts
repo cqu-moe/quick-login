@@ -29,8 +29,8 @@ app.innerHTML = `
   </section>
   <footer class="controls">
     <button type="button" data-control="primary" hidden></button>
-    <label class="switch-control" hidden><span class="switch-label">此浏览器快捷登录</span>
-      <input type="checkbox" data-control="switch">
+    <label class="switch-control" hidden>
+      <input type="checkbox" data-control="switch" aria-label="此浏览器快捷登录">
       <span class="switch-track" aria-hidden="true"><span></span></span>
     </label>
   </footer>`;
