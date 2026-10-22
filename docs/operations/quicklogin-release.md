@@ -1,3 +1,12 @@
+# 2026-10-22 0.5.3 UX 配套发布候选
+
+- 本次修复首次登录状态、有效开关、异步恢复、学校页面动作、异常提示，以及 Auth 渠道重连和授权指引。完整修复前后证据见 [UX 验收](../research/2026-10-22-ux-audit/FIX-VERIFICATION.md)。
+- 已移植到 QuickLogin `1e60dfb` 与 Auth `12d5abe` 主分支；保留 0.5.2 的原生弹窗尺寸修复及 Auth friends scope。Auth 固定测试提交为 `41147c934c577f6a10f5bf3d9cb71597c362a07f`。
+- 目标包 `cqu-quicklogin-0.5.3-canary.zip`；发布源码、正式 SHA-256、Auth Worker 版本和线上浏览器证据在合并发布后记录。本地历史候选及 0.5.1 审计构建不代表本次正式包。
+- 用户已授权两仓库 PR、CI 通过后合并、Auth 配套部署、官网 Canary 发布和上线 UX 验收。沿用现有自动商店 CD，不手动撤审或修改商品详情；Canary、商店送审与上架分别记录。
+
+---
+
 # 2026-10-22 0.5.2 正式 Canary 与三项蓝色素材送审
 
 - [PR #35](https://github.com/cqu-moe/quick-login/pull/35) 的 7 项检查全部通过后 squash 合并；发布源码及标签 `v0.5.2`：`543e85cc7684c8f1eea55fb0a59c899fa3babe33`。只恢复工具栏弹窗 390×468，官网响应式覆盖独立保留；协议、权限、Auth 和 Cookie 行为不变。

@@ -5,7 +5,7 @@
 ## 固定环境与入口
 
 - Node.js `22.22.3`；`e2e@0.21.0`、`@e2e-dev/web@0.15.0`、`playwright-core@1.64.0` 已锁定。
-- Auth 固定为 `870933794326b9d280dcf07f392c80c127fd7233`，且不得有 tracked 修改。默认只读使用本票独立副本 `QUICKLOGIN-03-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
+- Auth 固定为 `41147c934c577f6a10f5bf3d9cb71597c362a07f`，且不得有 tracked 修改。默认只读使用本票独立副本 `QUICKLOGIN-03-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
 - Chromium 通过 `npx --no-install e2e-web install chromium --with-deps` 预装；安装浏览器本身不会启动浏览器。
 - 学校旅程要求可用 Docker。先在固定 Auth checkout 运行 `node e2e/school/build.mjs` 构建生产浏览器基础镜像，再拉取 `cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8`。每个学校旅程基于该镜像构建独占 fixture 镜像，结束后删除自己的容器和镜像；缺少 Docker/镜像直接失败。
 - `openssl` 用于生成每轮独立的短期 TLS 证书。浏览器中的 `https://auth.cqu.moe` 保持原 origin，由本地代理送往本轮真实 Auth；`sso.cqu.edu.cn` 送到同一真实设备容器中的合成学校，不访问生产。SPKI 只放行本轮证书，不关闭全局 TLS 校验。
@@ -35,7 +35,7 @@ QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-my-run node e2e/prepare-ci-artifacts.m
 5. 更改本轮 client 的允许回调后，从真实 Auth 读到 `invalid_redirect`，再关闭错误页；不能将普通取消当作回调拒绝。
 6. 损坏本地安装元数据后，OAuth 仍真实成功，但真实注册 API 返回 422，设备投影及 popup 不显示连接成功。
 
-新账号的总开关默认关闭，因此成功登记后 popup 为“快捷登录已暂停”，不是学校“已就绪”。不会 seed 被测设备、OAuth token 或连接成功状态。账号通过真实邀请注册、邮件验证创建，准备会话不交给浏览器；实际登录仍经 Auth 页面。
+新账号的总开关默认关闭，因此成功登记后 popup 为“账号已暂停快捷登录”，不是学校“已就绪”。不会 seed 被测设备、OAuth token 或连接成功状态。账号通过真实邀请注册、邮件验证创建，准备会话不交给浏览器；实际登录仍经 Auth 页面。
 
 ## 框架与平台边界
 
