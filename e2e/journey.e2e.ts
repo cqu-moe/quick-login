@@ -44,8 +44,8 @@ test("the real popup completes Auth PKCE login and device registration", { tags:
     expect((await networkEvents()).slice(networkStart).some(event =>
       event.path === "/api/v1/cqu/quicklogin/registrations" && event.status === 200)).toBe(true);
     expect(await hasTokens(popup)).toBe(true);
-    await expect(screen.getByRole("heading", { name: "快捷登录已暂停", exact: true })).toBeVisible();
-    await expect(screen.getByRole("button", { name: "前往 Auth", exact: true })).toBeVisible();
+    await expect(screen.getByRole("heading", { name: "账号已暂停快捷登录", exact: true })).toBeVisible();
+    await expect(screen.getByRole("button", { name: "打开账号设置", exact: true })).toBeVisible();
     await expect(screen.getByRole("button", { name: "连接 Auth" })).not.toBeVisible();
 
     const settings = await openWebPage(context, 'https://auth.cqu.moe/settings');

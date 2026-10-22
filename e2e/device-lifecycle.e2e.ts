@@ -62,7 +62,7 @@ test('QUICKLOGIN-03 late real refresh persists across disable but cannot overwri
     await expireLocalAccess(popup);
     await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
     await until(() => relay(), value => value.heldResponses === 1);
-    await popup.getByRole('checkbox', { name: '开启 QuickLogin' }).press('Space');
+    await popup.getByRole('checkbox', { name: '此浏览器快捷登录' }).press('Space');
     await until(() => localState(popup), state => !state.enabledIntent && state.localGeneration > first.localGeneration);
     await relay({ hold: false });
     await until(() => localState(popup), state => !state.pendingCommand);

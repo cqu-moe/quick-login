@@ -36,8 +36,8 @@ test('QUICKLOGIN-02 actual manual typing fences a late real school login and exp
     await page.waitForTimeout(1500);
     expect(navigations).toBe(0);
     expect((await localState(popup)).receipt).toBe(null);
-    await page.getByRole('button', { name: '重试快捷登录', exact: true }).waitFor();
-    await page.getByRole('button', { name: '手动登录', exact: true }).waitFor();
+    await page.getByRole('button', { name: '恢复快捷登录', exact: true }).waitFor();
+    await page.getByText('已切换为手动登录，可直接在下方输入。', { exact: true }).waitFor();
     await captureArtifacts('manual-late-login-fenced', [page, popup]);
   } finally { await controlSchool({ holdLogin: false }); }
 });
@@ -50,7 +50,7 @@ test('QUICKLOGIN-02 disabling sync while a real export response is delayed cance
     await until(() => relay(), value => value.heldResponses > 0);
     // The genuine popup action commits its local intent before the older sync
     // request finishes; the server command is intentionally queued behind it.
-    await popup.bringToFront(); await popup.getByRole('checkbox', { name: '开启 QuickLogin' }).press('Space');
+    await popup.bringToFront(); await popup.getByRole('checkbox', { name: '此浏览器快捷登录' }).press('Space');
     await until(() => localState(popup), state => !state.enabledIntent);
   } finally { await relay({ hold: false }); }
   await until(() => localState(popup), state => !state.enabledIntent && !state.pendingCommand);

@@ -77,13 +77,13 @@ describe("popup responsiveness", () => {
     const control = toggle();
     control.focus();
     control.click();
-    expect(heading()).toBe("正在同步");
+    expect(heading()).toBe("正在准备学校登录");
     expect(toggle()).toBe(control);
     expect(document.activeElement).toBe(control);
     await flush();
     finish({ accepted: true });
     await flush();
-    expect(heading()).toBe("已关闭");
+    expect(heading()).toBe("此浏览器已关闭快捷登录");
   });
 
   it("offers a state-only retry when the initial worker response never arrives, ignoring its late response", async () => {
@@ -121,7 +121,7 @@ describe("popup responsiveness", () => {
     expect(send.mock.calls.filter(([message]) => message.type === "SET_ENABLED")).toHaveLength(1);
     document.querySelector<HTMLButtonElement>("button")!.click();
     await flush();
-    expect(heading()).toBe("已关闭");
+    expect(heading()).toBe("此浏览器已关闭快捷登录");
   });
 
   it("does not repeat a primary action while its resulting state is still loading", async () => {
@@ -165,7 +165,7 @@ describe("popup responsiveness", () => {
     input = disabledInput;
     read(readyInput);
     await vi.advanceTimersByTimeAsync(200);
-    expect(heading()).toBe("已关闭");
+    expect(heading()).toBe("此浏览器已关闭快捷登录");
     expect(send.mock.calls.filter(([message]) => message.type === "GET_UI_STATE")).toHaveLength(2);
   });
 
@@ -185,7 +185,7 @@ describe("popup responsiveness", () => {
     toggle().click();
     read(disabledInput);
     await flush();
-    expect(heading()).toBe("正在同步");
+    expect(heading()).toBe("正在准备学校登录");
     expect(toggle().getAttribute("aria-disabled")).toBe("true");
   });
 

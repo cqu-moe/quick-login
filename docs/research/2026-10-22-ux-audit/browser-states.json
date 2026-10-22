@@ -1,0 +1,122 @@
+[
+  {
+    "scenario": "enabling",
+    "heading": "此设备已关闭",
+    "detail": "",
+    "button": null,
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "preparing",
+    "heading": "正在准备学校登录",
+    "detail": "",
+    "button": null,
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "offline",
+    "heading": "此设备已关闭",
+    "detail": "",
+    "button": null,
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "reconnect",
+    "heading": "已关闭",
+    "detail": "",
+    "button": "前往 Auth",
+    "switch": {
+      "visible": false,
+      "checked": false,
+      "disabled": "true"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "remote-off",
+    "heading": "此设备已关闭",
+    "detail": "",
+    "button": null,
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "master-off",
+    "heading": "快捷登录已暂停",
+    "detail": "",
+    "button": "前往 Auth",
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "manual",
+    "heading": "手动登录中",
+    "detail": "",
+    "button": "恢复快捷登录",
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "foreign",
+    "heading": "已有学校登录",
+    "detail": "",
+    "button": "切换到快捷登录",
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "pending-ack",
+    "heading": "浏览器已同步，正在确认",
+    "detail": "",
+    "button": "重新同步",
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  },
+  {
+    "scenario": "ready",
+    "heading": "已就绪",
+    "detail": "",
+    "button": null,
+    "switch": {
+      "visible": true,
+      "checked": true,
+      "disabled": "false"
+    },
+    "overflow": false
+  }
+]

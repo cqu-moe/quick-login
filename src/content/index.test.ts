@@ -1,5 +1,6 @@
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {installChromeFake} from "../test/chrome-fake";
+import {renderStatusBanner} from "./status-banner";
 type RuntimeListener=(message:unknown,sender:chrome.runtime.MessageSender)=>void;
 function installStateNotification(){
  const runtimeListeners=new Set<RuntimeListener>(),storageListeners=new Set<()=>void>();
@@ -68,14 +69,52 @@ it("unlocks a stalled request with a manual fallback and ignores late replies",a
 });
 it("does not show stale automatic progress after the user starts typing",async()=>{
  let finish!: (value: unknown)=>void;
- Object.assign(chrome.runtime,{sendMessage:vi.fn(async(message:{type:string})=>message.type==="LOGIN_FORM_VISIBLE"
-  ? new Promise(resolve=>{finish=resolve;}) : {kind:"manual_required",message:"已切换手动登录。"})});
+ const send=vi.fn(async(message:{type:string})=>{
+  if(message.type==="LOGIN_FORM_VISIBLE") return new Promise(resolve=>{finish=resolve;});
+  return {kind:"manual_required",message:"已切换为手动登录，可直接在下方输入。",
+   action:{type:"RETRY_AUTOMATIC",label:"恢复快捷登录"}};
+ });
+ Object.assign(chrome.runtime,{sendMessage:send});
  await import("./index");
  await vi.advanceTimersByTimeAsync(0);
  document.querySelector("input")!.dispatchEvent(new Event("input",{bubbles:true}));
+ expect(document.body.textContent).toContain("已切换为手动登录，可直接在下方输入。");
+ const retry=document.querySelector<HTMLButtonElement>('[data-action="RETRY_AUTOMATIC"]')!;
+ expect(retry.textContent).toBe("恢复快捷登录");
+ expect(document.getElementById("cqu-quicklogin-status")!.getAttribute("aria-busy")).toBe("true");
+ expect(retry.getAttribute("aria-disabled")).toBe("true");
+ expect([...document.querySelectorAll<HTMLButtonElement>("#cqu-quicklogin-status button:not([hidden])")]
+  .map(button=>button.dataset.action))
+  .toEqual(["RETRY_AUTOMATIC"]);
  finish({kind:"navigating"});
  await vi.advanceTimersByTimeAsync(0);
  expect(document.body.textContent).not.toContain("正在恢复快捷登录");
+ expect(document.body.textContent).toContain("已切换为手动登录，可直接在下方输入。");
+});
+it("renders and sends a recovery-specific primary action",async()=>{
+ const result={kind:"recovering",message:"已有学校登录。",action:{type:"SWITCH_TO_MANAGED",label:"切换到快捷登录"}};
+ const sent: string[]=[];
+ Object.assign(chrome.runtime,{sendMessage:vi.fn(async(message:{type:string})=>{
+  sent.push(message.type);return result;
+ })});
+ await import("./index");
+ await vi.advanceTimersByTimeAsync(0);
+ const banner=document.getElementById("cqu-quicklogin-status")!;
+ const primary=banner.querySelector<HTMLButtonElement>("button:nth-child(1)")!;
+ const manual=banner.querySelector<HTMLButtonElement>("button:nth-child(2)")!;
+ expect(primary.dataset.action).toBe("SWITCH_TO_MANAGED");
+ expect(primary.textContent).toBe("切换到快捷登录");
+ expect(manual.hidden).toBe(false);
+ primary.click();
+ await vi.advanceTimersByTimeAsync(0);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE","SWITCH_TO_MANAGED"]);
+ expect(document.getElementById("cqu-quicklogin-status")).toBe(banner);
+});
+it("keeps only manual login when recovery explicitly has no action",()=>{
+ renderStatusBanner(document,{kind:"manual_required",message:"学校登录暂时不可用，请稍后再试。",action:null},vi.fn());
+ const buttons=[...document.querySelectorAll<HTMLButtonElement>("#cqu-quicklogin-status button:not([hidden])")];
+ expect(buttons.map(button=>button.dataset.action)).toEqual(["ENTER_MANUAL"]);
+ expect(buttons[0].textContent).toBe("手动登录");
 });
 it("shows recovery progress and refreshes notified state without restarting login",async()=>{
  const states=installStateNotification();

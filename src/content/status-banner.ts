@@ -1,23 +1,33 @@
-import type { LoginRecoveryResult } from "../shared/messages";
+import type { ContentAction, LoginRecoveryResult } from "../shared/messages";
 
 const BANNER_ID = "cqu-quicklogin-status";
+
+type ActionSpec = { type: ContentAction; label: string };
+type ProvidedAction = ActionSpec | null | undefined;
 
 export function renderStatusBanner(
   document: Document,
   result: LoginRecoveryResult,
-  send: (type: "ENTER_MANUAL" | "RETRY_AUTOMATIC") => void
+  send: (type: ContentAction) => void
 ): void {
   const existing = document.getElementById(BANNER_ID);
   if (result.kind === "idle") { existing?.remove(); return; }
   const message = result.kind === "navigating" ? "正在恢复快捷登录，请稍候。" : result.message;
+  const primary: ProvidedAction = result.kind === "recovering" || result.kind === "manual_required"
+    ? result.action
+    : undefined;
+  const primarySpec = primary ?? { type: "ENTER_MANUAL" as ContentAction, label: "手动登录" };
+  const secondarySpec = secondaryAction(result, primary);
   if (existing) {
     const text = existing.querySelector("span")!;
     if (text.textContent !== message) text.textContent = message;
-    const retry = existing.querySelector<HTMLButtonElement>('[data-action="RETRY_AUTOMATIC"]')!;
-    if (result.kind !== "manual_required" && document.activeElement === retry) {
-      existing.querySelector<HTMLButtonElement>('[data-action="ENTER_MANUAL"]')!.focus({ preventScroll: true });
+    syncAction(existing.querySelector<HTMLButtonElement>("button:nth-child(1)")!, primarySpec);
+    const secondary = existing.querySelector<HTMLButtonElement>("button:nth-child(2)")!;
+    if (secondarySpec) syncAction(secondary, secondarySpec);
+    else secondary.hidden = true;
+    if (document.activeElement instanceof HTMLButtonElement && document.activeElement.hidden) {
+      existing.querySelector<HTMLButtonElement>("button:not([hidden])")?.focus({ preventScroll: true });
     }
-    retry.hidden = result.kind !== "manual_required";
     return;
   }
 
@@ -49,25 +59,40 @@ export function renderStatusBanner(
 
   const actions = document.createElement("div");
   actions.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:10px";
-  const button = (label: string, type: "ENTER_MANUAL" | "RETRY_AUTOMATIC") => {
+  const button = (spec: ActionSpec, hidden = false) => {
     const control = document.createElement("button");
     control.type = "button";
-    control.dataset.action = type;
-    control.textContent = label;
+    control.dataset.action = spec.type;
+    control.textContent = spec.label;
+    control.hidden = hidden;
     control.style.cssText = [
       "min-height:44px", "padding:8px 12px", "border:1px solid #b8bec6",
       "border-radius:6px", "background:#f7f8f9", "color:#202326",
       "font:600 14px/1 system-ui,sans-serif", "touch-action:manipulation", "cursor:pointer",
     ].join(";");
-    control.addEventListener("click", () => send(type));
+    control.addEventListener("click", () => send(control.dataset.action as ContentAction));
     return control;
   };
-  actions.append(button("手动登录", "ENTER_MANUAL"));
-  const retry = button("重试快捷登录", "RETRY_AUTOMATIC");
-  retry.hidden = result.kind !== "manual_required";
-  actions.append(retry);
+  actions.append(
+    button(primarySpec),
+    button(secondarySpec ?? { type: "RETRY_AUTOMATIC" as ContentAction, label: "重试快捷登录" }, !secondarySpec)
+  );
   banner.append(actions);
 
   const form = document.querySelector("form");
   form?.parentElement?.insertBefore(banner, form);
+}
+
+function secondaryAction(result: LoginRecoveryResult, primary: ProvidedAction): ActionSpec | undefined {
+  if (primary === null) return undefined;
+  if (primary?.type === "RETRY_AUTOMATIC") return undefined;
+  if (primary?.type === "ENTER_MANUAL") return { type: "RETRY_AUTOMATIC", label: "恢复快捷登录" };
+  if (primary) return { type: "ENTER_MANUAL", label: "手动登录" };
+  return result.kind === "manual_required" ? { type: "RETRY_AUTOMATIC", label: "重试快捷登录" } : undefined;
+}
+
+function syncAction(button: HTMLButtonElement, spec: ActionSpec): void {
+  button.dataset.action = spec.type;
+  if (button.textContent !== spec.label) button.textContent = spec.label;
+  button.hidden = false;
 }

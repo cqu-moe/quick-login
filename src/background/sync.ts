@@ -392,7 +392,7 @@ export async function prepareAutomaticMode(): Promise<void> {
 }
 export async function resumeAutomaticMode(): Promise<boolean> {
   await prepareAutomaticMode();
-  await sync("user_retry");
+  void sync("user_retry").catch(recordFailure);
   return true;
 }
 export async function retryAutomaticNow(): Promise<boolean> {
@@ -420,6 +420,6 @@ export async function switchToManagedOnce(): Promise<boolean> {
       localError:null, nextAttemptAt:null, localWriteState:"idle" };
   });
   if (!accepted) return false;
-  await sync("user_retry");
+  void sync("user_retry").catch(recordFailure);
   return true;
 }

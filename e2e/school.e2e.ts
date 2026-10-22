@@ -41,8 +41,8 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   expect(written.receipt?.result).toBe('applied');
   expect(written.loginRecovery!.appliedExportId).toBe(written.receipt!.exportId);
   expect(written.loginRecovery!.acknowledgedExportId ?? null).toBe(null);
-  await popup.getByRole('heading', { name: '浏览器已同步，正在确认', exact: true }).waitFor({ timeout: 10_000 });
-  await page.getByRole('status').getByText('浏览器已同步，正在确认', { exact: false }).waitFor({ timeout: 10_000 });
+  await popup.getByText('浏览器同步已完成，正在确认结果，请稍候。', { exact: true }).waitFor({ timeout: 10_000 });
+  await page.getByRole('status').getByText('正在确认结果', { exact: false }).waitFor({ timeout: 10_000 });
   expect(loads).toBe(1);
   const beforeNavigationCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
   await relay({ hold: false });
@@ -96,7 +96,7 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   const checkedCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
   expect(checkedCookies.length === schoolCookies.length && schoolCookies.every(cookie =>
     checkedCookies.some(checkedCookie => isDeepStrictEqual(cookie, checkedCookie)))).toBe(true);
-  await popup.getByRole('heading', { name: '已有学校登录', exact: true }).waitFor();
+  await popup.getByRole('heading', { name: '正在保留已有学校登录', exact: true }).waitFor();
   expect(loads).toBe(2);
   await captureArtifacts('school-renewed-cookie-ownership', [page, popup]);
 });

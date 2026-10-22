@@ -128,7 +128,7 @@ it("routes an invalid refresh grant to original-device recovery even after closi
   });
   const open=vi.spyOn(chrome.tabs,"create");
   await handleMessage({type:"OPEN_SETTINGS"});
-  expect(open).toHaveBeenCalledWith({url:"https://auth.cqu.moe/settings?quickloginDevice=device-a&quickloginReconnect=1"});
+  expect(open).toHaveBeenCalledWith({url:"https://auth.cqu.moe/settings/cqu?quickloginDevice=device-a&quickloginReconnect=1"});
 });
 
 it("resumes the original device and allows sync after fresh authorization", async () => {

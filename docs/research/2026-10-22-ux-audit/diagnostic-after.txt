@@ -1,0 +1,9 @@
+
+ RUN  v5.0.0 /Users/uu/.codex/worktrees/d97c/quicklogin
+
+
+ Test Files  4 passed (4)
+      Tests  11 passed (11)
+   Start at  18:22:55
+   Duration  1.19s (environment 63%, transform 26%, tests 7%, import 4%)
+

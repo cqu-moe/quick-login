@@ -1,0 +1,290 @@
+[
+  {
+    "state": "disconnected",
+    "title": "未连接 Auth",
+    "detail": "连接 Auth 后，即可在此浏览器使用学校快捷登录。",
+    "button": "连接 Auth",
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "authorizing",
+    "title": "正在连接 Auth",
+    "detail": "请在打开的 Auth 页面完成授权，完成后会自动继续。",
+    "button": null,
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "registered",
+    "title": "正在连接 Auth",
+    "detail": "授权已完成，正在开启此设备。",
+    "button": null,
+    "checked": false,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "enabling",
+    "title": "正在准备学校登录",
+    "detail": "Auth 已连接，正在开启此设备。",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "preparing",
+    "title": "正在准备学校登录",
+    "detail": "正在获取学校登录状态，完成后会自动同步到此浏览器。",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "syncing",
+    "title": "正在准备学校登录",
+    "detail": "正在将学校登录状态同步到此浏览器。",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "pending-ack",
+    "title": "正在准备学校登录",
+    "detail": "浏览器同步已完成，正在确认结果，请稍候。",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "ready",
+    "title": "已就绪",
+    "detail": "学校登录已同步到此浏览器，可以前往学校网站。",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "offline",
+    "title": "暂时无法连接 Auth",
+    "detail": "连接恢复后会自动重试，也可以立即重新检查。 上次确认：18:09:37。",
+    "button": "重新检查",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "reconnect",
+    "title": "正在连接 Auth",
+    "detail": "请在打开的 Auth 页面完成授权，完成后会自动继续。",
+    "button": null,
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "reconnect-required",
+    "title": "需要重新连接 Auth",
+    "detail": "请在 Auth 中重新授权此设备，完成后会自动继续。",
+    "button": "重新连接此设备",
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "remote-off",
+    "title": "此设备已关闭",
+    "detail": "开启下方开关，即可在此浏览器恢复快捷登录。",
+    "button": null,
+    "checked": false,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "disabled",
+    "title": "此浏览器已关闭快捷登录",
+    "detail": "开启下方开关，即可在此浏览器恢复快捷登录。",
+    "button": null,
+    "checked": false,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "master-off",
+    "title": "账号已暂停快捷登录",
+    "detail": "请前往 Auth 开启账号的快捷登录总开关。",
+    "button": "打开账号设置",
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "quota",
+    "title": "设备名额已满",
+    "detail": "请在 Auth 管理设备名额，再开启此设备。",
+    "button": "管理设备名额",
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "paused",
+    "title": "快捷登录暂时不可用",
+    "detail": "服务已暂停处理登录，请稍后重新检查。",
+    "button": "重新检查",
+    "checked": false,
+    "disabled": "true",
+    "overflow": false
+  },
+  {
+    "state": "manual",
+    "title": "已切换为手动登录",
+    "detail": "插件已暂停自动登录，不会打断你在学校页面的操作。",
+    "button": "恢复快捷登录",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "foreign",
+    "title": "正在保留已有学校登录",
+    "detail": "此浏览器已有非插件写入的学校登录；仅在你选择切换后替换。",
+    "button": "切换到快捷登录",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "unbound",
+    "title": "尚未绑定学校账号",
+    "detail": "请先在 Auth 绑定学校账号，再返回此处。",
+    "button": "绑定学校账号",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "binding",
+    "title": "正在更新学校账号",
+    "detail": "学校账号正在更新，完成后会自动继续。",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "password",
+    "title": "学校密码需要更新",
+    "detail": "学校拒绝了已保存的密码，请在 Auth 更新后重试。",
+    "button": "更新学校密码",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "verification",
+    "title": "需要手动完成学校验证",
+    "detail": "请在学校登录页面手动完成验证；本次登录将由你继续。",
+    "button": "前往学校手动登录",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "permissions",
+    "title": "浏览器权限不足",
+    "detail": "请允许插件访问学校网站，然后重试。",
+    "button": "检查浏览器权限",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "write",
+    "title": "浏览器同步失败",
+    "detail": "学校登录状态未能写入此浏览器，请重试同步。",
+    "button": "重试同步",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "contract",
+    "title": "暂时无法读取服务状态",
+    "detail": "服务返回了无法识别的状态，请重新检查；若持续出现，请更新插件。",
+    "button": "重新检查",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "update",
+    "title": "请更新插件",
+    "detail": "当前插件与服务不兼容，请更新后重试。",
+    "button": "更新插件",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "upgrading",
+    "title": "服务正在升级",
+    "detail": "服务暂时无法提供登录状态，请稍后重新检查。",
+    "button": "重新检查",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "retry",
+    "title": "学校登录暂时不可用",
+    "detail": "预计 18:10:39 后重试",
+    "button": null,
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "usable",
+    "title": "当前可用，续期需处理",
+    "detail": "当前登录仍可使用；请处理续期问题，以免到期后无法自动登录。",
+    "button": "更新学校密码",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "checking",
+    "title": "正在检查登录状态",
+    "detail": "正在确认最新状态，请稍候。",
+    "button": "重新检查",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "unknown",
+    "title": "状态暂时无法确认",
+    "detail": "尚未确认可用的登录状态，请重新检查。",
+    "button": "重新检查",
+    "checked": true,
+    "disabled": "false",
+    "overflow": false
+  },
+  {
+    "state": "revoked",
+    "title": "此设备已退出",
+    "detail": "此设备的授权已撤销，请重新连接 Auth。",
+    "button": "连接 Auth",
+    "checked": true,
+    "disabled": "true",
+    "overflow": false
+  }
+]

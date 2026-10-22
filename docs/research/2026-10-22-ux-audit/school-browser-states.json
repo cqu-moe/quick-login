@@ -1,0 +1,152 @@
+[
+  {
+    "state": "preparing",
+    "message": "正在准备学校登录。正在将学校登录状态同步到此浏览器。",
+    "actions": [
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "password",
+    "message": "学校密码需要更新。请在 Auth 更新已保存的密码。",
+    "actions": [
+      {
+        "label": "更新学校密码",
+        "type": "OPEN_SETTINGS",
+        "height": 44
+      },
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "reconnect",
+    "message": "需要重新连接 Auth。请重新授权此设备。",
+    "actions": [
+      {
+        "label": "重新连接此设备",
+        "type": "OPEN_SETTINGS",
+        "height": 44
+      },
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "foreign",
+    "message": "正在保留已有学校登录。只有选择切换后才会替换。",
+    "actions": [
+      {
+        "label": "切换到快捷登录",
+        "type": "SWITCH_TO_MANAGED",
+        "height": 44
+      },
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "verification",
+    "message": "需要手动完成学校验证。",
+    "actions": [
+      {
+        "label": "手动完成学校验证",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      },
+      {
+        "label": "恢复快捷登录",
+        "type": "RETRY_AUTOMATIC",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "manual",
+    "message": "已切换为手动登录，可直接在下方输入。",
+    "actions": [
+      {
+        "label": "恢复快捷登录",
+        "type": "RETRY_AUTOMATIC",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "update",
+    "message": "需要更新插件，请更新后重试。",
+    "actions": [
+      {
+        "label": "检查更新",
+        "type": "CHECK_EXTENSION_UPDATE",
+        "height": 44
+      },
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "contract",
+    "message": "暂时无法读取服务状态。请重新检查；若持续出现，请更新插件。",
+    "actions": [
+      {
+        "label": "重新检查",
+        "type": "RETRY_AUTOMATIC",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "waiting",
+    "message": "学校登录暂时不可用，稍后自动重试。",
+    "actions": [
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  },
+  {
+    "state": "failure",
+    "message": "快捷登录未成功，请手动登录或重试。",
+    "actions": [
+      {
+        "label": "手动登录",
+        "type": "ENTER_MANUAL",
+        "height": 44
+      },
+      {
+        "label": "重试快捷登录",
+        "type": "RETRY_AUTOMATIC",
+        "height": 44
+      }
+    ],
+    "overflow": false
+  }
+]

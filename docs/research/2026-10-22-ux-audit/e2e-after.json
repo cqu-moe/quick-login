@@ -1,0 +1,117 @@
+{
+  "note": "Selected UX regressions across independent runtimes; not a full-suite run. Earlier failed attempts remain in .e2e. No credentials or account identifiers are included.",
+  "passed": 11,
+  "runtimes": [
+    {
+      "source": ".e2e/run-1792664447150/authorization",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "the real popup completes Auth PKCE login and device registration",
+          "status": "passed",
+          "file": "e2e/journey.e2e.ts"
+        },
+        {
+          "title": "canceling the real Auth login does not connect the device",
+          "status": "passed",
+          "file": "e2e/journey.e2e.ts"
+        },
+        {
+          "title": "a real callback with the wrong pending state is rejected",
+          "status": "passed",
+          "file": "e2e/journey.e2e.ts"
+        },
+        {
+          "title": "a callback outside the registered extension redirect is rejected",
+          "status": "passed",
+          "file": "e2e/journey.e2e.ts"
+        },
+        {
+          "title": "real device registration rejection does not display a connected device",
+          "status": "passed",
+          "file": "e2e/journey.e2e.ts"
+        }
+      ]
+    },
+    {
+      "source": ".e2e/run-1792664447150/isolated-1-cabc98c30221",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "QUICKLOGIN-03 lost token and actually expired Auth grants require explicit website reconnect without replacing device identity",
+          "status": "passed",
+          "file": "e2e/device-lifecycle.e2e.ts"
+        }
+      ]
+    },
+    {
+      "source": ".e2e/run-1792664810107/isolated-1-da65f4fccb8e",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "QUICKLOGIN-02 foreign cookies and ambiguous domain/path ownership survive sync and disable",
+          "status": "passed",
+          "file": "e2e/school-guards.e2e.ts"
+        }
+      ]
+    },
+    {
+      "source": ".e2e/run-1792664810107/isolated-2-4fb2dd0b0942",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "QUICKLOGIN-02 actual manual typing fences a late real school login and exposes recovery actions",
+          "status": "passed",
+          "file": "e2e/school-guards.e2e.ts"
+        }
+      ]
+    },
+    {
+      "source": ".e2e/run-1792664810107/isolated-3-d5e99da038ca",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "QUICKLOGIN-02 disabling sync while a real export response is delayed cancels its cookie write and receipt",
+          "status": "passed",
+          "file": "e2e/school-guards.e2e.ts"
+        }
+      ]
+    },
+    {
+      "source": ".e2e/run-1792664810107/isolated-4-3e61c1598507",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "QUICKLOGIN-02 a school that still rejects the fresh write stops after one navigation with manual and retry actions",
+          "status": "passed",
+          "file": "e2e/school-guards.e2e.ts"
+        }
+      ]
+    },
+    {
+      "source": ".e2e/run-1792665263196",
+      "authCommit": "e54a6f5095fc12a47039945825b69d5ab855820e",
+      "backgroundSha256": "5c40eed6a4976c1daf2b871c5ee9c643e908c1b2d79024db82b819383dc5b3c2",
+      "cleanup": "passed",
+      "results": [
+        {
+          "title": "QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt",
+          "status": "passed",
+          "file": "e2e/school.e2e.ts"
+        }
+      ]
+    }
+  ]
+}

@@ -166,6 +166,8 @@ describe("background popup messages", () => {
       lastConfirmedAt: null,
       nextAttemptAt: null,
       recoveryFailed: false,
+      connecting: false,
+      pendingEnabled: undefined,
     }));
   });
 
@@ -186,6 +188,53 @@ describe("background popup messages", () => {
       id, url, tab: { id: 7 } as chrome.tabs.Tab,
     }, response)).toBe(false);
     expect(response).not.toHaveBeenCalled();
+  });
+
+  it("maps content schema failures to their recovery action", async () => {
+    const listener = await messageListener();
+    await vi.waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    const get = chrome.storage.local.get;
+    chrome.storage.local.get = vi.fn(async () => { throw new Error("QUICKLOGIN_UPDATE_REQUIRED"); });
+    const response = vi.fn();
+
+    listener({ type: "GET_UI_STATE" }, {
+      id: chrome.runtime.id,
+      url: "https://sso.cqu.edu.cn/login",
+      tab: { id: 7 } as chrome.tabs.Tab,
+    }, response);
+
+    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({
+      kind: "manual_required",
+      message: "需要更新插件，请更新后重试。",
+      action: { type: "CHECK_EXTENSION_UPDATE", label: "检查更新" },
+    }));
+    chrome.storage.local.get = get;
+  });
+
+  it.each([
+    ["invalid local state", "暂时无法读取插件状态，可手动登录或重试。"],
+    ["unexpected failure", "暂时无法读取插件状态，可手动登录或重试。"],
+  ])("keeps content usable after %s", async (_label, message) => {
+    const listener = await messageListener();
+    await vi.waitFor(() => expect(sync).toHaveBeenCalledOnce());
+    const get = chrome.storage.local.get;
+    chrome.storage.local.get = vi.fn(async () => {
+      throw new Error(_label === "invalid local state" ? "INVALID_LOCAL_STATE" : "synthetic storage failure");
+    });
+    const response = vi.fn();
+
+    listener({ type: "GET_UI_STATE" }, {
+      id: chrome.runtime.id,
+      url: "https://sso.cqu.edu.cn/login",
+      tab: { id: 7 } as chrome.tabs.Tab,
+    }, response);
+
+    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({
+      kind: "manual_required",
+      message,
+      action: { type: "RETRY_AUTOMATIC", label: "重试快捷登录" },
+    }));
+    chrome.storage.local.get = get;
   });
 
   it.each(["/login", "/authserver/login", "/popup.html"])(
