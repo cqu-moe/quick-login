@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fafbf9" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1d1713" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fafafa" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1e1e1e" />
     <title>少一次登录，多一点顺畅 · QuickLogin</title>
     <meta
       name="description"
@@ -27,13 +27,20 @@
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">
-            <span class="brand-dot" aria-hidden="true"></span>
-            为校园日常，省去一点重复
+            CQU Moe / 重庆大学校园工具
           </p>
-          <h1>少一次登录，<br /><span>多一点顺畅。</span></h1>
+          <h1>
+            少一次登录，<br /><span class="headline-mark">多一点顺畅。<svg
+                viewBox="0 0 410 18"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path d="M4 10C103 1 258 1 405 8" />
+                <path d="M24 17C148 8 280 8 384 13" /></svg
+            ></span>
+          </h1>
           <p>
-            让学校统一认证的登录状态，跟上你的日常。<br />QuickLogin
-            在后台同步会话，减少重复输入，<br />把时间留给真正要做的事。
+            为重庆大学统一认证准备的 Chrome 扩展。在后台同步登录状态，少输几次账号密码，把时间留给正在做的事。
           </p>
           <div class="hero-actions">
             <div data-download aria-live="polite">
@@ -55,28 +62,17 @@
           <p class="micro">适用于桌面 Chrome · 当前仅向内测用户开放</p>
         </div>
         <figure class="product-scene">
-          <div class="scene-label">QUICKLOGIN / BROWSER EXTENSION</div>
-          <div
-            class="popup-window"
-            role="img"
-            aria-label="QuickLogin 插件弹窗：状态已就绪，快捷登录开关已开启。"
-          >
+          <div class="logo-crop" aria-hidden="true">
+            <img src="/brand/logo-white.svg" width="900" height="900" alt="" />
+          </div>
+          <div class="popup-window" data-ui>
             <iframe
               src="/popup-preview.html"
-              title="QuickLogin 插件界面演示"
-              width="390"
+              title="QuickLogin 开关交互演示"
+              width="350"
               height="468"
-              tabindex="-1"
-              aria-hidden="true"
-              sandbox
             ></iframe>
           </div>
-          <figcaption>
-            <span class="caption-status"
-              ><span class="brand-dot" aria-hidden="true"></span>插件实际界面 ·
-              演示状态</span
-            >
-          </figcaption>
         </figure>
       </section>
       <div class="intro-line">
@@ -86,7 +82,6 @@
       <section class="section">
         <div class="section-head">
           <div>
-            <p class="eyebrow">LESS REPETITION, MORE FLOW</p>
             <h2>打开网页，<br />接着做你的事。</h2>
           </div>
           <p>
@@ -96,7 +91,9 @@
         </div>
         <div class="feature-list">
           <article class="feature-row">
-            <span class="index">01 /</span>
+            <svg class="feature-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M25 13a10 10 0 0 0-18-3L4 14m0-7v7h7M7 19a10 10 0 0 0 18 3l3-4m0 7v-7h-7" />
+            </svg>
             <h3>减少重复登录</h3>
             <p>
               通过 Auth 维护学校会话，将统一认证所需的 Cookie
@@ -104,7 +101,10 @@
             </p>
           </article>
           <article class="feature-row">
-            <span class="index">02 /</span>
+            <svg class="feature-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <rect x="4" y="5" width="24" height="17" rx="3" />
+              <path d="M12 27h8m-4-5v5" />
+            </svg>
             <h3>每台设备，各自管理</h3>
             <p>
               每次安装拥有独立授权。你可以在 Auth
@@ -112,7 +112,10 @@
             </p>
           </article>
           <article class="feature-row">
-            <span class="index">03 /</span>
+            <svg class="feature-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+              <path d="M16 3 5 7v8c0 7 11 13 11 13s11-6 11-13V7L16 3Z" />
+              <path d="m11 15 3 3 7-7" />
+            </svg>
             <h3>已有登录，由你决定</h3>
             <p>
               遇到浏览器里已有的学校登录，插件会保留它。由你明确选择切换后，再使用
@@ -123,7 +126,7 @@
       </section>
       <section class="install-banner">
         <div>
-          <h2>准备好，让登录简单一点。</h2>
+          <h2>让下一次登录，<br />简单一点。</h2>
           <p>下载、安装、连接 Auth。按指南开始使用。</p>
         </div>
         <a class="button" href="/download/"

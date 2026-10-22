@@ -1,3 +1,12 @@
+# 2026-10-22 0.5.1 蓝色品牌与首页交互候选
+
+- 可执行源码 `4bcb99afdad9bc72cdd19ff7e49e128a91bef474`；官网与插件接入 theme 1.2.0，19 份官方品牌素材核验通过。保留协议 v3、设备授权、Cookie 所有权和现有权限，Auth 源码与 Worker 未改。
+- 本地候选 `cqu-quicklogin-0.5.1-canary.zip`：152054 bytes，SHA-256 `0029540913aadf1a5d0e380656ffe884beb6186e891364b7851c12ff307c693c`。ZIP CRC、14 个运行文件、manifest 0.5.1、build-info 来源与 dist 字节比对通过。该包未启用诊断 token，正式包需按合并提交重新构建，不复用此摘要。
+- 扩展/官网类型检查、应用测试、发布工具测试、扩展构建/包检查、官网构建/7 页资源检查通过；首页 12 组视口/主题、鼠标/触摸/Space/Tab 与减少动态效果检查通过。候选未做真实大学 SSO 验收。
+- 用户已授权 PR、CI 通过后合并上线与生产复验。PR CI、官网自动构建、正式 Canary 和商店 CD 状态待发布后独立记录；当前不将本地验证称为上线或商店上架。
+
+---
+
 # 2026-10-21 0.5.0 正式 Canary 与商店等待交接
 
 [PR #32](https://github.com/cqu-moe/quick-login/pull/32) 的 7 项检查全通过后已合并，发布源码/标签 `v0.5.0`：`0b6ba77e54555558bb2b8251dd2fc1682d9530cb`。正式包 `cqu-quicklogin-0.5.0-canary.zip`，152024 bytes，SHA-256 `59df7e4469f389239349ff471a4d5b2e782cf21abea50f536d37ba1e812e0b8f`。主分支常规检查和 Canary 发布成功；实际认证下载 200、匿名 401，CRC/14 文件/manifest/build-info 与 CI 字节比对全部通过。

@@ -1,0 +1,5 @@
+@import "../../src/popup/style.css";
+
+body { width: 100%; }
+input { font-size: 16px; touch-action: manipulation; }
+.switch-control { -webkit-tap-highlight-color: transparent; }
