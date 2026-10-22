@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuickLogin · 修复后 UX 验证</title>
+<style>
+body{width:100%!important;padding:24px;display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}#app{width:min(390px,100%);flex:none;border:1px solid var(--border);border-radius:14px;overflow:hidden}aside{width:360px;max-width:100%;line-height:1.7}aside h2{margin-top:0}aside select{width:100%;padding:10px;font:inherit;color:var(--foreground);background:var(--surface);border:1px solid var(--border);border-radius:8px}aside pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}aside button{margin-top:16px}@media(max-width:440px){body{padding:12px;gap:16px}}
+</style>
+<main id="app"></main><aside><h2>修复后 UX 验证</h2><p>使用实际弹窗源码与合成状态。此预览的按钮只改变合成状态，不会操作账号。</p><label for="scenario">场景</label><select id="scenario"></select><button id="replay">重放新登录全过程</button><p id="note"></p><pre id="messages" aria-live="polite"></pre></aside>
+<script type="module">
+import {readySnapshot,receipt} from '../../../src/test/protocol-fixtures.ts';
+const scenarios={disconnected:'首次使用',authorizing:'正在授权',registered:'已注册，尚未提交启用',enabling:'启用请求尚未确认',preparing:'正在获取学校登录',syncing:'正在写入浏览器','pending-ack':'正在确认同步',ready:'就绪',offline:'启用请求失败',reconnect:'关闭设备重新授权','reconnect-required':'授权需要恢复','remote-off':'远程关闭设备',disabled:'本地关闭','master-off':'账号总开关关闭',quota:'名额已满',paused:'服务暂停',manual:'已切换手动',foreign:'保留其他学校登录',unbound:'未绑定学校',binding:'学校账号更新中',password:'密码被拒绝',verification:'需要学校交互验证',permissions:'缺少权限',write:'写入失败',contract:'服务状态异常',update:'需更新插件',upgrading:'服务升级',retry:'等待自动重试',usable:'当前可用，密码待更新',checking:'重新检查',unknown:'未知状态',revoked:'设备已撤销'};
+const select=document.querySelector('#scenario');for(const [value,label] of Object.entries(scenarios))select.add(new Option(label,value));
+const listeners=new Set();let input;let timers=[];
+function show(name){select.value=name;input={deviceId:'device-a',snapshot:readySnapshot(),local:{authorization:'authorized',enabledIntent:true,observation:'fresh',cookieState:'applied',receipt:receipt(),pendingAck:false},lastError:null,lastConfirmedAt:Date.now(),nextAttemptAt:null};const s=input.snapshot,l=input.local;
+if(['enabling','registered','offline','remote-off','reconnect'].includes(name)){s.authorization.policy='device_off';s.authorization.deviceEnabled=false;s.cloud.state='absent';s.cloud.usableUntil=null;l.cookieState='unknown';l.receipt=null;}
+if(['enabling','offline'].includes(name))input.pendingEnabled=true;
+if(name==='registered'){input.connecting=true;l.enabledIntent=false;}
+if(name==='disconnected'){input.snapshot=null;input.deviceId=null;l.authorization='disconnected';l.enabledIntent=false;}
+if(name==='authorizing'||name==='reconnect'){l.authorization='authorizing';l.enabledIntent=false;}
+if(name==='reconnect-required'){l.authorization='reconnect_required';l.enabledIntent=false;}
+if(name==='preparing'){s.cloud.state='logging_in';s.cloud.usableUntil=null;l.cookieState='unknown';l.receipt=null;}
+if(name==='syncing'){l.cookieState='applying';l.receipt=null;}
+if(name==='pending-ack')l.pendingAck=true;
+if(name==='offline'){l.observation='unreachable';input.lastError='INTERNAL_STATE_UNAVAILABLE';}
+if(name==='disabled')l.enabledIntent=false;
+if(name==='master-off'){s.authorization.policy='master_off';s.authorization.masterEnabled=false;s.capabilities.canEnable=false;}
+if(name==='quota'){s.authorization.policy='quota_blocked';s.authorization.deviceEnabled=false;s.capabilities.canEnable=false;}
+if(name==='paused'){s.authorization.policy='service_paused';s.capabilities.canEnable=false;}
+if(name==='manual')l.mode='manual';
+if(name==='foreign')l.cookieState='foreign';
+if(name==='unbound')s.binding.state='unbound';
+if(name==='binding')s.binding.state='updating';
+if(['password','usable'].includes(name)){s.binding.credentialsState='rejected';s.binding.evidenceKind='password_rejected';if(name==='password'){s.cloud.state='blocked';s.cloud.usableUntil=null;}}
+if(name==='verification'){s.cloud.state='blocked';s.cloud.usableUntil=null;s.cloud.reasonCode='INTERACTION_REQUIRED';}
+if(name==='permissions')l.cookieState='permission_denied';
+if(name==='write')l.cookieState='write_failed';
+if(name==='contract'){l.observation='unreachable';input.lastError='CONTRACT_INVALID';}
+if(name==='update')l.protocolSupport='client_update_required';
+if(name==='upgrading')l.protocolSupport='service_upgrading';
+if(name==='retry'){s.cloud.state='retry_wait';s.cloud.usableUntil=null;s.cloud.retryAt=Date.now()+60000;}
+if(name==='checking')l.observation='checking';
+if(name==='unknown')s.binding.state='unknown';
+if(name==='revoked')l.authorization='revoked';
+document.querySelector('#note').textContent=scenarios[name];listeners.forEach(fn=>fn({},'local'));}
+window.chrome={runtime:{sendMessage:async m=>{if(m.type==='GET_UI_STATE')return structuredClone(input);if(m.type==='CHECK_STATE')return {accepted:true};document.querySelector('#messages').textContent=JSON.stringify(m);if(m.type==='SET_ENABLED')show(m.enabled?'enabling':'disabled');if(['RESUME','SWITCH_TO_MANAGED','SYNC','RETRY_LOCAL'].includes(m.type))show('preparing');if(m.type==='LOGIN')show('authorizing');return{accepted:true};}},storage:{onChanged:{addListener:fn=>listeners.add(fn),removeListener:fn=>listeners.delete(fn)}}};
+select.addEventListener('change',()=>{timers.forEach(clearTimeout);show(select.value);});
+document.querySelector('#replay').onclick=()=>{timers.forEach(clearTimeout);show('authorizing');timers=['registered','enabling','preparing','syncing','pending-ack','ready'].map((state,i)=>setTimeout(()=>show(state),(i+1)*800));};
+show('enabling');await import('../../../src/popup/main.ts');
+</script></html>

@@ -1,14 +1,9 @@
 import "./style.css";
 import { sendUiMessage } from "../shared/ui-message";
-import { derivePopupView, type PopupAction, type PopupInput, type PopupView } from "./view-model";
+import { ACTION_LABELS, derivePopupView, type PopupAction, type PopupInput, type PopupView } from "./view-model";
 import type { ExtensionUpdateStatus } from "../background/updates";
 
 const app = document.querySelector<HTMLElement>("#app")!;
-const labels: Record<PopupAction, string> = {
-  login: "连接 Auth", open_settings: "前往 Auth", resume: "恢复快捷登录",
-  switch_managed: "切换到快捷登录", retry: "重试", retry_local: "重新同步",
-  update: "更新插件", fix_permissions: "检查浏览器权限", manual_login: "手动登录",
-};
 const messages: Record<PopupAction, string> = {
   login: "LOGIN", open_settings: "OPEN_SETTINGS", resume: "RESUME",
   switch_managed: "SWITCH_TO_MANAGED", retry: "SYNC", retry_local: "RETRY_LOCAL",
@@ -34,8 +29,8 @@ app.innerHTML = `
   </section>
   <footer class="controls">
     <button type="button" data-control="primary" hidden></button>
-    <label class="switch-control" hidden><span class="sr-only">开启 QuickLogin</span>
-      <input type="checkbox" data-control="switch">
+    <label class="switch-control" hidden>
+      <input type="checkbox" data-control="switch" aria-label="此浏览器快捷登录">
       <span class="switch-track" aria-hidden="true"><span></span></span>
     </label>
   </footer>`;
@@ -73,7 +68,7 @@ function renderView(next: PopupView): void {
   description.hidden = !detail;
   const action = next.actions[0];
   button.hidden = !action && !readRetry;
-  setText(button, readRetry ? "重新检查" : action ? labels[action] : "");
+  setText(button, readRetry ? "重新检查" : action ? next.actionLabel ?? ACTION_LABELS[action] : "");
   button.setAttribute("aria-disabled", String(actionPending));
   control.hidden = !(next.switchVisible ?? !action);
   checkbox.checked = next.switchChecked;
@@ -82,7 +77,7 @@ function renderView(next: PopupView): void {
   if (focused === button && button.hidden && !control.hidden) checkbox.focus({ preventScroll: true });
 }
 function pendingView(heading: string, checked: boolean): PopupView {
-  return { heading, description: "", tone: "busy", switchEnabled: false, switchChecked: checked,
+  return { heading, description: "正在处理，请稍候。", tone: "busy", switchEnabled: false, switchChecked: checked,
     switchVisible: view?.switchVisible ?? false, actions: view?.actions ?? [] };
 }
 function showError(action: boolean): void {
@@ -160,9 +155,9 @@ button.addEventListener("click", () => {
   if (readRetry) { void refresh().then(checkState); return; }
   const action = view.actions[0];
   if (!action) return;
-  const heading = action === "login" ? "正在连接" : action === "open_settings" ? "正在打开 Auth" :
+  const heading = action === "login" ? "正在连接 Auth" : action === "open_settings" ? "正在打开 Auth" :
     action === "update" ? "正在检查更新" : action === "fix_permissions" ? "正在打开扩展设置" :
-    action === "manual_login" ? "正在打开学校登录" : "正在同步";
+    action === "manual_login" ? "正在打开学校登录" : "正在准备学校登录";
   void runAction({ type: messages[action] }, heading);
 });
 checkbox.addEventListener("click", event => {
@@ -170,7 +165,7 @@ checkbox.addEventListener("click", event => {
 });
 checkbox.addEventListener("change", () => {
   const enabled = checkbox.checked;
-  void runAction({ type: "SET_ENABLED", enabled }, enabled ? "正在同步" : "正在关闭", enabled);
+  void runAction({ type: "SET_ENABLED", enabled }, enabled ? "正在准备学校登录" : "正在关闭", enabled);
 });
 function onStorage(_changes: Record<string, chrome.storage.StorageChange>, area: string): void {
   if (area === "local") scheduleRefresh();

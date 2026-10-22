@@ -2,7 +2,7 @@ import { openWebPage } from "./web-viewport.ts";
 import { expect } from 'e2e';
 import type { LocalState } from '../src/shared/contracts';
 import type { BrowserContext, Page } from 'playwright-core';
-import { beginConnection, completeLogin, connectExtensionBrowser, openPopup, requiredControl, waitForUiState } from './helpers.ts';
+import { beginConnection, completeLogin, connectExtensionBrowser, openPopup, requiredControl, waitForUiState, recordEvent } from './helpers.ts';
 
 export async function controlSchool(changes?: Record<string, unknown>) {
   const response = await fetch(`${requiredControl()}/school`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ changes }), signal: AbortSignal.timeout(120_000) });
@@ -10,9 +10,10 @@ export async function controlSchool(changes?: Record<string, unknown>) {
   return response.json() as Promise<{ events: Array<{ kind: string }>; profiles: number; chromeProcesses: number }>;
 }
 export async function until<T>(read: () => Promise<T>, match: (value: T) => boolean, timeout = 120_000): Promise<T> {
+  const caller = new Error('Condition started here');
   const deadline = Date.now() + timeout;
   do { const value = await read(); if (match(value)) return value; await new Promise(done => setTimeout(done, 150)); } while (Date.now() < deadline);
-  throw new Error('Required real school/extension condition did not arrive');
+  throw new Error(`Required real school/extension condition did not arrive\n${caller.stack}`);
 }
 export function localState(popup: Page): Promise<LocalState> {
   return popup.evaluate(async () => (await chrome.storage.local.get('quicklogin.state.v2'))['quicklogin.state.v2'] as LocalState);
@@ -70,10 +71,15 @@ export async function relay(input: { hold?: boolean; path?: 'exports' | 'receipt
 }
 export async function popupEnabled(popup: Page, enabled: boolean) {
   await popup.bringToFront();
-  const toggle = popup.getByRole('checkbox', { name: '开启 QuickLogin' });
+  const toggle = popup.getByRole('checkbox', { name: '此浏览器快捷登录' });
+  await recordEvent('popup-toggle-before', { requested: enabled, checked: await toggle.isChecked(),
+    intent: (await localState(popup)).enabledIntent, policy: (await localState(popup)).snapshot?.authorization.policy ?? 'unknown' });
   await until(() => toggle.getAttribute('aria-disabled'), value => value === 'false');
-  if ((await localState(popup)).enabledIntent !== enabled) await toggle.press('Space');
-  await until(() => localState(popup), value => value.enabledIntent === enabled && !value.pendingCommand);
+  if ((await toggle.isChecked()) !== enabled) await toggle.press('Space');
+  await until(() => localState(popup), value => !value.pendingCommand && (enabled
+    ? value.enabledIntent && value.snapshot?.authorization.policy === 'enabled'
+    : !value.enabledIntent || value.snapshot?.authorization.policy !== 'enabled'));
+  await recordEvent('popup-toggle-confirmed', { enabled });
 }
 export async function beginHeldRecovery(popup: Page, context: BrowserContext, key: string) {
   await controlSchool({ expire: true, holdLogin: true, clearEvents: true });

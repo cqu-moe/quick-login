@@ -304,6 +304,7 @@ it("keeps a confirmed switch when reconciliation advances only the cloud session
   vi.mocked(api.exportSession).mockResolvedValue({...envelope(),sessionVersion:remote.versions.sessionVersion});
   const writer=vi.fn().mockResolvedValue("applied");setEnvelopeWriter(writer);
   await switchToManagedOnce();
+  await sync("popup");
   expect(writer).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({allowForeignOnce:true}));
 });
 
@@ -313,6 +314,7 @@ it("keeps the switch through cloud preparation until the next alarm can apply co
   vi.mocked(api.reconcile).mockResolvedValueOnce({ centralUserId: "central-user-a", snapshot:preparing,receiptAck:null });
   const writer=vi.fn().mockResolvedValue("applied");setEnvelopeWriter(writer);
   await switchToManagedOnce();
+  await sync("popup");
   expect(api.operate).not.toHaveBeenCalled();
   await sync("alarm");
   expect(writer).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({allowForeignOnce:true}));
@@ -324,6 +326,7 @@ it.each(["disable", "manual", "reauthorize", "binding", "expire"])("cancels pend
   const preparing=snapshot();preparing.cloud.state="logging_in";preparing.capabilities.canExport=false;
   vi.mocked(api.reconcile).mockResolvedValueOnce({ centralUserId: "central-user-a", snapshot:preparing,receiptAck:null });
   await switchToManagedOnce();
+  await sync("popup");
   await updateLocalState(s=>({...s,
     enabledIntent:kind==="disable"?false:s.enabledIntent,
     manualOverride:kind==="manual"?true:s.manualOverride,
@@ -346,6 +349,7 @@ it("consumes replacement consent once through the actual cookie writer", async (
     return result;
   });
   await switchToManagedOnce();
+  await sync("popup");
   expect(await readLocalState()).toMatchObject({localWriteState:"ready",managedSwitch:null,pendingAck:false});
   await chrome.cookies.set({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC",value:"synthetic-new-manual",path:"/",storeId:"0"});
   await sync("alarm");
@@ -359,6 +363,7 @@ it("resumes a confirmed pending switch after the background module restarts", as
   const preparing=snapshot();preparing.cloud.state="logging_in";preparing.capabilities.canExport=false;
   vi.mocked(api.reconcile).mockResolvedValueOnce({ centralUserId: "central-user-a", snapshot:preparing,receiptAck:null });
   await switchToManagedOnce();
+  await sync("popup");
   expect((await readLocalState()).managedSwitch).not.toBeNull();
   vi.resetModules();
   const freshApi=await import("./api-v3");

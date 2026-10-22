@@ -122,7 +122,7 @@ it("does not navigate using a previous completed recovery while the cloud is sti
   const result = await handleContentMessage({ type: "LOGIN_FORM_VISIBLE" }, sender);
   expect(result.kind).not.toBe("navigating");
   await sync("alarm");
-  expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toMatchObject({kind:"recovering"});
+  expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toMatchObject({kind:"manual_required",action:null});
   expect(fake.tabUpdates).toHaveLength(0);
 });
 
@@ -139,7 +139,7 @@ it("waits for the new session ACK, then navigates the waiting document once and 
     await started;
     expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toMatchObject({kind:"recovering"});
     expect(fake.tabUpdates).toHaveLength(0);
-    expect(derivePopupView(await handleMessage({type:"GET_UI_STATE"}) as PopupInput).heading).toContain("正在确认");
+    expect(derivePopupView(await handleMessage({type:"GET_UI_STATE"}) as PopupInput).description).toContain("正在确认");
   } finally {release();await syncing;}
   const retries=vi.mocked(api.operate).mock.calls.length;
   expect(await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},sender)).toEqual({kind:"navigating"});
@@ -218,7 +218,7 @@ it("does not restore ready or navigate when manual input cancels an outstanding 
   } finally {release();await syncing;}
   expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toMatchObject({kind:"manual_required"});
   expect(fake.tabUpdates).toHaveLength(0);
-  expect(derivePopupView(await handleMessage({type:"GET_UI_STATE"}) as PopupInput).heading).toBe("手动登录中");
+  expect(derivePopupView(await handleMessage({type:"GET_UI_STATE"}) as PopupInput).heading).toBe("已切换为手动登录");
 });
 
 it("reapplies a missing browser Cookie without forcing another school login",async()=>{

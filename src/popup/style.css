@@ -107,6 +107,7 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 18px;
+  flex-wrap: wrap;
   min-height: 104px;
   padding: 22px 26px 28px;
   border-top: 1px solid var(--line);
@@ -117,6 +118,7 @@ h1 {
   min-width: 72px;
   min-height: 52px;
   cursor: pointer;
+  gap: 8px;
 }
 .switch-control input {
   position: absolute;

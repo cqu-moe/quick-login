@@ -1,0 +1,23 @@
+
+> auth@1.0.0 test:do
+> vitest run -c vitest.workers.config.mts
+
+
+ RUN  v4.1.7 /Users/uu/.codex/worktrees/d97c/auth
+
+uncaught exception; source = Uncaught (in promise); stack = Error: Application called deleteAllDurableObjects().
+    at CquSessionDO.flushBindingDeletion (/Users/uu/.codex/worktrees/d97c/auth/src/durable-objects/cqu-session.ts:2141:43)
+    at CquSessionDO.alarm (/Users/uu/.codex/worktrees/d97c/auth/src/durable-objects/cqu-session.ts:2235:16)
+    at DurableObject.Wrapper.<computed> (Users/uu/.codex/worktrees/d97c/auth/node_modules/@cloudflare/vitest-pool-workers/dist/worker/lib/cloudflare/test-internal.mjs:552:54)
+uncaught exception; source = Uncaught (in promise); stack = Error: Application called deleteAllDurableObjects().
+    at CquSessionDO.flushBindingDeletion (/Users/uu/.codex/worktrees/d97c/auth/src/durable-objects/cqu-session.ts:2141:43)
+    at CquSessionDO.alarm (/Users/uu/.codex/worktrees/d97c/auth/src/durable-objects/cqu-session.ts:2235:16)
+    at DurableObject.Wrapper.<computed> (Users/uu/.codex/worktrees/d97c/auth/node_modules/@cloudflare/vitest-pool-workers/dist/worker/lib/cloudflare/test-internal.mjs:552:54)
+Annotating with brokenness; internalMessage = jsg.Error: Application called deleteAllDurableObjects().; brokennessReason = broken.inputGateBroken
+Annotating with brokenness; internalMessage = jsg.Error: Application called deleteAllDurableObjects().; brokennessReason = broken.inputGateBroken
+
+ Test Files  46 passed (46)
+      Tests  456 passed (456)
+   Start at  18:11:56
+   Duration  79.61s (transform 61.35s, setup 971.29s, import 4.51s, tests 82.88s, environment 2ms)
+

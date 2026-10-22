@@ -1,0 +1,286 @@
+
+ RUN  v5.0.0 /Users/uu/.codex/worktrees/d97c/quicklogin
+
+ ✓ docs/research/2026-10-22-ux-audit/reconnect.test.ts > accepts a reconnect from Auth's settings entry /settings 4ms
+ × docs/research/2026-10-22-ux-audit/reconnect.test.ts > accepts a reconnect from Auth's settings entry /settings/cqu 3ms
+   → promise rejected "Error: FORBIDDEN" instead of resolving
+stdout | docs/research/2026-10-22-ux-audit/actions.test.ts > manual recovery keeps progress and a stop control during a slow request
+manual {
+  during: { title: '正在同步', stopDisabled: 'true' },
+  afterTimeout: '操作暂未确认'
+}
+
+stdout | docs/research/2026-10-22-ux-audit/actions.test.ts > foreign recovery keeps progress and a stop control during a slow request
+foreign {
+  during: { title: '正在同步', stopDisabled: 'true' },
+  afterTimeout: '操作暂未确认'
+}
+
+ × docs/research/2026-10-22-ux-audit/actions.test.ts > manual recovery keeps progress and a stop control during a slow request 42ms
+   → expected 'true' to be 'false' // Object.is equality
+   → expected '操作暂未确认' not to be '操作暂未确认' // Object.is equality
+ × docs/research/2026-10-22-ux-audit/actions.test.ts > foreign recovery keeps progress and a stop control during a slow request 7ms
+   → expected 'true' to be 'false' // Object.is equality
+   → expected '操作暂未确认' not to be '操作暂未确认' // Object.is equality
+stdout | docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: success
+new login {
+  outcome: 'success',
+  during: {
+    heading: '此设备已关闭',
+    description: '',
+    tone: 'neutral',
+    switchEnabled: true,
+    switchChecked: true,
+    switchVisible: true,
+    actions: [],
+    actionTarget: null
+  },
+  after: {
+    heading: '正在准备学校登录',
+    description: '',
+    tone: 'busy',
+    switchEnabled: true,
+    switchChecked: true,
+    switchVisible: true,
+    actions: [],
+    actionTarget: null
+  }
+}
+
+ × docs/research/2026-10-22-ux-audit/content.test.ts > school login page keeps the specific recovery action for foreign cookie 65ms
+   → expected [ '手动登录', '重试快捷登录', '登录' ] to include '切换到快捷登录'
+ × docs/research/2026-10-22-ux-audit/content.test.ts > school login page keeps the specific recovery action for rejected credentials 10ms
+   → expected [ '手动登录', '重试快捷登录', '登录' ] to include '前往 Auth'
+ × docs/research/2026-10-22-ux-audit/content.test.ts > school login page keeps the specific recovery action for Auth reconnect 9ms
+   → expected [ '手动登录', '重试快捷登录', '登录' ] to include '前往 Auth'
+ × docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: success 61ms
+   → expected '此设备已关闭' not to match /已关闭|已退出/
+   → expected 'neutral' to be 'busy' // Object.is equality
+stdout | docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: network failure
+new login {
+  outcome: 'network failure',
+  during: {
+    heading: '此设备已关闭',
+    description: '',
+    tone: 'neutral',
+    switchEnabled: true,
+    switchChecked: true,
+    switchVisible: true,
+    actions: [],
+    actionTarget: null
+  },
+  after: {
+    heading: '此设备已关闭',
+    description: '',
+    tone: 'neutral',
+    switchEnabled: true,
+    switchChecked: true,
+    switchVisible: true,
+    actions: [],
+    actionTarget: null
+  }
+}
+
+stdout | docs/research/2026-10-22-ux-audit/transitions.test.ts > an existing disabled device shows connecting while OAuth is open
+reconnect {
+  heading: '已关闭',
+  description: '',
+  tone: 'neutral',
+  switchEnabled: false,
+  switchChecked: false,
+  switchVisible: false,
+  actions: [ 'open_settings' ],
+  actionTarget: null
+}
+
+stdout | docs/research/2026-10-22-ux-audit/transitions.test.ts > a remotely disabled device has an off switch that can enable it in one click
+remote disable {
+  heading: '此设备已关闭',
+  description: '',
+  tone: 'neutral',
+  switchEnabled: true,
+  switchChecked: true,
+  switchVisible: true,
+  actions: [],
+  actionTarget: null
+}
+
+ × docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: network failure 54ms
+   → expected '此设备已关闭' not to match /已关闭|已退出/
+   → expected 'neutral' to be 'busy' // Object.is equality
+   → expected '此设备已关闭' to be '暂时无法连接 Auth' // Object.is equality
+ × docs/research/2026-10-22-ux-audit/transitions.test.ts > an existing disabled device shows connecting while OAuth is open 53ms
+   → expected '已关闭' to match /正在连接/
+ × docs/research/2026-10-22-ux-audit/transitions.test.ts > a remotely disabled device has an off switch that can enable it in one click 1ms
+   → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/actions.test.ts > manual recovery keeps progress and a stop control during a slow request
+ FAIL  docs/research/2026-10-22-ux-audit/actions.test.ts > foreign recovery keeps progress and a stop control during a slow request
+AssertionError: expected 'true' to be 'false' // Object.is equality
+
+Expected: "false"
+Received: "true"
+
+ ❯ docs/research/2026-10-22-ux-audit/actions.test.ts:54:36
+     52|   await vi.advanceTimersByTimeAsync(0);
+     53|   console.log(mode, { during, afterTimeout });
+     54|   expect.soft(during.stopDisabled).toBe("false");
+       |                                    ^
+     55|   expect(afterTimeout).not.toBe("操作暂未确认");
+     56| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/actions.test.ts > manual recovery keeps progress and a stop control during a slow request
+ FAIL  docs/research/2026-10-22-ux-audit/actions.test.ts > foreign recovery keeps progress and a stop control during a slow request
+AssertionError: expected '操作暂未确认' not to be '操作暂未确认' // Object.is equality
+ ❯ docs/research/2026-10-22-ux-audit/actions.test.ts:55:28
+     53|   console.log(mode, { during, afterTimeout });
+     54|   expect.soft(during.stopDisabled).toBe("false");
+     55|   expect(afterTimeout).not.toBe("操作暂未确认");
+       |                            ^
+     56| });
+     57|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/content.test.ts > school login page keeps the specific recovery action for foreign cookie
+AssertionError: expected [ '手动登录', '重试快捷登录', '登录' ] to include '切换到快捷登录'
+ ❯ docs/research/2026-10-22-ux-audit/content.test.ts:79:86
+     77|   if (result.kind !== "recovering") throw new Error("Expected a blocki…
+     78|   expect(result.message).toContain(scenario.notice);
+     79|   expect([...document.querySelectorAll("button")].map(button => button…
+       |                                                                                      ^
+     80| });
+     81|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/content.test.ts > school login page keeps the specific recovery action for rejected credentials
+ FAIL  docs/research/2026-10-22-ux-audit/content.test.ts > school login page keeps the specific recovery action for Auth reconnect
+AssertionError: expected [ '手动登录', '重试快捷登录', '登录' ] to include '前往 Auth'
+ ❯ docs/research/2026-10-22-ux-audit/content.test.ts:79:86
+     77|   if (result.kind !== "recovering") throw new Error("Expected a blocki…
+     78|   expect(result.message).toContain(scenario.notice);
+     79|   expect([...document.querySelectorAll("button")].map(button => button…
+       |                                                                                      ^
+     80| });
+     81|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/reconnect.test.ts > accepts a reconnect from Auth's settings entry /settings/cqu
+AssertionError: promise rejected "Error: FORBIDDEN" instead of resolving
+ ❯ docs/research/2026-10-22-ux-audit/reconnect.test.ts:17:6
+     15|     resumeTicket: "synthetic-resume-ticket", expiresAt: Date.now() + 3…
+     16|     url: `https://auth.cqu.moe${path}?quickloginDevice=device-a&quickl…
+     17|   })).resolves.toMatchObject({ accepted: true });
+       |      ^
+     18|   await vi.waitFor(() => expect(sync.setEnabled).toHaveBeenCalledOnce(…
+     19| });
+
+Caused by: Error: FORBIDDEN
+ ❯ handleExternalMessage src/background/external.ts:7:122
+ ❯ docs/research/2026-10-22-ux-audit/reconnect.test.ts:14:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: success
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: network failure
+AssertionError: expected '此设备已关闭' not to match /已关闭|已退出/
+
+- Expected:
+/已关闭|已退出/
+
++ Received:
+"此设备已关闭"
+
+ ❯ docs/research/2026-10-22-ux-audit/transitions.test.ts:61:35
+     59|   const after = await view();
+     60|   console.log("new login", { outcome, during, after });
+     61|   expect.soft(during.heading).not.toMatch(/已关闭|已退出/);
+       |                                   ^
+     62|   expect.soft(during.tone).toBe("busy");
+     63|   if (outcome === "success") expect(after.heading).toBe("正在准备学校登录");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: success
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: network failure
+AssertionError: expected 'neutral' to be 'busy' // Object.is equality
+
+Expected: "busy"
+Received: "neutral"
+
+ ❯ docs/research/2026-10-22-ux-audit/transitions.test.ts:62:28
+     60|   console.log("new login", { outcome, during, after });
+     61|   expect.soft(during.heading).not.toMatch(/已关闭|已退出/);
+     62|   expect.soft(during.tone).toBe("busy");
+       |                            ^
+     63|   if (outcome === "success") expect(after.heading).toBe("正在准备学校登录");
+     64|   else expect(after.heading).toBe("暂时无法连接 Auth");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > new login stays in progress until enable resolves: network failure
+AssertionError: expected '此设备已关闭' to be '暂时无法连接 Auth' // Object.is equality
+
+Expected: "暂时无法连接 Auth"
+Received: "此设备已关闭"
+
+ ❯ docs/research/2026-10-22-ux-audit/transitions.test.ts:64:30
+     62|   expect.soft(during.tone).toBe("busy");
+     63|   if (outcome === "success") expect(after.heading).toBe("正在准备学校登录");
+     64|   else expect(after.heading).toBe("暂时无法连接 Auth");
+       |                              ^
+     65| });
+     66|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > an existing disabled device shows connecting while OAuth is open
+AssertionError: expected '已关闭' to match /正在连接/
+
+- Expected:
+/正在连接/
+
++ Received:
+"已关闭"
+
+ ❯ docs/research/2026-10-22-ux-audit/transitions.test.ts:77:26
+     75|   await vi.waitFor(async () => expect((await readLocalState()).connect…
+     76|   console.log("reconnect", during);
+     77|   expect(during.heading).toMatch(/正在连接/);
+       |                          ^
+     78| });
+     79|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  docs/research/2026-10-22-ux-audit/transitions.test.ts > a remotely disabled device has an off switch that can enable it in one click
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ docs/research/2026-10-22-ux-audit/transitions.test.ts:87:33
+     85|   expect(current.heading).toBe("此设备已关闭");
+     86|   expect(current.switchEnabled).toBe(true);
+     87|   expect(current.switchChecked).toBe(false);
+       |                                 ^
+     88| });
+     89|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  10 failed | 1 passed (11)
+   Start at  17:40:50
+   Duration  1.06s (environment 49%, transform 37%, tests 9%, import 6%)
+

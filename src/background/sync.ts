@@ -188,8 +188,11 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     if (!remote) return { outcome: "success", noOp: true };
     if (local.pendingCommand) {
       const command = local.pendingCommand;
-      const update = await api.operate("set_enabled",remote,command.id,command.enabled);
-      local = await adopt(update.snapshot,local.localGeneration);
+      // A known policy block needs user action, not a doomed enable request.
+      if (!command.enabled || !["master_off","quota_blocked"].includes(remote.authorization.policy)) {
+        const update = await api.operate("set_enabled",remote,command.id,command.enabled);
+        local = await adopt(update.snapshot,local.localGeneration);
+      }
       local = await updateLocalState((state) => state.pendingCommand?.id === command.id
         ? { ...state,pendingCommand:null,pendingOperation:null } : state);
       remote = local.snapshot!;
@@ -392,7 +395,7 @@ export async function prepareAutomaticMode(): Promise<void> {
 }
 export async function resumeAutomaticMode(): Promise<boolean> {
   await prepareAutomaticMode();
-  await sync("user_retry");
+  void sync("user_retry").catch(recordFailure);
   return true;
 }
 export async function retryAutomaticNow(): Promise<boolean> {
@@ -420,6 +423,6 @@ export async function switchToManagedOnce(): Promise<boolean> {
       localError:null, nextAttemptAt:null, localWriteState:"idle" };
   });
   if (!accepted) return false;
-  await sync("user_retry");
+  void sync("user_retry").catch(recordFailure);
   return true;
 }

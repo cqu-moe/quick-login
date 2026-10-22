@@ -135,7 +135,7 @@ test('QUICKLOGIN-03 disable and actual authorization replacement fence held call
     await until(() => relay(), value => value.heldResponses > 0);
     const pending = await until(() => localState(popup), state => !!state.receipt && state.pendingAck);
     expect(pending.pendingAck).toBe(true);
-    await popup.getByRole('checkbox', { name: '开启 QuickLogin' }).press('Space');
+    await popup.getByRole('checkbox', { name: '此浏览器快捷登录' }).press('Space');
     await until(() => localState(popup), state => !state.enabledIntent && state.localGeneration > pending.localGeneration);
     await protectedValues(['manual-after-disable']);
     await popup.evaluate(() => chrome.cookies.set({ url: 'https://sso.cqu.edu.cn/login', name: 'SOURCEID_TGC', path: '/', secure: true, httpOnly: true, value: 'manual-after-disable' }));

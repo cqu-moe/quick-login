@@ -3,7 +3,7 @@ import { forgetSchoolPage, notifySchoolPages, onSchoolTabUpdated } from "./schoo
 import type { LocalState } from "../shared/contracts";
 import { SYNC_ALARM, SYNC_PERIOD_MINUTES } from "../shared/config";
 import { handleContentMessage, handleMessage, type BackgroundMessage } from "./messages";
-import type { ContentMessage } from "../shared/messages";
+import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
 import { sync } from "./sync";
 import { applyEnvelope, recoverInterruptedWrite } from "./cookie-store";
 import { setEnvelopeWriter } from "./sync";
@@ -12,6 +12,17 @@ import { recoverInterruptedConnection } from "./connection";
 import { applyAvailableUpdate, checkForExtensionUpdate, withUpdateGuard } from "./updates";
 
 setEnvelopeWriter(applyEnvelope);
+
+function contentFallback(error: unknown): LoginRecoveryResult {
+  if (error instanceof Error && error.message === "FORBIDDEN") return { kind: "idle" };
+  if (error instanceof Error && error.message === "QUICKLOGIN_UPDATE_REQUIRED") {
+    return { kind: "manual_required", message: "需要更新插件，请更新后重试。",
+      action: { type: "CHECK_EXTENSION_UPDATE", label: "检查更新" } };
+  }
+  return { kind: "manual_required",
+    message: "暂时无法读取插件状态，可手动登录或重试。",
+    action: { type: "RETRY_AUTOMATIC", label: "重试快捷登录" } };
+}
 
 export async function ensureSyncAlarm(): Promise<void> {
   const existing = await chrome.alarms.get(SYNC_ALARM);
@@ -59,7 +70,8 @@ chrome.runtime.onMessage.addListener((message: BackgroundMessage | ContentMessag
     return true;
   }
   if (sender.tab && senderUrl?.protocol === "https:" && senderUrl.hostname === "sso.cqu.edu.cn") {
-    void withUpdateGuard(() => handleContentMessage(message as ContentMessage,sender).then(sendResponse,()=>sendResponse({kind:"idle"})));
+    void withUpdateGuard(() => handleContentMessage(message as ContentMessage,sender)
+      .then(sendResponse, error => sendResponse(contentFallback(error))));
     return true;
   }
   return false;

@@ -6,6 +6,11 @@ const input=(): PopupInput => ({ snapshot:readySnapshot(),local:{authorization:"
   observation:"fresh",cookieState:"applied",receipt:receipt(),pendingAck:false},lastError:null,lastConfirmedAt:Date.now(),nextAttemptAt:null });
 
 describe("current protocol popup projection",() => {
+  it.each(["unverified","login_form_seen"] as const)("names malformed service responses without presenting a network outage (%s)",schoolAccess=>{
+    const value=input();value.lastError="CONTRACT_INVALID";value.local.observation="unreachable";
+    value.local.schoolAccess=schoolAccess;
+    expect(derivePopupView(value)).toMatchObject({heading:"暂时无法读取服务状态",tone:"attention",actions:["retry"]});
+  });
   it("offers local manual login for a device-only school challenge",()=>{
     const value=input();value.snapshot!.cloud={...value.snapshot!.cloud,state:"blocked",usableUntil:null,reasonCode:"INTERACTION_REQUIRED"};
     expect(derivePopupView(value).actions).toEqual(["manual_login"]);
@@ -17,7 +22,7 @@ describe("current protocol popup projection",() => {
   it("is ready only after the current-version application was acknowledged",() => {
     expect(derivePopupView(input()).heading).toBe("已就绪");
     const pending=input();pending.local.pendingAck=true;
-    expect(derivePopupView(pending).heading).toContain("正在确认");
+    expect(derivePopupView(pending)).toMatchObject({heading:"正在准备学校登录",description:expect.stringContaining("正在确认"),actions:[]});
   });
   it("reports a failed observation instead of repeating an old rebind instruction",() => {
     const value=input();value.local.observation="unreachable";

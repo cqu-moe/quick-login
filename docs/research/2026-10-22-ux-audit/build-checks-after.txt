@@ -1,0 +1,168 @@
+
+===== quicklogin-ux-typecheck.txt =====
+
+> cqu-quicklogin@0.5.1 typecheck
+> tsc --noEmit
+
+
+
+===== quicklogin-ux-e2e-types.txt =====
+
+> cqu-quicklogin@0.5.1 typecheck:e2e
+> tsc --noEmit -p e2e/tsconfig.json
+
+
+
+===== quicklogin-ux-build.txt =====
+
+> cqu-quicklogin@0.5.1 build
+> vite build
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 27 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/build-info.json                  0.20 kB │ gzip:   0.17 kB
+dist/popup.html                       0.48 kB │ gzip:   0.32 kB
+dist/content.js                       6.51 kB
+dist/assets/popup-COk63rwk.css        7.84 kB │ gzip:   2.30 kB
+dist/popup.js                         6.28 kB │ gzip:   2.96 kB
+dist/chunks/view-model-Bn1n4gZP.js   21.82 kB │ gzip:   7.45 kB
+dist/background.js                  403.33 kB │ gzip: 122.33 kB
+
+✓ built in 124ms
+
+
+===== quicklogin-ux-package.txt =====
+
+> cqu-quicklogin@0.5.1 check:package
+> npm run check:contract && node scripts/check-package.mjs
+
+
+> cqu-quicklogin@0.5.1 check:contract
+> node scripts/check-contract.mjs
+
+contract ok: 2ad223ead9bab4b66feaa866e95438e1b4312fad332e2077e9e15bf6785ed4bf
+package ok: 14 files, 3 manifest references
+
+
+===== quicklogin-ux-website-check.txt =====
+
+> cqu-quicklogin@0.5.1 check:website
+> node scripts/check-website.mjs
+
+website ok: 7 pages, navigation and local assets verified
+
+
+===== auth-ux-typecheck.txt =====
+
+> auth@1.0.0 typecheck
+> tsc --noEmit
+
+
+
+===== auth-ux-check-api.txt =====
+
+> auth@1.0.0 check:api
+> tsx scripts/check-api.ts
+
+✨ openapi-typescript 7.13.0
+🚀 /var/folders/n0/3pnzhmpn47gfh6n838phf9m00000gn/T/auth-api-check-JLevDe/docs/api/openapi.json → /var/folders/n0/3pnzhmpn47gfh6n838phf9m00000gn/T/auth-api-check-JLevDe/shared/api-types.generated.ts [348.3ms]
+(node:5428) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+===== auth-ux-boundaries.txt =====
+
+> auth@1.0.0 check:boundaries
+> tsx scripts/check-boundaries.ts
+
+Import boundaries verified
+
+
+===== auth-ux-build.txt =====
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 2262 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  1.40 kB │ gzip:   0.75 kB
+dist/assets/index-ULHFcwiD.css                  94.69 kB │ gzip:  17.42 kB
+dist/assets/admin-ZDpn7_sm.js                    2.24 kB │ gzip:   1.15 kB
+dist/assets/EntitlementFields-BNrJE5I_.js        3.88 kB │ gzip:   1.45 kB
+dist/assets/EntitlementsSection-Cd8D0c5t.js      6.46 kB │ gzip:   2.67 kB
+dist/assets/InvitationsSection-D97UbJwZ.js       6.50 kB │ gzip:   2.49 kB
+dist/assets/UsersSection-CkavAxby.js            15.12 kB │ gzip:   5.25 kB
+dist/assets/OAuthClientsSection-BxKVVI0I.js     17.09 kB │ gzip:   5.40 kB
+dist/assets/CquBindWizard-DZBDCZ5Z.js           27.03 kB │ gzip:   8.95 kB
+dist/assets/TwoFactorSettings-C4ep6tKO.js       34.96 kB │ gzip:  13.60 kB
+dist/assets/index-DFbo4-fz.js                1,255.44 kB │ gzip: 395.85 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 2.36s
+
+
+===== auth-ux-lint.txt =====
+
+> frontend@0.0.0 lint
+> eslint .
+
+
+
+===== auth-ux-design.txt =====
+
+> frontend@0.0.0 check:design
+> node node_modules/@cqu-moe/ui/dist/check-design.mjs src
+
+Design rules passed. Manual layout and copy review still required.
+
+===== quicklogin-ux-website-types.txt =====
+
+> cqu-quicklogin@0.5.1 typecheck:website
+> tsc --noEmit -p website/tsconfig.json
+
+
+===== quicklogin-ux-website-build.txt =====
+
+> cqu-quicklogin@0.5.1 build:website
+> vite build --config website/vite.config.ts
+
+vite v8.3.0 building client environment for production...
+transforming...
+✓ 18 modules transformed.
+rendering chunks...
+computing gzip size...
+website/dist/popup-preview.html                           1.20 kB │ gzip:   0.67 kB
+website/dist/404.html                                     2.36 kB │ gzip:   1.20 kB
+website/dist/faq/index.html                               6.14 kB │ gzip:   2.67 kB
+website/dist/index.html                                   7.03 kB │ gzip:   2.79 kB
+website/dist/privacy/index.html                           7.68 kB │ gzip:   3.57 kB
+website/dist/download/index.html                          8.31 kB │ gzip:   3.15 kB
+website/dist/changelog/rss.xml                            8.62 kB │ gzip:   3.43 kB
+website/dist/changelog/index.html                        10.82 kB │ gzip:   4.60 kB
+website/dist/assets/popup-preview-_yxvEx54.css            7.96 kB │ gzip:   2.33 kB
+website/dist/assets/main-CAF5D6_I.css                    17.30 kB │ gzip:   4.45 kB
+website/dist/assets/popup-preview-3cWKlAQp.js             0.29 kB │ gzip:   0.23 kB
+website/dist/assets/modulepreload-polyfill-P2Xu9kJm.js    0.67 kB │ gzip:   0.38 kB
+website/dist/assets/main-DEgp7x7W.js                    562.10 kB │ gzip: 174.98 kB
+
+✓ built in 149ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+===== auth-ux-do-types.txt =====
+
+> auth@1.0.0 typecheck:do
+> tsc --noEmit -p test/tsconfig.json
+

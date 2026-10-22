@@ -1,7 +1,7 @@
 import { detectLoginForm } from "./login-page";
 import { renderStatusBanner } from "./status-banner";
 import { sendUiMessage } from "../shared/ui-message";
-import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
+import type { ContentAction, ContentMessage, LoginRecoveryResult } from "../shared/messages";
 
 const CHECK_INTERVAL = 5_000;
 const STATE_REFRESH_DEBOUNCE_MS = 150;
@@ -58,13 +58,19 @@ async function send(message: ContentMessage): Promise<void> {
     }
   }
 }
-function act(type: "ENTER_MANUAL" | "RETRY_AUTOMATIC"): void {
+const MANUAL_MODE: LoginRecoveryResult = {
+  kind: "manual_required",
+  message: "已切换为手动登录，可直接在下方输入。",
+  action: { type: "RETRY_AUTOMATIC", label: "恢复快捷登录" },
+};
+
+function act(type: ContentAction): void {
   if (!active || pending) return;
   userEditing = type === "ENTER_MANUAL";
-  stopped = userEditing;
+  stopped = type === "RETRY_AUTOMATIC" ? false : userEditing || stopped;
   navigating = false;
-  recovering = false;
   clearStateRefresh();
+  if (type === "ENTER_MANUAL") present(MANUAL_MODE);
   void send({ type });
 }
 function clearStateRefresh(): void {
@@ -112,6 +118,7 @@ function noticeManualEdit(event: Event): void {
   navigating = false;
   recovering = false;
   clearStateRefresh();
+  present(MANUAL_MODE);
   // Explicit typing supersedes an automatic check, including any late response.
   void send({ type: "ENTER_MANUAL" });
 }

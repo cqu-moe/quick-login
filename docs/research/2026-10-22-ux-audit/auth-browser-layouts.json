@@ -1,0 +1,162 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 768,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 768,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "overflow": false,
+    "rawScope": false,
+    "buttons": [
+      {
+        "name": "此浏览器 · Chrome的更多操作",
+        "height": 44
+      },
+      {
+        "name": "重新连接",
+        "height": 44
+      },
+      {
+        "name": "另一浏览器 · 等待重新连接的更多操作",
+        "height": 44
+      }
+    ]
+  }
+]

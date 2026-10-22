@@ -9,7 +9,7 @@ import {
   sync,
 } from "./sync";
 import { readLocalState } from "./storage";
-import type { ContentMessage, LoginRecoveryResult } from "../shared/messages";
+import type { ContentMessage, ContentAction, LoginRecoveryResult } from "../shared/messages";
 import { config } from "../shared/config";
 import { localCookieState } from "./api-v3";
 import { recordFailure } from "./sync";
@@ -48,6 +48,7 @@ function popupInput(state: LocalState): PopupInput {
       ...(state.deviceId ? {enabledIntent:state.enabledIntent} : {}),mode:state.manualOverride ? "manual" : "automatic",
       cookieState:localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
     recoveryFailed:state.loginRecovery?.failed ?? false,
+    connecting:state.connectIntentId !== null,pendingEnabled:state.pendingCommand?.enabled,
     lastError:state.localError,lastConfirmedAt:state.lastConfirmedAt,nextAttemptAt:state.nextAttemptAt };
 }
 
@@ -66,9 +67,13 @@ async function processContentMessage(
   sender: chrome.runtime.MessageSender
 ): Promise<LoginRecoveryResult> {
   if (!validSsoSender(sender)) throw new Error("FORBIDDEN");
+  if (["OPEN_SETTINGS","LOGIN","SWITCH_TO_MANAGED","OPEN_EXTENSION_SETTINGS","CHECK_EXTENSION_UPDATE"].includes(message.type)) {
+    await handleMessage(message as BackgroundMessage);
+    return processContentMessage({type:"GET_UI_STATE"},sender);
+  }
   if (message.type === "ENTER_MANUAL") {
     await enterManualMode();
-    return { kind: "manual_required", message: "已切换手动登录。" };
+    return { kind: "manual_required", message: "已切换为手动登录，可直接在下方输入。", action:{type:"RETRY_AUTOMATIC",label:"恢复快捷登录"} };
   }
   const page = {tabId:sender.tab.id,documentId:sender.documentId ?? null};
   if (message.type === "RETRY_AUTOMATIC") {
@@ -77,10 +82,13 @@ async function processContentMessage(
   const isObservation = message.type === "LOGIN_FORM_VISIBLE" || message.type === "RETRY_AUTOMATIC";
   if (isObservation) await observeSchoolLogin(page);
   let after = await readLocalState();
-  if (after.loginRecovery?.failed || after.manualOverride) {
+  if (after.manualOverride) {
+    return {kind:"manual_required",message:"已切换为手动登录，可直接在下方输入。",action:{type:"RETRY_AUTOMATIC",label:"恢复快捷登录"}};
+  }
+  if (after.loginRecovery?.failed) {
     return {kind:"manual_required",message:"快捷登录未成功，请在学校页面手动登录，或重试快捷登录。"};
   }
-  if (!after.enabledIntent || !after.deviceId) return {kind:"idle"};
+  if ((!after.enabledIntent || !after.deviceId) && !["authorizing","reconnect_required","revoked"].includes(after.authorization)) return {kind:"idle"};
   if (await navigateRecoveredPage(page,sender.url)) {
     return { kind: "navigating" };
   }
@@ -90,7 +98,13 @@ async function processContentMessage(
   }
   after = await readLocalState();
   const view = derivePopupView(popupInput(after));
-  return {kind:"recovering",message:[view.heading,view.description].filter(Boolean).join("。")};
+  const actionTypes:Record<NonNullable<typeof view.actions[0]>,ContentAction>={
+    login:"LOGIN",open_settings:"OPEN_SETTINGS",resume:"RETRY_AUTOMATIC",switch_managed:"SWITCH_TO_MANAGED",
+    retry:"RETRY_AUTOMATIC",retry_local:"RETRY_AUTOMATIC",update:"CHECK_EXTENSION_UPDATE",fix_permissions:"OPEN_EXTENSION_SETTINGS",manual_login:"ENTER_MANUAL",
+  };
+  const action=view.actions[0];
+  return {kind:view.tone === "busy" ? "recovering" : "manual_required",message:[view.heading,view.description].filter(Boolean).join("。"),
+    action:action ? {type:actionTypes[action],label:action === "manual_login" ? "手动完成学校验证" : view.actionLabel!} : null};
 }
 
 export function handleContentMessage(
@@ -160,7 +174,7 @@ export async function handleMessage(message: BackgroundMessage) {
       return { ok: true };
     case "OPEN_SETTINGS": {
       const state = await readLocalState();
-      const url = new URL("/settings", config.authOrigin);
+      const url = new URL("/settings/cqu", config.authOrigin);
       if (state.deviceId) url.searchParams.set("quickloginDevice", state.deviceId);
       if (state.deviceId && state.authorization === "reconnect_required") url.searchParams.set("quickloginReconnect","1");
       const presentation=derivePresentation(state.snapshot,{authorization:state.authorization,observation:state.observation});

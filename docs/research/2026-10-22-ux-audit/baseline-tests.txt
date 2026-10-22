@@ -1,0 +1,17 @@
+
+> cqu-quicklogin@0.5.1 test
+> vitest run
+
+
+ RUN  v5.0.0 /Users/uu/.codex/worktrees/d97c/quicklogin
+
+
+ Test Files  24 passed (24)
+      Tests  203 passed (203)
+   Start at  17:24:42
+   Duration  3.99s (environment 74%, tests 13%, transform 10%, import 2%)
+
+Environment  jsdom was created 24 times · 36.42s total, 74% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
