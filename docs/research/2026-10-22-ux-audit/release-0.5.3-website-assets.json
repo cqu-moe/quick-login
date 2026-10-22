@@ -1,0 +1,17 @@
+[
+  {
+    "path": "/assets/modulepreload-polyfill-P2Xu9kJm.js",
+    "matchesCI": true,
+    "sha256": "418c206484b89b68ef5f067277831e583fc9193a62aadf4de269acaaeb12a85f"
+  },
+  {
+    "path": "/assets/main-VGacn2Ln.js",
+    "matchesCI": true,
+    "sha256": "c73e4e875937330d43adc64955fc17cd48c662676dfb7fbe3729fef257a08777"
+  },
+  {
+    "path": "/assets/main-CAF5D6_I.css",
+    "matchesCI": true,
+    "sha256": "573c336c1c1eda5971e1634c83468c8fd3ec38791771b710a146c12b43b7cca8"
+  }
+]

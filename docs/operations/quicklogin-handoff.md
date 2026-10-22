@@ -1,4 +1,14 @@
-# 2026-10-22 0.5.3 UX 配套发布候选
+# 2026-10-22 0.5.3 已发布 Canary，生产浏览器已复验
+
+- 两仓库 PR 已在检查通过后合并。QuickLogin `11cf5d82cab903e24c2e2851def16f16d785989f`；Auth `a0ec4651290ef4af74bd419bf7c5e2592ca4559f`，生产 Worker `924cdf57-0edf-43a4-92b8-c769edf25a77`（100%）。官网 Worker `a9b8e1be-9bbb-4668-8118-4fd482d60ccf`（100%）。
+- 正式 `cqu-quicklogin-0.5.3-canary.zip` 为 154716 bytes，SHA-256 `ff79907a2de619ad8c744f569855923e65e6a1884b6a9a857b646ef4fc9eeb2b`。下载、匿名拒绝、完整性、CI 字节比对及正式包 390×468 原生弹窗通过。旧本地候选未覆盖。
+- 正式 Canary 已由用户加载。新登录状态、开关、Cookie 保护、与商店版共存时的原设备重连、实际 applied receipt/ACK 和学校个人中心跳转通过；截图中开关说明已删除。
+- 两仓库合并后完整 CI 均已通过；Auth 注册/会话组首次超时，原样重跑后两轮、失败控制、产物检查和汇总通过。自动商店 CD 等待 0.5.2 审核，0.5.3 尚未上传/送审/上架。
+- 当前浏览器加载目录为 `releases/published/0.5.3/extension`，不要移动此目录或归档本工作树，除非用户已迁移安装。原商店版保留，未手动撤审。详见 [上线验收](../research/2026-10-22-ux-audit/RELEASE-VERIFICATION.md)。
+
+---
+
+# 2026-10-22 0.5.3 UX 配套发布候选（历史）
 
 - 本次修复首次登录状态、有效开关、异步恢复、学校页面动作、异常提示，以及 Auth 渠道重连和授权指引。完整修复前后证据见 [UX 验收](../research/2026-10-22-ux-audit/FIX-VERIFICATION.md)。
 - 已移植到 QuickLogin `1e60dfb` 与 Auth `12d5abe` 主分支；保留 0.5.2 的原生弹窗尺寸修复及 Auth friends scope。Auth 固定测试提交为 `41147c934c577f6a10f5bf3d9cb71597c362a07f`。

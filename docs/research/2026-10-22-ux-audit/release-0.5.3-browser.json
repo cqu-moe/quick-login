@@ -1,0 +1,119 @@
+{
+  "version": "0.5.3",
+  "captionVisible": false,
+  "heading": "已就绪",
+  "checked": true,
+  "pendingAck": false,
+  "receiptApplied": true,
+  "serverReceiptApplied": true,
+  "acknowledged": true,
+  "sameReceipt": true,
+  "writeState": "ready",
+  "states": [
+    {
+      "title": "未连接 Auth",
+      "status": "当前状态\n\n未连接 Auth\n\n连接 Auth 后，即可在此浏览器使用学校快捷登录。",
+      "elapsedMs": 0
+    },
+    {
+      "title": "正在连接 Auth",
+      "status": "当前状态\n\n正在连接 Auth\n\n正在处理，请稍候。",
+      "elapsedMs": 45
+    },
+    {
+      "title": "正在准备学校登录",
+      "status": "当前状态\n\n正在准备学校登录\n\nAuth 已连接，正在开启此设备。",
+      "elapsedMs": 5469
+    },
+    {
+      "title": "正在保留已有学校登录",
+      "status": "当前状态\n\n正在保留已有学校登录\n\n此浏览器已有非插件写入的学校登录；仅在你选择切换后替换。",
+      "elapsedMs": 80110
+    },
+    {
+      "title": "正在关闭",
+      "status": "当前状态\n\n正在关闭\n\n正在处理，请稍候。",
+      "elapsedMs": 231418
+    },
+    {
+      "title": "此浏览器已关闭快捷登录",
+      "status": "当前状态\n\n此浏览器已关闭快捷登录\n\n已停止此浏览器的快捷登录，正在保存设置。",
+      "elapsedMs": 231429
+    },
+    {
+      "title": "正在准备学校登录",
+      "status": "当前状态\n\n正在准备学校登录\n\n正在处理，请稍候。",
+      "elapsedMs": 266929
+    },
+    {
+      "title": "正在保留已有学校登录",
+      "status": "当前状态\n\n正在保留已有学校登录\n\n此浏览器已有非插件写入的学校登录；仅在你选择切换后替换。",
+      "elapsedMs": 306011
+    },
+    {
+      "title": "需要重新连接 Auth",
+      "status": "当前状态\n\n需要重新连接 Auth\n\n请在 Auth 中重新授权此设备，完成后会自动继续。",
+      "elapsedMs": 306175
+    },
+    {
+      "title": "正在打开 Auth",
+      "status": "当前状态\n\n正在打开 Auth\n\n正在处理，请稍候。",
+      "elapsedMs": 332236
+    },
+    {
+      "title": "需要重新连接 Auth",
+      "status": "当前状态\n\n需要重新连接 Auth\n\n请在 Auth 中重新授权此设备，完成后会自动继续。",
+      "elapsedMs": 332289
+    },
+    {
+      "title": "正在连接 Auth",
+      "status": "当前状态\n\n正在连接 Auth\n\n请在打开的 Auth 页面完成授权，完成后会自动继续。",
+      "elapsedMs": 430617
+    },
+    {
+      "title": "正在准备学校登录",
+      "status": "当前状态\n\n正在准备学校登录\n\n正在将学校登录状态同步到此浏览器。",
+      "elapsedMs": 434370
+    },
+    {
+      "title": "正在保留已有学校登录",
+      "status": "当前状态\n\n正在保留已有学校登录\n\n此浏览器已有非插件写入的学校登录；仅在你选择切换后替换。",
+      "elapsedMs": 439998
+    },
+    {
+      "title": "正在准备学校登录",
+      "status": "当前状态\n\n正在准备学校登录\n\n正在处理，请稍候。",
+      "elapsedMs": 1060518
+    },
+    {
+      "title": "已就绪",
+      "status": "当前状态\n\n已就绪\n\n学校登录已同步到此浏览器，可以前往学校网站。",
+      "elapsedMs": 1067097
+    },
+    {
+      "title": "正在保留已有学校登录",
+      "status": "当前状态\n\n正在保留已有学校登录\n\n此浏览器已有非插件写入的学校登录；仅在你选择切换后替换。",
+      "elapsedMs": 1092891
+    },
+    {
+      "title": "正在准备学校登录",
+      "status": "当前状态\n\n正在准备学校登录\n\n正在处理，请稍候。",
+      "elapsedMs": 1199751
+    },
+    {
+      "title": "正在保留已有学校登录",
+      "status": "当前状态\n\n正在保留已有学校登录\n\n此浏览器已有非插件写入的学校登录；仅在你选择切换后替换。",
+      "elapsedMs": 1199756
+    },
+    {
+      "title": "正在准备学校登录",
+      "status": "当前状态\n\n正在准备学校登录\n\n浏览器同步已完成，正在确认结果，请稍候。",
+      "elapsedMs": 1202927
+    },
+    {
+      "title": "已就绪",
+      "status": "当前状态\n\n已就绪\n\n学校登录已同步到此浏览器，可以前往学校网站。",
+      "elapsedMs": 1204536
+    }
+  ]
+}

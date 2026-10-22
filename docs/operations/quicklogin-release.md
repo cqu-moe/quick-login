@@ -1,4 +1,16 @@
-# 2026-10-22 0.5.3 UX 配套发布候选
+# 2026-10-22 0.5.3 已发布 Canary，Auth 与生产 UX 已验证
+
+[QuickLogin PR #37](https://github.com/cqu-moe/quick-login/pull/37) 和 [Auth PR #96](https://github.com/cqu-moe/auth/pull/96) 均在 PR CI 全绿后合并。扩展源码 `11cf5d82cab903e24c2e2851def16f16d785989f`，Auth 源码 `a0ec4651290ef4af74bd419bf7c5e2592ca4559f`。正式包 `cqu-quicklogin-0.5.3-canary.zip`，154716 bytes，SHA-256 `ff79907a2de619ad8c744f569855923e65e6a1884b6a9a857b646ef4fc9eeb2b`。认证下载 200、匿名 401、实际官网点击下载、CRC/14 文件/manifest/build-info 和 CI 字节比对通过；正式包原生浅深主题弹窗均为 390×468。
+
+Auth Worker `924cdf57-0edf-43a4-92b8-c769edf25a77` 与官网 Worker `a9b8e1be-9bbb-4668-8118-4fd482d60ccf` 均承接 100% 流量。Auth 部署变量、公开 capabilities、官网实际加载资源与各自合并提交/CI 一致。用户标出的开关说明已删除，保留无障碍名称。
+
+用户加载正式 Canary 后，生产首次连接未再误报关闭；鼠标/键盘开关、已有 Cookie 保护、原设备重连、显式切换后的同一 applied receipt/ACK 以及真实学校个人中心跳转均已验证。仅使用本次新建 Canary 做凭据丢失验证，已恢复授权；没有修改其他设备、账号总开关或学校绑定。学校 Cookie 后续发生变化时仍按所有权规则保守显示已有登录。
+
+QuickLogin 合并后的常规 CI 和四组两轮 E2E 全通过；Auth 合并后的完整 CI 和汇总也已通过。注册/会话组首次因浏览器依赖安装耗时在 job 上限被取消，原样受控重跑完成两轮、失败控制和产物检查。商店 CD 为 `WAITING_REVIEW`，0.5.2 仍待审，0.5.3 尚未上传或发布。完整来源、失败保留、生产与受控验证范围见 [0.5.3 上线验收](../research/2026-10-22-ux-audit/RELEASE-VERIFICATION.md)。
+
+---
+
+# 2026-10-22 0.5.3 UX 配套发布候选（历史）
 
 - 本次修复首次登录状态、有效开关、异步恢复、学校页面动作、异常提示，以及 Auth 渠道重连和授权指引。完整修复前后证据见 [UX 验收](../research/2026-10-22-ux-audit/FIX-VERIFICATION.md)。
 - 已移植到 QuickLogin `1e60dfb` 与 Auth `12d5abe` 主分支；保留 0.5.2 的原生弹窗尺寸修复及 Auth friends scope。Auth 固定测试提交为 `41147c934c577f6a10f5bf3d9cb71597c362a07f`。
