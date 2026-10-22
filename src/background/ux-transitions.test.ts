@@ -24,8 +24,14 @@ function disabledSnapshot(): DeviceSnapshot {
   return remote;
 }
 
-it.each(["success", "network failure"])("new login stays in progress until enable resolves: %s", async outcome => {
+it.each(["success", "network failure", "master_off", "quota_blocked"])("new login respects the enable outcome: %s", async outcome => {
   const remote = disabledSnapshot();
+  const blocked = outcome === "master_off" || outcome === "quota_blocked";
+  if (blocked) {
+    remote.authorization.policy = outcome;
+    remote.authorization.masterEnabled = outcome !== "master_off";
+    remote.capabilities.canEnable = false;
+  }
   const preparing = snapshot();
   preparing.cloud = { ...preparing.cloud, state: "logging_in", usableUntil: null };
   preparing.capabilities = { ...preparing.capabilities, canEnsure: false, canExport: false };
@@ -41,6 +47,7 @@ it.each(["success", "network failure"])("new login stays in progress until enabl
     if (url.endsWith("/reconcile")) return Response.json(response({ centralUserId: "synthetic-user", snapshot: remote, receiptAck: null }));
     if (url.endsWith("/operations")) {
       enabling = true;
+      if (blocked) return new Response("", { status: 503 });
       await gate;
       if (outcome === "network failure") throw new TypeError("offline");
       return Response.json(response({ snapshot: preparing, operation: {
@@ -52,6 +59,14 @@ it.each(["success", "network failure"])("new login stays in progress until enabl
     throw new Error(`Unexpected synthetic request: ${url}`);
   }));
   await handleMessage({ type: "LOGIN" });
+  if (blocked) {
+    await vi.waitFor(async () => expect((await readLocalState()).authorization).toBe("authorized"));
+    await sync("popup");
+    expect(enabling).toBe(false);
+    expect((await view()).heading).toBe(outcome === "master_off" ? "账号已暂停快捷登录" : "设备名额已满");
+    expect((await readLocalState()).pendingCommand).toBeNull();
+    return;
+  }
   await vi.waitFor(() => expect(enabling).toBe(true));
   const during = await view();
   release();
