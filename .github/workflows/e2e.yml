@@ -62,6 +62,17 @@ jobs:
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
           VITE_POSTHOG_HOST: ""
+      - name: Verify native toolbar popup layout
+        if: matrix.suite == 'core' && matrix.viewport == 'desktop'
+        run: npm run test:popup
+      - name: Keep native popup layout evidence
+        if: always() && matrix.suite == 'core' && matrix.viewport == 'desktop'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quicklogin-popup-layout-${{ github.sha }}
+          path: .e2e/launcher-smoke-*/report.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Require denied CONNECT reset survival and tunnel cleanup
         if: matrix.suite == 'core'
         run: node e2e/network-reset-check.mjs .e2e/network-reset-control

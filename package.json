@@ -1,6 +1,6 @@
 {
   "name": "cqu-quicklogin",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "deploy:website": "wrangler deploy",
     "typecheck:e2e": "tsc --noEmit -p e2e/tsconfig.json",
     "test:e2e": "npm run typecheck:e2e && node e2e/run.mjs",
+    "test:popup": "node e2e/launcher-smoke.mjs",
     "test:e2e:self-check": "node e2e/self-check.mjs",
     "test:e2e:zero": "node e2e/zero-check.mjs",
     "test:e2e:lifecycle": "node e2e/lifecycle-check.mjs",
