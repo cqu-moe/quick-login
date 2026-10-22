@@ -1,7 +1,7 @@
 import { test } from '@e2e-dev/web';
 import { expect } from 'e2e';
 import { captureArtifacts, networkEvents, recordEvent, serverState } from './helpers.ts';
-import { localState, relay, until } from './school-helpers.ts';
+import { localState, popupEnabled, relay, until } from './school-helpers.ts';
 import { connectDevice, control, expireLocalAccess, nativeAlarmRestart, quiet, reconnect } from './device-helpers.ts';
 import { stopExtensionWorker } from './worker-debugger.ts';
 import { chromium } from 'playwright-core';
@@ -57,6 +57,14 @@ test('QUICKLOGIN-03 late real refresh persists across disable but cannot overwri
     });
   }
   try {
+    // A quota grants capacity; the account and device still need explicit enablement.
+    const master = await settings.evaluate(async () => {
+      const response = await fetch('/api/v1/cqu/quicklogin', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: true }) });
+      return { status: response.status, enabled: (await response.json()).data?.masterEnabled };
+    });
+    expect(master).toEqual({ status: 200, enabled: true });
+    await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
+    await popupEnabled(popup, true);
     const first = await localState(popup), firstToken = await fingerprint();
     await relay({ path: 'token', hold: true, once: true });
     await expireLocalAccess(popup);

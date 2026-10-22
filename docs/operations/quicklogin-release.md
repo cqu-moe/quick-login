@@ -4,6 +4,7 @@
 - 已移植到 QuickLogin `1e60dfb` 与 Auth `12d5abe` 主分支；保留 0.5.2 的原生弹窗尺寸修复及 Auth friends scope。Auth 固定测试提交为 `41147c934c577f6a10f5bf3d9cb71597c362a07f`。
 - 目标包 `cqu-quicklogin-0.5.3-canary.zip`；发布源码、正式 SHA-256、Auth Worker 版本和线上浏览器证据在合并发布后记录。本地历史候选及 0.5.1 审计构建不代表本次正式包。
 - 用户已授权两仓库 PR、CI 通过后合并、Auth 配套部署、官网 Canary 发布和上线 UX 验收。沿用现有自动商店 CD，不手动撤审或修改商品详情；Canary、商店送审与上架分别记录。
+- PR 首轮设备组暴露旧测试前提缺失：分配名额不会开启账号或设备。迟到 token 刷新用例现通过真实账号 API 和扩展开关显式启用后再执行关闭；保留刷新代际隔离断言。失败运行 [39774406726](https://github.com/cqu-moe/quick-login/actions/runs/39774406726) 及其产物保留，当前提交完整 CI 另验。
 
 ---
 
