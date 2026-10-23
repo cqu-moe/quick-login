@@ -1,8 +1,5 @@
 import "./style.css";
 import { mountCopyButtons, mountDownloads } from "./download";
-import { initializeWebsiteTelemetry } from "./telemetry";
-
-initializeWebsiteTelemetry();
 
 let cleanupDownloads = () => {};
 let cleanupCopyButtons = () => {};
@@ -38,3 +35,9 @@ for (const link of document.querySelectorAll<HTMLAnchorElement>("nav a")) {
   if (new URL(link.href).pathname === location.pathname)
     link.setAttribute("aria-current", "page");
 }
+
+void import("./telemetry")
+  .then(({ initializeWebsiteTelemetry }) => initializeWebsiteTelemetry())
+  .catch(() => {
+    // Optional telemetry must not block download or copy controls.
+  });
