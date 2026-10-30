@@ -53,6 +53,8 @@ tester-army 负责 BrowserProvider 生命周期、popup 的确定性点击和可
 
 每轮输出 runner report / log、步骤日志、输入遮罩截图及 `runtime.json`。runtime 记录构建提交、Auth 提交、网络结果和清理结论；只观察 OAuth 跳转元数据，不保存响应正文、code、token 或 Cookie。TLS proxy 请求 identity 编码，避免把 gzip 字节误当 JSON。输出包含本地运行数据，不直接整体上传。
 
+`node e2e/artifact-mail-check.mjs` 使用固定 Auth 的真实邮件验证路径，检查六位验证码与普通报告 ID 相同不会误报；密码、显式登记的 Cookie / 令牌及六位敏感值仍精确扫描。自动邮件验证码只在隔离投递与验证中流转，不作为全局字节指纹；学校 transport 错误仍对验证码脱敏，长绑定令牌继续登记扫描。脚本结束时删除自己的测试产物，CI 在 core/desktop 执行。
+
 `prepare-ci-artifacts.mjs` 在 CI 失败后仍执行，保留已存在的报告与失败截图，剔除 DB、DO / Worker bundle、TLS 和 profile，并清理文本 URL query / 凭据。缺少通过的两轮或失败控制时，生成可检查的 sanitization 报告后非零退出。已有产物目录不覆盖。
 
 Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生命周期 / 撤销（QUICKLOGIN-03）或真实学校验收（QUICKLOGIN-04）。本地 CI 模式与远端 GitHub Actions 分别记录；固定 Auth 提交可远端获取之前，不能声称远端 CI 已通过。
@@ -64,7 +66,7 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 | 场景（学校用例按此契约归属） | 可信回归及真实断言 |
 | --- | --- |
-| `school.e2e.ts` 绑定→Cookie→业务→ACK | 学校表单改写辅助 Cookie 后旧 receipt 被误认为新会话；实际域、hostOnly、path、session、SameSite、有效期及过滤结果；真实新登录和导出后，延迟真实 ACK 响应期间不得导航，随后学校业务标题与独立 Auth overview 的 receipt 一致 |
+| `school.e2e.ts` 绑定→Cookie→业务→ACK | 学校仅续期辅助 Cookie 后下一轮同步仍沿用 receipt，关闭插件保留续期 Cookie；实际域、hostOnly、path、session、SameSite、有效期及过滤结果；真实新登录和导出后，延迟真实 ACK 响应期间不得导航，随后学校业务标题与独立 Auth overview 的 receipt 一致 |
 | foreign cookies | 原生 Cookie API 中 host/domain/path 三种同名外来 TGC；同步冲突及关闭后都保留外来值，不能取得本地成功回执 |
 | manual typing | 真实表单输入切换手动模式；迟到的真实容器登录不能导航或恢复 receipt，页面有手动/重试入口 |
 | sync off / late export | 持有已由真实 Auth 生成的 export 响应；真实 popup 关闭意图先提交，释放后不写 Cookie、不发成功回执，服务端设备关闭 |
