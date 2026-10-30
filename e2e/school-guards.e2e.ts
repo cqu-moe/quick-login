@@ -93,8 +93,25 @@ test('QUICKLOGIN-02 two waiting school documents each navigate once after a new 
         expect(firstLoads).toBe(1); expect(secondLoads).toBe(0);
         // Exercise a real school Set-Cookie renewal and ordinary polling before
         // the original background document is allowed to consume the same ACK.
+        const beforeCheck = await localState(popup);
         await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
-        await until(() => localState(popup), state => state.receipt?.result === 'foreign' && state.receipt.verifiedAt === null);
+        await until(() => localState(popup), state =>
+          (state.lastConfirmedAt ?? 0) > (beforeCheck.lastConfirmedAt ?? 0));
+        // A CHECK_STATE can join an older in-flight sync. Hold the next real
+        // reconcile so its cookie verification must follow the school renewal.
+        await relay({ path: 'reconcile', hold: true, once: true });
+        await until(async () => {
+          await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
+          return relay();
+        }, state => state.heldResponses === 1);
+        const checked = await localState(popup);
+        expect(checked.localWriteState).toBe('ready');
+        expect(checked.receipt?.result).toBe('applied');
+        expect((checked.receipt?.verifiedAt ?? 0) > 0).toBe(true);
+        expect(checked.receipt?.exportId).toBe(beforeCheck.receipt!.exportId);
+        expect(checked.pendingAck).toBe(false);
+        expect(checked.managed).toEqual(beforeCheck.managed);
+        await relay({ hold: false });
         await secondDebugger.send('Debugger.resume');
       }
     }
@@ -102,6 +119,7 @@ test('QUICKLOGIN-02 two waiting school documents each navigate once after a new 
     expect(firstLoads).toBe(1); expect(secondLoads).toBe(1);
     expect((await localState(popup)).pendingAck).toBe(false);
   } finally {
+    await relay({ hold: false });
     await secondDebugger.send('Debugger.disable');
     await secondDebugger.detach();
     await controlSchool({ holdLogin: false });
