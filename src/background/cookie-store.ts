@@ -181,18 +181,21 @@ async function localTgcCandidates(): Promise<chrome.cookies.Cookie[]> {
     ])).values()];
 }
 
-export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
-  const state = await readLocalState();
+async function inspectTgc(managed: ManagedCookie[]): Promise<"missing" | "managed" | "foreign"> {
   const cookies = await localTgcCandidates();
   if (cookies.length === 0) return "missing";
   for (const cookie of cookies) {
-    const managed = state.managed.find((entry) =>
+    const owned = managed.find((entry) =>
       entry.name === cookie.name && entry.domain === cookie.domain &&
       entry.path === cookie.path && entry.storeId === cookie.storeId
     );
-    if (managed && managed.digest === await digestCookie(cookie)) return "managed";
+    if (!owned || owned.digest !== await digestCookie(cookie)) return "foreign";
   }
-  return "foreign";
+  return "managed";
+}
+
+export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreign"> {
+  return inspectTgc((await readLocalState()).managed);
 }
 
 async function applyEnvelopeUnlocked(
@@ -329,43 +332,37 @@ async function applyEnvelopeUnlocked(
   }
 }
 
-export async function inspectManagedCookies(): Promise<"verified" | "missing" | "changed"> {
-  const state = await readLocalState();
-  if (!state.managed.some((cookie) => cookie.name === "SOURCEID_TGC")) return "missing";
-  let missing = false;
-  for (const entry of state.managed) {
+// Read-only continuity permits an auxiliary expiry extension without changing
+// the exact digests used to authorize deletion, replacement cleanup or rollback.
+async function inspectCookieContinuity(managed: ManagedCookie[]): Promise<"verified" | "missing" | "changed"> {
+  if (!managed.some(entry => entry.name === "SOURCEID_TGC")) return "missing";
+  const tgcState = await inspectTgc(managed);
+  if (tgcState === "foreign") return "changed";
+  let missing = tgcState === "missing";
+  for (const entry of managed) {
     const current = await getExact(entry);
-    if (!current) missing = true;
-    else if (await digestCookie(current) !== entry.digest) return "changed";
+    if (!current) { missing = true; continue; }
+    if (await digestCookie(current) === entry.digest) continue;
+    const baseline = entry.renewal;
+    if (entry.name === "SOURCEID_TGC" || !baseline || current.session ||
+        !Number.isFinite(baseline.expirationDate) || !Number.isFinite(current.expirationDate) ||
+        current.expirationDate! <= Date.now()/1000 || current.expirationDate! < baseline.expirationDate ||
+        await digestCookie({...current,expirationDate:undefined}) !== baseline.digest) return "changed";
   }
   return missing ? "missing" : "verified";
+}
+
+export async function inspectManagedCookies(): Promise<"verified" | "missing" | "changed"> {
+  return inspectCookieContinuity((await readLocalState()).managed);
 }
 
 export async function verifyManagedCookies(): Promise<boolean> {
   return await inspectManagedCookies() === "verified";
 }
 
-// A school response may extend an auxiliary Cookie while another document is
-// still waiting on the same acknowledged write. This does not reclaim ownership.
+// Routine sync and a waiting school document must agree about the same cookies.
 export async function verifyRecoveryCookies(managed: ManagedCookie[]): Promise<boolean> {
-  const candidates = await localTgcCandidates();
-  if (!candidates.length) return false;
-  for (const cookie of candidates) {
-    const owned = managed.find(entry => entry.name === cookie.name && entry.domain === cookie.domain &&
-      entry.path === cookie.path && entry.storeId === cookie.storeId);
-    if (!owned || await digestCookie(cookie) !== owned.digest) return false;
-  }
-  for (const entry of managed) {
-    const current = await getExact(entry);
-    if (!current) return false;
-    if (await digestCookie(current) === entry.digest) continue;
-    const baseline = entry.renewal;
-    if (entry.name === "SOURCEID_TGC" || !baseline || current.session ||
-        !Number.isFinite(baseline.expirationDate) || !Number.isFinite(current.expirationDate) ||
-        current.expirationDate! <= Date.now()/1000 || current.expirationDate! < baseline.expirationDate ||
-        await digestCookie({...current,expirationDate:undefined}) !== baseline.digest) return false;
-  }
-  return managed.some(entry => entry.name === "SOURCEID_TGC");
+  return await inspectCookieContinuity(managed) === "verified";
 }
 
 async function clearOwnedCookiesUnlocked(): Promise<void> {
