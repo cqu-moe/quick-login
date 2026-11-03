@@ -3,7 +3,7 @@ import { expect } from 'e2e';
 import { sameTuple } from '../src/shared/protocol-v3.generated.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { captureArtifacts, networkEvents } from './helpers.ts';
-import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until } from './school-helpers.ts';
+import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until, popupEnabled } from './school-helpers.ts';
 
 test('QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt', { timeout: 240_000, tags: ['school-cookie-ack'] }, async ({ app }) => {
   const { popup, context, settings, identity, cookies } = await connectSchool(app, 'school-success');
@@ -59,8 +59,8 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   expect(loads).toBe(2);
   await captureArtifacts('school-business-and-ack', [page, popup]);
   // The school response renews auxiliary cookies. Their ownership digests must
-  // remain unchanged: normal reconciliation conservatively reports a foreign
-  // local session, rather than silently claiming deletion/overwrite authority.
+  // remain unchanged: normal reconciliation preserves the acknowledged session
+  // without claiming deletion/overwrite authority over the renewed cookies.
   const schoolCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
   for (const name of ['path_cookie', 'domain_cookie']) {
     const before = beforeNavigationCookies.find(cookie => cookie.name === name)!;
@@ -76,7 +76,7 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   await until(() => localState(popup), state => (state.lastConfirmedAt ?? 0) > lastCheck);
   // CHECK_STATE acknowledges immediately. The next real reconciliation can
   // start only after the previous sync finishes; hold its response so final
-  // readbacks cannot race a continuation. Runtime teardown releases the gate.
+  // readbacks cannot race a continuation. Release the gate before testing disable.
   await relay({ path: 'reconcile', hold: true, once: true });
   await until(async () => {
     await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
@@ -88,15 +88,24 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
       .toBe(operationsBefore.filter(event => event.path.endsWith(operation)).length);
   }
   const checked = await localState(popup);
-  expect(checked.localWriteState).toBe('idle');
-  expect(checked.receipt?.result).toBe('foreign');
+  expect(checked.localWriteState).toBe('ready');
+  expect(checked.receipt?.result).toBe('applied');
+  expect((checked.receipt?.verifiedAt ?? 0) > 0).toBe(true);
   expect(checked.receipt?.exportId).toBe(current.receipt!.exportId);
   expect(checked.pendingAck).toBe(false);
   expect(isDeepStrictEqual(checked.managed, current.managed)).toBe(true);
   const checkedCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
   expect(checkedCookies.length === schoolCookies.length && schoolCookies.every(cookie =>
     checkedCookies.some(checkedCookie => isDeepStrictEqual(cookie, checkedCookie)))).toBe(true);
-  await popup.getByRole('heading', { name: '正在保留已有学校登录', exact: true }).waitFor();
+  await popup.getByRole('heading', { name: '已就绪', exact: true }).waitFor();
   expect(loads).toBe(2);
   await captureArtifacts('school-renewed-cookie-ownership', [page, popup]);
+  await relay({ hold: false });
+  await popupEnabled(popup, false);
+  const remainingCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
+  for (const name of ['path_cookie', 'domain_cookie']) {
+    expect(isDeepStrictEqual(remainingCookies.find(cookie => cookie.name === name),
+      schoolCookies.find(cookie => cookie.name === name))).toBe(true);
+  }
+  expect(remainingCookies.some(cookie => cookie.name === 'SOURCEID_TGC')).toBe(false);
 });

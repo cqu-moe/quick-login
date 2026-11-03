@@ -316,7 +316,9 @@ export async function startPinnedAuth({ authPath, outputDir, expectedCommit }) {
       identityCount: () => identities.size,
       setNetworkReader: reader => { readObservations = reader; },
       async checkArtifacts(directory, sensitiveValues) {
-        const secrets = [...observedSecrets, ...sensitiveValues, ...(school?.sensitive ?? []), ...identities.values().map(identity => identity.password), ...mails.values()];
+        // Automatic six-digit mail codes collide with unrelated IDs and timestamps.
+        // Explicit registrations remain exact fingerprints, regardless of length.
+        const secrets = [...observedSecrets, ...sensitiveValues, ...(school?.sensitive ?? []), ...identities.values().map(identity => identity.password)];
         async function inspect(current) {
           for (const entry of await readdir(current, { withFileTypes: true })) {
             const path = join(current, entry.name);

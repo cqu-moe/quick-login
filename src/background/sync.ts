@@ -156,9 +156,15 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
       locallyOwnedTgc = tgcState === "managed";
       local = await updateLocalState((state) => {
         if (state.localGeneration !== fence) return state;
-        return currentCookiesVerified && state.receipt
-          ? { ...state,receipt:{ ...state.receipt,verifiedAt:Date.now() } }
-          : { ...state,receipt:locallyChangedCookies && locallyOwnedTgc && state.receipt
+        if (currentCookiesVerified && state.receipt) {
+          // 0.5.3 persisted harmless auxiliary renewal as foreign and discarded
+          // its ACK status. Recover the proven write, then acknowledge it again.
+          const restored = state.receipt.result === "foreign";
+          return { ...state,receipt:{ ...state.receipt,
+            result:restored ? "applied" : state.receipt.result,verifiedAt:Date.now() },
+            ...(restored ? { pendingAck:true,appliedVersion:state.receipt.sessionVersion,localWriteState:"ready" as const } : {}) };
+        }
+        return { ...state,receipt:locallyChangedCookies && locallyOwnedTgc && state.receipt
               ? { ...state.receipt,result:"foreign",verifiedAt:null } : null,
             pendingAck:false,appliedVersion:null,localWriteState:"idle",
             loginRecovery: state.loginRecovery && sameTuple(state.loginRecovery.rejectedTuple, state.receipt)

@@ -196,7 +196,7 @@ it.each(["renewed", "shortened", "value", "security", "missing", "foreign-tgc", 
     expect(api.exportSession).toHaveBeenCalledTimes(exports);
     expect(api.acknowledge).toHaveBeenCalledTimes(acknowledgments);
     if (change === "renewed") {
-      expect((await readLocalState()).receipt).toMatchObject({result:"foreign",verifiedAt:null});
+      expect((await readLocalState()).receipt).toMatchObject({result:"applied",verifiedAt:expect.any(Number)});
       await clearOwnedCookies();
       expect(fake.getCookie("auxiliary")?.expirationDate).toBe(originalExpiry+60);
     }

@@ -17,7 +17,7 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
   const dockerfile = readFileSync(join(authRoot, 'e2e/school/Dockerfile'), 'utf8') + '\nCOPY --from=school-fixture chrome.sh /fixture/chrome.sh\n';
   docker(['build', '--platform', 'linux/amd64', '--build-context', `school-fixture=${fixtureDirectory}`, '--build-arg', `BASE=${base}`, '--build-arg', `RUN_ID=${randomUUID()}`, '-t', image, '-f', '-', '.'], dockerfile);
   let mf, timer, pumping = false;
-  const users = new Map(), errors = [], sensitive = new Set();
+  const users = new Map(), errors = [], sensitive = new Set(), mailCodes = new Set();
   const outcomes = { fixtureImage: image, deliveries: 0, acceptedDeliveries: 0, containerObjectsRemoved: false, proxyObjectsRemoved: false, imageRemoved: false };
   async function control(userId, path, body) {
     if (!users.has(userId)) users.set(userId, userId.startsWith("quicklogin:") ? userId.split(":")[1] : userId);
@@ -29,7 +29,7 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
     });
     if (!response.ok) {
       let detail = (await response.text()).split('\n')[0].slice(0, 1000);
-      for (const value of sensitive) if (value) detail = detail.replaceAll(value, '[redacted]');
+      for (const value of [...sensitive, ...mailCodes]) if (value) detail = detail.replaceAll(value, '[redacted]');
       detail = detail.replace(/https?:\/\/\S+/g, '[endpoint]').replace(/[A-Za-z0-9_-]{20,}/g, '[opaque-redacted]');
       throw new Error(`School fixture transport failed (${response.status}, ${path}): ${detail}`);
     }
@@ -74,7 +74,8 @@ export async function schoolPlatform(authRoot, fixtureDirectory) {
             if (!row) continue;
             sensitive.add(row.token);
             for (const message of await control(containerKey, 'mail')) {
-              sensitive.add(message.code);
+              // Keep mail codes available for transport-error redaction only.
+              mailCodes.add(message.code);
               const response = await caller.fetch('http://mail/', { method: 'POST', body: JSON.stringify({ ...message, to: `${row.token}@example.test` }) });
               const result = await response.json(); outcomes.deliveries++;
               if (!result.accepted) throw new Error('Current school verification delivery rejected');

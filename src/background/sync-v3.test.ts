@@ -1,12 +1,14 @@
 import { derivePresentation } from "../shared/protocol-v3.generated";
-import { applyEnvelope } from "./cookie-store";
-import { beforeEach, expect, it, vi } from "vitest";
+import { applyEnvelope, clearOwnedCookies } from "./cookie-store";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
 import { snapshot, readySnapshot, envelope, receipt } from "../test/protocol-fixtures";
 import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } from "./storage";
 import { setEnabled, setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
 import { JOURNAL_KEY } from "./cookie-journal";
 import { observeSchoolLogin } from "./school-recovery";
+import { handleMessage } from "./messages";
+import { derivePopupView, type PopupInput } from "../popup/view-model";
 import * as api from "./api-v3";
 import * as telemetry from "../shared/posthog";
 import type { DeviceSnapshot, OperationResponse } from "../shared/protocol-v3.generated";
@@ -103,6 +105,87 @@ it.each(["new-session", "school-form"])("does not let a prior local rotation blo
     expect(fake.getCookie("SESSION")?.value).toBe("new-server-session");
     expect(await readLocalState()).toMatchObject({ receipt: { result: "applied", sessionVersion: 8 }, pendingAck: false });
   }
+});
+
+describe("routine cookie continuity", () => {
+  beforeEach(() => {
+    const exported = envelope();
+    exported.cookies[0].expires = Date.now() / 1000 + 1800;
+    exported.cookies.push({ ...exported.cookies[0], name: "auxiliary", value: "same-school-session" });
+    vi.mocked(api.exportSession).mockResolvedValue(exported);
+    vi.mocked(api.reconcile).mockResolvedValue({ centralUserId: "central-user-a", snapshot: readySnapshot(), receiptAck: null });
+    vi.mocked(api.acknowledge).mockImplementation(async applied => {
+      const local = await readLocalState();
+      return { accepted: true, exportId: applied.exportId, acceptedTuple: applied, reportEpoch: local.reportEpoch,
+        clientReportSeq: local.clientReportSeq, receivedAt: Date.now(), reasonCode: null, snapshot: readySnapshot() };
+    });
+    setEnvelopeWriter(applyEnvelope);
+  });
+
+  it.each(["acknowledged", "pending-ack", "previously-misclassified"] as const)(
+    "keeps an auxiliary expiry renewal ready without rewriting cookies: %s", async previous => {
+      if (previous === "pending-ack") vi.mocked(api.acknowledge).mockRejectedValueOnce(new TypeError("offline"));
+      await sync("startup");
+      const written = await readLocalState();
+      expect(written.receipt?.result).toBe("applied");
+      expect(written.pendingAck).toBe(previous === "pending-ack");
+      const auxiliary = fake.getCookie("auxiliary")!;
+      auxiliary.expirationDate! += 60;
+      if (previous === "previously-misclassified") {
+        // State persisted by 0.5.3 after the same harmless expiry renewal.
+        await updateLocalState(state => ({ ...state, receipt: { ...state.receipt!, result: "foreign", verifiedAt: null },
+          pendingAck: false, appliedVersion: null, localWriteState: "idle" }));
+      }
+      const writes = vi.spyOn(chrome.cookies, "set");
+      const exports = vi.mocked(api.exportSession).mock.calls.length;
+      const acknowledgments = vi.mocked(api.acknowledge).mock.calls.length;
+      await sync("popup");
+      await sync("alarm");
+      expect(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput).heading).toBe("已就绪");
+      expect(await readLocalState()).toMatchObject({ localWriteState: "ready", appliedVersion: 7, pendingAck: false,
+        receipt: { ...written.receipt, result: "applied", verifiedAt: expect.any(Number) }, managed: written.managed });
+      expect(writes).not.toHaveBeenCalled();
+      expect(api.exportSession).toHaveBeenCalledTimes(exports);
+      expect(api.acknowledge).toHaveBeenCalledTimes(acknowledgments + (previous === "acknowledged" ? 0 : 1));
+      // Read-only continuity must not make the renewed cookie deletable by the extension.
+      await clearOwnedCookies();
+      expect(fake.getCookie("auxiliary")).toEqual(auxiliary);
+      expect(fake.getCookie("SOURCEID_TGC")).toBeNull();
+    }
+  );
+
+  it.each(["auxiliary-value", "shortened-expiry", "security", "session", "missing-proof", "primary-value",
+    "primary-expiry", "foreign-domain", "foreign-path", "foreign-domain-with-renewal", "foreign-path-with-renewal"] as const)(
+    "preserves a genuinely changed or unproven login: %s", async change => {
+      await sync("startup");
+      const auxiliary = fake.getCookie("auxiliary")!;
+      if (change === "auxiliary-value") auxiliary.value = "another-session";
+      else if (change === "shortened-expiry") auxiliary.expirationDate! -= 60;
+      else if (change === "security") auxiliary.httpOnly = false;
+      else if (change === "session") auxiliary.session = true;
+      else if (change === "missing-proof") {
+        auxiliary.expirationDate! += 60;
+        await updateLocalState(state => ({ ...state, managed: state.managed.map(entry => ({ ...entry, renewal: undefined })) }));
+      } else if (change === "primary-value") fake.getCookie("SOURCEID_TGC")!.value = "another-account";
+      else if (change === "primary-expiry") fake.getCookie("SOURCEID_TGC")!.expirationDate! += 60;
+      else {
+        if (change.endsWith("with-renewal")) auxiliary.expirationDate! += 60;
+        await chrome.cookies.set({ url: "https://sso.cqu.edu.cn/authserver/login", name: "SOURCEID_TGC", value: "another-account",
+          path: change.startsWith("foreign-path") ? "/authserver" : "/",
+          ...(change.startsWith("foreign-domain") ? { domain: ".sso.cqu.edu.cn" } : {}), secure: true, httpOnly: true });
+      }
+      const cookies = structuredClone([...fake.cookieStore.values()]);
+      const writes = vi.spyOn(chrome.cookies, "set");
+      const acknowledgments = vi.mocked(api.acknowledge).mock.calls.length;
+      await sync("popup");
+      await sync("alarm");
+      expect(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput).heading).toBe("正在保留已有学校登录");
+      expect((await readLocalState()).receipt?.result).not.toBe("applied");
+      expect([...fake.cookieStore.values()]).toEqual(cookies);
+      expect(writes).not.toHaveBeenCalled();
+      expect(api.acknowledge).toHaveBeenCalledTimes(acknowledgments);
+    }
+  );
 });
 
 it("records disconnected and throttled sync checks as no-ops", async () => {

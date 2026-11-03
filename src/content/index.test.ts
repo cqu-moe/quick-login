@@ -42,6 +42,34 @@ it("stops automatic checks after manual_required until explicit retry",async()=>
   expect(document.activeElement).toBe(retry);
  }
 });
+it.each(["QR","password"])("starts recovery from the current school page in %s mode",async mode=>{
+ const qrSelected=mode==="QR";
+ document.body.innerHTML=`
+  <div class="ruleList"><div class="showName">微信扫码</div><div class="showName">用户名密码</div></div>
+  <nz-tabset>
+   <div role="tab" aria-selected="${qrSelected}">微信扫码</div>
+   <div role="tab" aria-selected="${!qrSelected}">用户名密码</div>
+   <div class="ant-tabs-tabpane ${qrSelected?"ant-tabs-tabpane-active":"ant-tabs-tabpane-inactive"}" aria-hidden="${!qrSelected}">
+    <app-lazy-auth-loader><app-login-by-single-wechat>
+     <div class="login-normal"><div class="scanBox mt-8"><rg-panel-tips>
+      <label><span class="qrscantips">请使用微信扫描二维码</span></label>
+     </rg-panel-tips></div></div>
+    </app-login-by-single-wechat></app-lazy-auth-loader>
+   </div>
+   <div class="ant-tabs-tabpane ${qrSelected?"ant-tabs-tabpane-inactive":"ant-tabs-tabpane-active"}" aria-hidden="${qrSelected}">
+    <app-login-normal><div id="login-normal" class="login-normal"><div>
+     <form id="normalLoginForm" ${qrSelected?'style="display:none"':''}>
+      <input name="username" type="text"><input type="password"><button>立即登录</button>
+     </form>
+    </div></div></app-login-normal>
+   </div>
+  </nz-tabset>`;
+ const send=vi.fn(async(_message:{type:string})=>({kind:"recovering",message:"正在恢复快捷登录。"}));
+ Object.assign(chrome.runtime,{sendMessage:send});
+ await import("./index");
+ await vi.advanceTimersByTimeAsync(6000);
+ expect(send.mock.calls.map(args=>args[0].type)).toContain("LOGIN_FORM_VISIBLE");
+});
 it("bounds checks when the host page keeps mutating", async () => {
  const send=vi.fn(async()=>({kind:"idle"}));
  Object.assign(chrome.runtime,{sendMessage:send});

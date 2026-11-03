@@ -105,6 +105,9 @@ jobs:
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
           VITE_POSTHOG_HOST: ""
+      - name: Verify OTP metadata collisions and explicit secret scanning
+        if: matrix.suite == 'core' && matrix.viewport == 'desktop'
+        run: node e2e/artifact-mail-check.mjs
       - name: Build actual pinned Auth browser runtime
         working-directory: .e2e-auth
         run: node e2e/school/build.mjs
