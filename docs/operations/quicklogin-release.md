@@ -1,4 +1,16 @@
-# 2026-11-06 0.5.5 学校页面操作授权修复候选
+# 2026-11-06 0.5.5 正式 Canary、官网部署与商店送审
+
+- [PR #43](https://github.com/cqu-moe/quick-login/pull/43) 在同一 head `246b617768b16ce017cfacc67996bf6eb8e60d4d` 的 16 项检查与 [Codex 审查](https://github.com/cqu-moe/quick-login/pull/43#issuecomment-6681593951)通过后 squash 合并。发布源码及标签 `v0.5.5`：`56eb18e6e73d4a414ab537b0036e07e86670d365`；页面只能显示打开工具栏弹窗的指引，切换托管会话需在扩展弹窗明确确认。
+- [主线 Checks 42195213418](https://github.com/cqu-moe/quick-login/actions/runs/42195213418)、[完整 MV3 E2E 42195213477](https://github.com/cqu-moe/quick-login/actions/runs/42195213477)及 [Canary 发布 42195213433](https://github.com/cqu-moe/quick-login/actions/runs/42195213433)均成功。正式 `cqu-quicklogin-0.5.5-canary.zip`：155331 bytes，SHA-256 `6f834f58d1c502e0db6483e8e737ead82e437bccda8ab6afe65e1ecdf1e0af24`；R2 包、不可变元数据和渠道晋级读回通过。下方本地候选摘要不适用于正式包。
+- 主线 artifact `13491522550` 的扩展 ZIP 与正式发布摘要、大小相同；CRC、14 个运行文件、manifest 0.5.5 和 build-info 来源核验通过。使用这些正式字节运行 Chromium 隔离世界事件回归通过。干净 profile 的原生扩展检查两次均加载正确来源的服务进程，并通过浅深主题 390×468 弹窗检查，但清理阶段发现子进程仍存活，完整检查记为失败；保留 `launcher-smoke-1793957779949` 与 `launcher-smoke-1793957891538` 报告。脚本收尾后对应 PID 已退出、profile 已删除，未放宽断言。
+- 官网自动构建未出现对应主线提交的检查记录，生产部署仍为本次合并前的版本。经 SHA-256、32 个文件逐字节比对、`check:website` 和 Wrangler dry-run 后，通过现有 `npm run deploy:website` 部署主线 CI 官网 ZIP（267650 bytes，SHA-256 `cdbe81d7b9ce0a4480ed936554bb2f0c836e20f501f72ab08993daf5622b9676`）。2026-11-06 17:46:35（Asia/Shanghai）生产 Worker `6d503f3e-e775-437a-afba-2ae5441fdfb5`、deployment `d52cb61f-12f6-4d61-ae1d-4f49b41b8d87` 回读为 100% 流量，版本注记指向上述源码和 CI。未修改自动构建配置；本次未确认其缺失触发的原因。
+- 浏览器实际下载页已显示 0.5.5、正式文件名、大小与摘要；下载事件超时，随后任务空间消失，认证及匿名下载验收未完成，未宣称 200/401。保存的交付 ZIP 来自主线 CI，不冒充网站实际下载。部署后普通匿名 HTTP 的更新记录与脚本请求仍返回 Cloudflare challenge 403，未完成线上脚本逐字节读回。
+- [商店 CD 42195388371](https://github.com/cqu-moe/quick-login/actions/runs/42195388371)成功上传并以 `DEFAULT_PUBLISH` 送审；2026-11-06 17:30:14（Asia/Shanghai）API 回读 0.5.5 `PENDING_REVIEW`，保持 Unlisted，获批后自动发布。准备 ZIP：154961 bytes，SHA-256 `a9508537bf7241ec04cdeb1713911343274a86a270af388390792f0216cdfb16`；上传 CRX：157427 bytes，SHA-256 `9f4f3f18b4921e29ce534f2c0318a7e062e1909a1cecf3eac441f5e2d624b059`。摘要是上传前验证值；送审不等于商店已上架。
+- Auth 未修改。真实学校 SSO、已安装商店版升级尚未验收；原有隐藏按钮焦点丢失未纳入本次安全补丁。
+
+---
+
+# 2026-11-06 0.5.5 学校页面操作授权修复候选（历史）
 
 - 可执行源码 `876769b4ada8a076262fd672875ac7fce0f08869`；学校页面不再提供或转发托管会话切换，需在扩展弹窗明确确认。横幅动作保存在隔离脚本内，模拟点击与输入不会触发操作；无外来会话时不签发覆盖授权。
 - 本地候选 `cqu-quicklogin-0.5.5-canary.zip`：154557 bytes，SHA-256 `7e7868261bbd333c7177190fdc2348d18445c2f5178afa4844256cca5371ebb5`。ZIP 内容、CRC、manifest 0.5.5 和 build-info 来源与本地 dist 一致；正式 Canary 将按合并提交重新构建，不能复用此摘要。
