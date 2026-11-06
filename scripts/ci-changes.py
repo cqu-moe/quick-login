@@ -8,7 +8,7 @@ def requires_ci(paths):
     # Release notes are inputs to the shipped website, even though they are Markdown.
     return any(
         path.startswith('docs/releases/')
-        or not (path.startswith('docs/') or PurePosixPath(path).suffix == '.md')
+        or PurePosixPath(path).suffix != '.md'
         for path in paths
     )
 

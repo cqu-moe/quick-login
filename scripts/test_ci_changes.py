@@ -11,7 +11,9 @@ class ChangeRoutingTests(unittest.TestCase):
     def test_only_prose_may_skip_quality_gates(self):
         for paths, expected in [
             (['README.md', 'docs/operations/runbook.md'], False),
-            (['AGENTS.md', 'docs/research/diagram.png'], False),
+            (['AGENTS.md'], False),
+            (['docs/research/diagram.png'], True),
+            (['docs/research/fixture.ts'], True),
             (['docs/releases/0.5.4.md'], True),
             (['README.md', 'src/background/index.ts'], True),
             (['.github/workflows/check.yml'], True),
