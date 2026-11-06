@@ -82,7 +82,20 @@ jobs:
             package-lock.json
             .e2e-auth/package-lock.json
       - run: npm ci --prefer-offline
-      - run: npx --no-install e2e-web install chromium --with-deps
+      - name: Restore browser system-package downloads
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/quicklogin-apt/*.deb
+          key: apt-ubuntu-24.04-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and all system dependencies
+        env:
+          APT_ARCHIVES: ${{ runner.temp }}/quicklogin-apt
+        run: |
+          mkdir -p "$APT_ARCHIVES/partial"
+          printf 'Dir::Cache::archives "%s";\nBinary::apt-get::APT::Keep-Downloaded-Packages "true";\n' "$APT_ARCHIVES" | sudo tee /etc/apt/apt.conf.d/99-quicklogin-cache
+          # The Azure mirror throttled font downloads to 41.5 kB/s in measured runs.
+          sudo find /etc/apt -maxdepth 2 \( -name '*.list' -o -name '*.sources' \) -exec sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' {} +
+          npx --no-install e2e-web install chromium --with-deps
       - run: npm run build
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
@@ -140,14 +153,23 @@ jobs:
         run: node e2e/school/build.mjs
       - name: Pull pinned native container interceptor
         run: docker pull cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8
-      - name: Run first independent E2E journey
-        run: node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}'
-        env:
-          QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-1
-      - name: Run second independent E2E journey
-        run: node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}'
-        env:
-          QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-2
+      - name: Run two independent E2E rounds and assigned device controls
+        run: |
+          QUICKLOGIN_E2E_OUTPUT=.e2e/ci-run-1 node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}' &
+          first_round=$!
+          QUICKLOGIN_E2E_OUTPUT=.e2e/ci-run-2 node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}' &
+          second_round=$!
+          if [ "$QUICKLOGIN_E2E_SUITE" = devices ] && [ "$QUICKLOGIN_E2E_SHARD" = 1/2 ]; then
+            node e2e/device-controls.mjs &
+            device_controls=$!
+          fi
+          rounds_status=0
+          wait "$first_round" || rounds_status=1
+          wait "$second_round" || rounds_status=1
+          if [ -n "${device_controls:-}" ]; then
+            wait "$device_controls" || rounds_status=1
+          fi
+          exit "$rounds_status"
       - name: Require expected assertion failure
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/self-check.mjs
@@ -157,9 +179,6 @@ jobs:
       - name: Require startup, cleanup and combined failures
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/lifecycle-check.mjs
-      - name: Require native alarm and genuine pending ACK failure controls
-        if: matrix.partition.suite == 'devices' && matrix.partition.shard == '1/2'
-        run: node e2e/device-controls.mjs
       - name: Prepare sanitized evidence even after a failure
         if: ${{ !cancelled() }}
         run: node e2e/prepare-ci-artifacts.mjs

@@ -30,11 +30,11 @@ The latest matching successful main E2E run is [41569340400](https://github.com/
 
 ## Changes and retained contracts
 
-- Split core into four shards and devices into two, across both existing viewports. Every selected test still runs twice in independent runtime rounds; retries remain zero.
+- Split core into four shards and devices into two, across both existing viewports. Every selected test still runs twice in independent runtime rounds; the rounds and assigned device controls now run concurrently in isolated output/profile/port/container namespaces. Every child process is awaited and any failure fails the job; retries remain zero.
 - Keep native MV3, pinned Auth, real school Docker runtime, viewport, cleanup, artifact redaction and all failure controls. Run shared harness controls once per viewport, and require their evidence in aggregate admission.
 - Retain required check contexts `verify` and `Real MV3 Auth, school cookies and recovery`. Prose-only changes produce lightweight successful checks; `docs/releases/**` still runs CI because it generates website output. Only Markdown is skipped; non-Markdown assets or executable fixtures under docs still run CI, and diff errors fail closed.
 - Cancel superseded runs only for the same PR. Main and manual runs have distinct concurrency groups. Canary and rollback keep the shared publication lock with [`queue: max`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency) (maximum 100 pending runs).
-- Cache npm with both QuickLogin/Auth lockfiles, use pnpm setup’s built-in store cache, and cache only the pinned telemetry-disabled Auth frontend build. Never cache browser profiles, cookies, D1/DO databases or TLS state.
+- Cache npm with both QuickLogin/Auth lockfiles, use pnpm setup’s built-in store cache, and cache only the pinned telemetry-disabled Auth frontend build. Cache the roughly 21 MB of browser system-package downloads as well, while still running apt and installing all fonts/libraries. The measured Azure Ubuntu mirror delivered these files at only 41.5 kB/s, so use the official HTTPS Ubuntu archive. Never cache browser profiles, cookies, D1/DO databases or TLS state.
 - E2E typecheck runs once in Checks. All runners were already Ubuntu; there is no Go/Rust tool installation or macOS scheduling bottleneck to remove.
 
 ## Local verification
@@ -50,4 +50,6 @@ The temporary [README-only probe PR #41](https://github.com/cqu-moe/quick-login/
 
 The first full-run attempt encountered a 14+ minute queue before its five-second change detector even obtained a runner. Use [`ubuntu-slim`](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners) for the routing/aggregate jobs: these only need preinstalled Git, Python and Node, not a full VM. The Docker/browser journeys retain Ubuntu 24.04. Slim jobs use a five-minute timeout (below the platform’s 15-minute limit); this changes no test coverage or concurrency entitlement.
 
-Full-run performance measurements will be filled after the pushed PR runs complete. No merge, release, store upload or real-account acceptance is part of this task.
+The first complete sharded run [42159008624](https://github.com/cqu-moe/quick-login/actions/runs/42159008624), commit `0d58785fb5705d2c9609f8e2e7b68a2202956d24`, passed all 12 shards and aggregate admission: **1687 s wall time / 6311 runner-seconds**. It was slower overall than baseline: routing queued 90 s, shards queued 182–335 s, and aggregate queued 165 s. Two browser dependency installs also took 514/526 s; logs isolated the delay to 21.1 MB of font downloads, while Chromium itself downloaded in seconds. The matching desktop shard prepared in 119 s versus mobile 638 s; the actual two test rounds took 203 s versus 198 s. These observations motivated the second iteration above rather than treating sharding alone as a successful optimization.
+
+Final second-iteration measurements will be filled after its pushed PR run completes. No merge, release, store upload or real-account acceptance is part of this task.
