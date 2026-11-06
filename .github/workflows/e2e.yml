@@ -9,12 +9,11 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: extension-e2e-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   changes:
+    concurrency:
+      group: extension-e2e-changes-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-slim
     timeout-minutes: 5
     outputs:
@@ -25,6 +24,9 @@ jobs:
         id: changes
 
   journeys:
+    concurrency:
+      group: extension-e2e-${{ github.event.pull_request.number || github.run_id }}-${{ matrix.partition.suite }}-${{ matrix.partition.shard }}-${{ matrix.viewport }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     needs: changes
     if: needs.changes.outputs.required == 'true'
     name: Real MV3 journeys (${{ matrix.partition.suite }}, ${{ matrix.viewport }}, ${{ matrix.partition.shard }})
@@ -195,7 +197,7 @@ jobs:
   quicklogin:
     name: Real MV3 Auth, school cookies and recovery
     needs: [changes, journeys]
-    # A cancelled required check must fail, not become a successful skipped job.
+    # Fail closed on cancellation without holding a workflow concurrency lock.
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 5
