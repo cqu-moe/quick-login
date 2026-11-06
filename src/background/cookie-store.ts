@@ -1,4 +1,4 @@
-import type { CookieEnvelope, ExportedCookie, ManagedCookie } from "../shared/contracts";
+import type { CookieEnvelope, ExportedCookie, LocalState, ManagedCookie } from "../shared/contracts";
 import { validateCookieEnvelope } from "../shared/cookie-validation";
 import { readLocalState, updateLocalState, updateLocalStateWith } from "./storage";
 import { SyncError } from "./retry";
@@ -161,9 +161,10 @@ async function localTgcCandidates(): Promise<chrome.cookies.Cookie[]> {
   const storeId = await normalStoreId();
   const urls = [`${SSO_URL}/login`, `${SSO_URL}/authserver/login`];
   const [lists, singles] = await Promise.all([
-    Promise.all(urls.map((url) =>
-      chrome.cookies.getAll({ url, name: "SOURCEID_TGC", storeId })
-    )),
+    Promise.all([
+      chrome.cookies.getAll({ name: "SOURCEID_TGC", storeId }),
+      ...urls.map((url) => chrome.cookies.getAll({ url, name: "SOURCEID_TGC", storeId })),
+    ]),
     Promise.all(urls.map((url) =>
       chrome.cookies.get({ url, name: "SOURCEID_TGC", storeId })
     )),
@@ -198,6 +199,29 @@ export async function inspectLocalTgc(): Promise<"missing" | "managed" | "foreig
   return inspectTgc((await readLocalState()).managed);
 }
 
+export async function snapshotLocalTgc(): Promise<ManagedCookie[]> {
+  return Promise.all((await localTgcCandidates()).map(async cookie => ({
+    name: cookie.name, domain: cookie.domain, path: cookie.path, storeId: cookie.storeId,
+    digest: await digestCookie(cookie),
+  })));
+}
+
+export function hasManagedSwitch(local: LocalState): boolean {
+  const intent = local.managedSwitch, versions = local.snapshot?.versions;
+  return !!intent && Array.isArray(intent.tgc) && !!versions && intent.expiresAt > Date.now() &&
+    intent.deviceId === local.deviceId && intent.authGeneration === local.authGeneration &&
+    intent.localGeneration === local.localGeneration && local.enabledIntent && !local.manualOverride &&
+    local.authorization === "authorized" &&
+    intent.generation === versions.generation && intent.bindingEpoch === versions.bindingEpoch &&
+    intent.credentialRevision === versions.credentialRevision;
+}
+
+async function matchesTgc(expected: ManagedCookie[]): Promise<boolean> {
+  const current = await snapshotLocalTgc();
+  return current.length === expected.length && current.every(cookie => expected.some(entry =>
+    snapshotId(entry) === snapshotId(cookie) && entry.digest === cookie.digest));
+}
+
 async function applyEnvelopeUnlocked(
   raw: CookieEnvelope | ExportEnvelope,
   options: { localGeneration: number; allowForeignOnce: boolean }
@@ -213,11 +237,15 @@ async function applyEnvelopeUnlocked(
       !state.enabledIntent || state.manualOverride) return "cancelled";
   if (envelope.protocolVersion === 3 && (envelope.applyBefore <= Date.now() ||
       !state.snapshot || !sameTuple(envelope, tupleForSnapshot(state.snapshot)))) return "cancelled";
-  if (!options.allowForeignOnce && await inspectLocalTgc() === "foreign") {
+  const switchIntent = options.allowForeignOnce && hasManagedSwitch(state) ? state.managedSwitch : null;
+  if (options.allowForeignOnce && !switchIntent) return "foreign_session";
+  if (!switchIntent && await inspectLocalTgc() === "foreign") {
     return "foreign_session";
   }
 
-  const switchIntentId = options.allowForeignOnce ? state.managedSwitch?.id : undefined;
+  let expectedTgc = switchIntent?.tgc;
+  let consentConsumed = false;
+  let foreignSession = false;
   const storeId = await normalStoreId();
   const journal: CookieJournal = {
     id: crypto.randomUUID(),
@@ -257,6 +285,19 @@ async function applyEnvelopeUnlocked(
       snapshots[snapshotId(entry)] = previous;
       await writeJournal(journal, snapshots);
 
+      if (switchIntent && !consentConsumed) {
+        // Rollback or restart must not replay an attempted replacement.
+        await updateLocalState(current => {
+          if (current.managedSwitch?.id !== switchIntent.id || !hasManagedSwitch(current)) return current;
+          consentConsumed = true;
+          return { ...current, managedSwitch: null };
+        });
+        if (!consentConsumed) { foreignSession = true; throw new SyncError("COOKIE_WRITE_TRANSIENT"); }
+      }
+      if (expectedTgc && !await matchesTgc(expectedTgc)) {
+        foreignSession = true;
+        throw new SyncError("COOKIE_WRITE_TRANSIENT");
+      }
       const unchanged = await getExact(identity);
       const unchangedDigest = unchanged ? await digestCookie(unchanged) : null;
       if (unchangedDigest !== entry.previousDigest) throw new SyncError("COOKIE_WRITE_TRANSIENT");
@@ -277,6 +318,10 @@ async function applyEnvelopeUnlocked(
       entry.digest = writtenDigest;
       entry.expectedDigest = writtenDigest;
       entry.completed = true;
+      if (expectedTgc && cookie.name === "SOURCEID_TGC") {
+        expectedTgc = [...expectedTgc.filter(old => snapshotId(old) !== snapshotId(entry)),
+          { ...identity, digest: writtenDigest }];
+      }
       await writeJournal(journal, snapshots);
       const current = await readLocalState();
       if (current.localGeneration !== options.localGeneration ||
@@ -301,6 +346,10 @@ async function applyEnvelopeUnlocked(
         } } : {}),
       });
     }
+    if (expectedTgc && !await matchesTgc(expectedTgc)) {
+      foreignSession = true;
+      throw new SyncError("COOKIE_WRITE_TRANSIENT");
+    }
     const keep = new Set(managed.map(snapshotId));
     let cleanupConflict=false;
     for (const old of state.managed) {
@@ -317,7 +366,6 @@ async function applyEnvelopeUnlocked(
       if (current.localGeneration !== options.localGeneration || !current.enabledIntent || current.manualOverride ||
           current.serverGeneration !== envelope.generation) throw new SyncError("COOKIE_WRITE_TRANSIENT");
       return { ...current, managed,
-        managedSwitch: switchIntentId !== undefined && current.managedSwitch?.id === switchIntentId ? null : current.managedSwitch,
         appliedVersion:cleanupConflict ? null : envelope.sessionVersion,
         localWriteState:cleanupConflict ? "foreign_session" : "ready",
         localError:cleanupConflict ? "LOCAL_COOKIE_CONFLICT" : null };
@@ -328,6 +376,7 @@ async function applyEnvelopeUnlocked(
     const rollbackResult = await rollback(journal, snapshots);
     if (rollbackResult !== "incomplete") await clearJournal();
     else { journal.phase="writing"; await writeJournal(journal,snapshots); }
+    if (foreignSession) return "foreign_session";
     throw error;
   }
 }

@@ -77,6 +77,7 @@ export interface LocalState {
   managedSwitch?: {
     id: string; deviceId: string; authGeneration: number; localGeneration: number;
     generation: number; bindingEpoch: number; credentialRevision: number; expiresAt: number;
+    tgc: ManagedCookie[];
   } | null;
   installationId: string;
   centralUserId: string | null;

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
 import { initialLocalState, readLocalState, updateLocalState } from "./storage";
-import { applyEnvelope, clearOwnedCookies, inspectLocalTgc, recoverInterruptedWrite } from "./cookie-store";
+import { applyEnvelope, clearOwnedCookies, inspectLocalTgc, recoverInterruptedWrite, snapshotLocalTgc } from "./cookie-store";
+import { snapshot } from "../test/protocol-fixtures";
 import { JOURNAL_KEY, SNAPSHOT_KEY, snapshotId } from "./cookie-journal";
 import type { CookieEnvelope } from "../shared/contracts";
 
@@ -36,6 +37,14 @@ beforeEach(async () => {
   });
 });
 
+async function consentToCurrentTgc() {
+  const tgc = await snapshotLocalTgc();
+  await updateLocalState(state => ({ ...state, authorization: "authorized", snapshot: snapshot(),
+    managedSwitch: { id: crypto.randomUUID(), deviceId: "device-a", authGeneration: state.authGeneration,
+      localGeneration: state.localGeneration, generation: 4, bindingEpoch: 3, credentialRevision: 2,
+      expiresAt: Date.now() + 60_000, tgc } }));
+}
+
 describe("managed SSO cookies", () => {
   it("keeps obsolete owned-cookie evidence when replacement cannot remove it safely",async()=>{
     const old={...envelope,cookies:envelope.cookies.map(cookie=>cookie.name==="SOURCEID_TGC"
@@ -51,6 +60,7 @@ describe("managed SSO cookies", () => {
   it("retains rollback ownership until an ambiguous foreign cookie is gone",async()=>{
     await chrome.cookies.set({url:"https://sso.cqu.edu.cn/",domain:".sso.cqu.edu.cn",name:"SOURCEID_TGC",
       value:"foreign-domain-cookie",path:"/",storeId:"0",secure:true});
+    await consentToCurrentTgc();
     const original=chrome.cookies.set.bind(chrome.cookies);
     vi.spyOn(chrome.cookies,"set").mockImplementation(async(details)=>{
       await original(details); throw new Error("write response interrupted");
@@ -68,6 +78,7 @@ describe("managed SSO cookies", () => {
       url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", value: "previous-test-value",
       path: "/", storeId: "0", secure: true, httpOnly: true, sameSite: "lax",
     });
+    await consentToCurrentTgc();
     const original = chrome.cookies.set.bind(chrome.cookies);
     let interrupted = false;
     vi.spyOn(chrome.cookies, "set").mockImplementation(async (details) => {
@@ -120,6 +131,7 @@ describe("managed SSO cookies", () => {
       url: "https://sso.cqu.edu.cn/", domain: ".sso.cqu.edu.cn", name: "SOURCEID_TGC",
       value: "foreign-domain-cookie", path: "/", storeId: "0", secure: true,
     });
+    await consentToCurrentTgc();
     await applyEnvelope(envelope, { localGeneration: 1, allowForeignOnce: true });
     await clearOwnedCookies();
     const cookies = await chrome.cookies.getAll({ name: "SOURCEID_TGC", storeId: "0" });
@@ -147,6 +159,7 @@ describe("managed SSO cookies", () => {
       url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", value: "previous-test-value",
       path: "/", storeId: "0", secure: true, httpOnly: true, sameSite: "lax",
     });
+    await consentToCurrentTgc();
     const original = chrome.cookies.set.bind(chrome.cookies);
     let calls = 0;
     vi.spyOn(chrome.cookies, "set").mockImplementation(async (details) => {
