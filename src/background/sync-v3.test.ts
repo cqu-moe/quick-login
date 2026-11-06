@@ -448,6 +448,122 @@ it.each(["disable", "manual", "reauthorize", "binding", "expire"])("cancels pend
   expect((await readLocalState()).managedSwitch).toBeNull();
 });
 
+it.each(["unchanged", "value", "additional-path", "additional-domain", "attributes", "removed", "legacy", "during-write-preparation"])(
+  "binds delayed switch consent to the observed TGC set (%s)", async change => {
+    const foreign = { url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", value: "consented-session",
+      path: "/", storeId: "0", secure: true, httpOnly: true, sameSite: "lax" as const };
+    await chrome.cookies.set(foreign);
+    await updateLocalState(state => ({ ...state, localWriteState: "foreign_session" }));
+    const preparing = snapshot();
+    preparing.cloud.state = "logging_in";
+    preparing.capabilities.canExport = false;
+    vi.mocked(api.reconcile).mockResolvedValueOnce({ centralUserId: "central-user-a", snapshot: preparing, receiptAck: null });
+    setEnvelopeWriter(applyEnvelope);
+    await switchToManagedOnce();
+    await sync("popup");
+    const originalSet = chrome.cookies.set.bind(chrome.cookies);
+    if (change === "value") await originalSet({ ...foreign, value: "new-manual-session" });
+    if (change === "additional-path") {
+      const getAll = chrome.cookies.getAll.bind(chrome.cookies);
+      vi.spyOn(chrome.cookies, "getAll").mockImplementation(async details => (await getAll(details))
+        .filter(cookie => !details.url || new URL(details.url).pathname.startsWith(cookie.path)));
+      await originalSet({ ...foreign, path: "/alternate-cas", value: "new-manual-session" });
+    }
+    if (change === "additional-domain") await originalSet({ ...foreign, domain: ".sso.cqu.edu.cn", value: "new-manual-session" });
+    if (change === "attributes") await originalSet({ ...foreign, httpOnly: false });
+    if (change === "removed") fake.cookieStore.clear();
+    if (change === "legacy") {
+      const persisted = await readLocalState();
+      Reflect.deleteProperty(persisted.managedSwitch!, "tgc");
+      await chrome.storage.local.set({ [LOCAL_STATE_KEY]: persisted });
+    }
+    if (change === "during-write-preparation") {
+      const save = chrome.storage.session.set.bind(chrome.storage.session);
+      vi.spyOn(chrome.storage.session, "set").mockImplementation(async items => {
+        await save(items);
+        await originalSet({ ...foreign, value: "new-manual-session" });
+      });
+    }
+    const before = [...fake.cookieStore.values()].map(cookie => ({ ...cookie }));
+    const writes = vi.spyOn(chrome.cookies, "set");
+    await sync("alarm");
+    if (change === "unchanged") {
+      expect(fake.getCookie("SOURCEID_TGC")?.value).toBe(envelope().cookies[0].value);
+      expect(await readLocalState()).toMatchObject({ localWriteState: "ready", managedSwitch: null, pendingAck: false });
+    } else {
+      expect(writes).not.toHaveBeenCalled();
+      if (change === "during-write-preparation") expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("new-manual-session");
+      else expect([...fake.cookieStore.values()]).toEqual(before);
+      expect(await readLocalState()).toMatchObject({ localWriteState: "foreign_session", managedSwitch: null, receipt: null });
+    }
+  }
+);
+
+it("requires new consent after the first replacement write fails", async () => {
+  await chrome.cookies.set({ url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", value: "consented-session", path: "/", storeId: "0" });
+  await updateLocalState(state => ({ ...state, localWriteState: "foreign_session" }));
+  setEnvelopeWriter(applyEnvelope);
+  const writes = vi.spyOn(chrome.cookies, "set").mockRejectedValueOnce(new Error("write failed"));
+  await switchToManagedOnce();
+  await sync("popup");
+  expect(writes).toHaveBeenCalledOnce();
+  expect((await readLocalState()).managedSwitch).toBeNull();
+  writes.mockClear();
+  await sync("user_retry");
+  expect(writes).not.toHaveBeenCalled();
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("consented-session");
+  expect((await readLocalState()).localWriteState).toBe("foreign_session");
+  await switchToManagedOnce();
+  await sync("popup");
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe(envelope().cookies[0].value);
+  expect((await readLocalState()).localWriteState).toBe("ready");
+});
+
+it("preserves a new manual session that appears between replacement writes", async () => {
+  await updateLocalState(state => ({ ...state, localWriteState: "foreign_session" }));
+  const foreign = { url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", value: "consented-session", path: "/", storeId: "0" };
+  await chrome.cookies.set(foreign);
+  const exported = envelope();
+  exported.cookies.unshift({ ...exported.cookies[0], name: "SESSION", value: "managed-auxiliary" });
+  vi.mocked(api.exportSession).mockResolvedValue(exported);
+  setEnvelopeWriter(applyEnvelope);
+  const originalSet = chrome.cookies.set.bind(chrome.cookies);
+  const writes = vi.spyOn(chrome.cookies, "set").mockImplementation(async details => {
+    const written = await originalSet(details);
+    if (details.name === "SESSION") await originalSet({ ...foreign, value: "new-manual-session" });
+    return written;
+  });
+  await switchToManagedOnce();
+  await sync("popup");
+  expect(writes).toHaveBeenCalledOnce();
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("new-manual-session");
+  expect(fake.getCookie("SESSION")).toBeNull();
+  expect(await readLocalState()).toMatchObject({ localWriteState: "foreign_session", managedSwitch: null, receipt: null });
+});
+
+it.each(["path", "domain"])("detects a new TGC %s appearing during the final replacement write", async kind => {
+  await updateLocalState(state => ({ ...state, localWriteState: "foreign_session" }));
+  const foreign = { url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", value: "consented-session", path: "/", storeId: "0" };
+  await chrome.cookies.set(foreign);
+  const previous = { ...fake.getCookie("SOURCEID_TGC")! };
+  setEnvelopeWriter(applyEnvelope);
+  const originalSet = chrome.cookies.set.bind(chrome.cookies);
+  let added = false;
+  vi.spyOn(chrome.cookies, "set").mockImplementation(async details => {
+    if (!added) {
+      added = true;
+      await originalSet({ ...foreign, value: "new-manual-session",
+        ...(kind === "path" ? { path: "/alternate-cas" } : { domain: ".sso.cqu.edu.cn" }) });
+    }
+    return originalSet(details);
+  });
+  await switchToManagedOnce();
+  await sync("popup");
+  expect(fake.getCookie("SOURCEID_TGC")).toEqual(previous);
+  expect([...fake.cookieStore.values()].some(cookie => cookie.value === "new-manual-session")).toBe(true);
+  expect(await readLocalState()).toMatchObject({ localWriteState: "foreign_session", managedSwitch: null, receipt: null });
+});
+
 it("consumes replacement consent once through the actual cookie writer", async () => {
   await chrome.cookies.set({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC",value:"synthetic-foreign",path:"/",storeId:"0"});
   await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));

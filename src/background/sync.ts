@@ -4,7 +4,7 @@ import { REASON_CODES, sameTuple, tupleForSnapshot, type DeviceSnapshot, type Ex
 import * as api from "./api-v3";
 import { clearDeviceAuthorization } from "./auth";
 import { readLocalState, updateLocalState } from "./storage";
-import { clearOwnedCookies, inspectManagedCookies, inspectLocalTgc } from "./cookie-store";
+import { clearOwnedCookies, inspectManagedCookies, inspectLocalTgc, hasManagedSwitch, snapshotLocalTgc } from "./cookie-store";
 import { withUpdateGuard } from "./updates";
 import {
   captureQuickloginOperation,
@@ -24,14 +24,6 @@ export type EnvelopeWriter = (envelope: ExportEnvelope,
 let writer: EnvelopeWriter = async () => { throw new api.ApiFailure("LOCAL_WRITE_FAILED"); };
 let syncFlight: Promise<void> | null = null;
 const pendingReasons = new Set<SyncReason>();
-function hasManagedSwitch(local: LocalState): boolean {
-  const intent = local.managedSwitch, versions = local.snapshot?.versions;
-  return !!intent && !!versions && intent.expiresAt > Date.now() &&
-    intent.deviceId === local.deviceId && intent.authGeneration === local.authGeneration &&
-    intent.localGeneration === local.localGeneration && local.enabledIntent && !local.manualOverride &&
-    intent.generation === versions.generation && intent.bindingEpoch === versions.bindingEpoch &&
-    intent.credentialRevision === versions.credentialRevision;
-}
 
 export function setEnvelopeWriter(next: EnvelopeWriter): void { writer = next; }
 
@@ -417,16 +409,21 @@ export async function retryAutomaticNow(): Promise<boolean> {
   return false;
 }
 export async function switchToManagedOnce(): Promise<boolean> {
+  const before = await readLocalState();
+  if (api.localCookieState(before) !== "foreign") return false;
+  const tgc = await snapshotLocalTgc();
   let accepted = false;
   await updateLocalState(state => {
     const versions = state.snapshot?.versions;
-    if (!state.deviceId || !versions || versions.bindingEpoch === null || versions.credentialRevision === null ||
+    if (state.deviceId !== before.deviceId || state.authGeneration !== before.authGeneration ||
+        state.localGeneration !== before.localGeneration ||
+        !state.deviceId || !versions || versions.bindingEpoch === null || versions.credentialRevision === null ||
         !state.enabledIntent || state.manualOverride || state.authorization !== "authorized" ||
         api.localCookieState(state) !== "foreign") return state;
     accepted = true;
     return { ...state, managedSwitch: { id:crypto.randomUUID(), deviceId:state.deviceId,
       authGeneration:state.authGeneration, localGeneration:state.localGeneration, generation:versions.generation,
-      bindingEpoch:versions.bindingEpoch, credentialRevision:versions.credentialRevision, expiresAt:Date.now()+15*60_000 },
+      bindingEpoch:versions.bindingEpoch, credentialRevision:versions.credentialRevision, expiresAt:Date.now()+15*60_000, tgc },
       localError:null, nextAttemptAt:null, localWriteState:"idle" };
   });
   if (!accepted) return false;
