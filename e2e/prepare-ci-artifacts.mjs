@@ -206,7 +206,7 @@ if (genericControlsRequired) {
 if (deviceControlsRequired) controls.device = deviceControl ? relative(source, deviceControl) : 'missing';
 const fullSuiteIds = expectedTests
   ? JSON.parse(await readFile(join(source, requiredRuns[0], 'discovery.json'), 'utf8')).all
-    .filter(pair => pair.kind === 'test' && pair.disposition === 'run')
+    .filter(pair => pair.kind === 'test')
     .filter(pair => !suite || suite === 'all' || pair.titlePath.join(' ').startsWith('QUICKLOGIN-03 ') === (suite === 'devices'))
     .map(pair => pair.id).sort()
   : [];

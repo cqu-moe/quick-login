@@ -93,6 +93,16 @@ await assert.rejects(async () => verifyShardAdmissions(await writeAll(values => 
   values[0].controls.negative = "missing";
   return values;
 }), expectedSha), /missing negative control/);
+await assert.rejects(async () => verifyShardAdmissions(await writeAll(values => values.slice(1)), expectedSha), /exactly 12/);
+await assert.rejects(async () => verifyShardAdmissions(await writeAll(values => {
+  values[0].rounds[1].runId = values[0].rounds[0].runId;
+  return values;
+}), expectedSha), /reused a framework identity/);
+await assert.rejects(async () => verifyShardAdmissions(await writeAll(values => {
+  values[0].rounds.forEach(round => round.tests = []);
+  values[0].actualTests = [];
+  return values;
+}), expectedSha), /invalid test ID/);
 await assert.rejects(async () => verifyShardAdmissions(await writeAll(), "c".repeat(40)), /extension commit differs/);
 await rm(root, { recursive: true, force: true });
 console.log("E2E shard evidence self-check passed");
