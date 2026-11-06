@@ -1,4 +1,14 @@
-# 2026-11-06 0.5.5 学校页面操作授权修复候选
+# 2026-11-06 0.5.5 已发布 Canary 与官网，商店待审核
+
+[PR #43](https://github.com/cqu-moe/quick-login/pull/43) 的 16 项检查和同一 head 的 Codex 审查通过后已合并；发布源码及 `v0.5.5` 为 `56eb18e6e73d4a414ab537b0036e07e86670d365`。主线 Checks、完整 MV3 E2E 和 Canary 发布均成功。正式 `cqu-quicklogin-0.5.5-canary.zip`：155331 bytes，SHA-256 `6f834f58d1c502e0db6483e8e737ead82e437bccda8ab6afe65e1ecdf1e0af24`；主线 CI ZIP 与发布摘要一致，CRC、manifest、来源和 Chromium 事件安全回归通过。
+
+官网未出现本次主线的自动构建记录，已校验并通过现有部署命令发布主线 CI 官网产物；生产 Worker `6d503f3e-e775-437a-afba-2ae5441fdfb5` 回读为 100% 流量，来源注记对应上述提交。自动构建配置未改，缺失触发原因未确认。浏览器下载页显示正式 0.5.5 元数据；认证下载未完成，公开 HTTP 被 challenge 403 拦截，线上脚本字节未读回。
+
+[商店 CD](https://github.com/cqu-moe/quick-login/actions/runs/42195388371)于 2026-11-06 17:30:14（Asia/Shanghai）回读 0.5.5 `PENDING_REVIEW`，保持 Unlisted，获批后自动发布。当前已送审，不能称为商店已上架。干净浏览器的服务进程和浅深主题弹窗功能检查通过，但两次本地完整安装检查均因 Chromium 子进程清理失败而失败；报告保留，收尾后对应进程已退出。真实学校 SSO 和已安装商店版升级未验收，Auth 未改动。完整运行、部署、包摘要与验收限制见[发布记录](quicklogin-release.md)。
+
+---
+
+# 2026-11-06 0.5.5 学校页面操作授权修复候选（历史）
 
 - 可执行源码 `876769b4ada8a076262fd672875ac7fce0f08869`；学校页面不再提供或转发托管会话切换，需在扩展弹窗明确确认。横幅动作保存在隔离脚本内，模拟点击与输入不会触发操作；无外来会话时不签发覆盖授权。
 - 本地候选 `cqu-quicklogin-0.5.5-canary.zip`：154557 bytes，SHA-256 `7e7868261bbd333c7177190fdc2348d18445c2f5178afa4844256cca5371ebb5`。ZIP 内容、CRC、manifest 0.5.5 和 build-info 来源与本地 dist 一致；正式 Canary 将按合并提交重新构建，不能复用此摘要。
