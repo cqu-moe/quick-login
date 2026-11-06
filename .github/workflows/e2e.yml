@@ -155,6 +155,7 @@ jobs:
         run: docker pull cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8
       - name: Run two independent E2E rounds and assigned device controls
         run: |
+          mkdir -p .e2e
           QUICKLOGIN_E2E_OUTPUT=.e2e/ci-run-1 node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}' &
           first_round=$!
           QUICKLOGIN_E2E_OUTPUT=.e2e/ci-run-2 node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}' &

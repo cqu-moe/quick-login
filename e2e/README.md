@@ -151,7 +151,9 @@ QUICKLOGIN_E2E_VIEWPORT=mobile QUICKLOGIN_E2E_SUITE=all QUICKLOGIN_E2E_PUBLISH_D
 ## CI sharding and required checks
 
 CI keeps both desktop/mobile viewports and two independent rounds per test. The
-framework selects four core shards and two device shards per viewport with
+two rounds run concurrently with distinct output directories, profiles, ports
+and runtime state; assigned device controls have their own runtime. The shell
+waits for every child and fails if any child fails. The framework selects four core shards and two device shards per viewport with
 `--shard`; isolated school/device runtimes select their exact discovered tests
 without applying that shard a second time. Each shard still validates actual
 selected/executed IDs, viewport observations, source identity, cleanup and
