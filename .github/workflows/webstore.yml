@@ -26,7 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22.22.3"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
@@ -51,6 +55,8 @@ jobs:
           AWS_MAX_ATTEMPTS: "3"
           R2_BUCKET: ${{ vars.R2_BUCKET }}
           R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ vars.POSTHOG_PROJECT_TOKEN }}
+          VITE_POSTHOG_HOST: https://p.cqu.moe
         run: |
           test -n "$AWS_ACCESS_KEY_ID" && test -n "$AWS_SECRET_ACCESS_KEY" && test -n "$R2_BUCKET" && test -n "$R2_ACCOUNT_ID"
           python3 scripts/prepare_webstore.py --bucket "$R2_BUCKET" \
