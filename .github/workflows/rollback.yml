@@ -11,6 +11,7 @@ permissions:
 concurrency:
   group: quicklogin-canary-publish
   cancel-in-progress: false
+  queue: max
 jobs:
   rollback:
     if: github.ref == 'refs/heads/main'

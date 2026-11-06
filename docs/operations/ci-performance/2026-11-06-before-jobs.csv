@@ -1,0 +1,68 @@
+run,url,workflow,event,sha,job,conclusion,queue,preparation,execution,elapsed
+42124976567,https://github.com/cqu-moe/quick-login/actions/runs/42124976567,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,13.0,6.0,19.0
+42076662180,https://github.com/cqu-moe/quick-login/actions/runs/42076662180,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,11.0,11.0,22.0
+42002419233,https://github.com/cqu-moe/quick-login/actions/runs/42002419233,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,10.0,5.0,15.0
+41951008559,https://github.com/cqu-moe/quick-login/actions/runs/41951008559,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,8.0,12.0,20.0
+41917020303,https://github.com/cqu-moe/quick-login/actions/runs/41917020303,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,13.0,7.0,20.0
+41861207343,https://github.com/cqu-moe/quick-login/actions/runs/41861207343,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,13.0,6.0,19.0
+41792527807,https://github.com/cqu-moe/quick-login/actions/runs/41792527807,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,12.0,6.0,18.0
+41750175027,https://github.com/cqu-moe/quick-login/actions/runs/41750175027,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,5.0,14.0,7.0,21.0
+41714442572,https://github.com/cqu-moe/quick-login/actions/runs/41714442572,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,5.0,13.0,6.0,19.0
+41655973446,https://github.com/cqu-moe/quick-login/actions/runs/41655973446,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,5.0,10.0,7.0,17.0
+41591630408,https://github.com/cqu-moe/quick-login/actions/runs/41591630408,Publish Chrome Web Store,schedule,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,14.0,5.0,19.0
+41569469848,https://github.com/cqu-moe/quick-login/actions/runs/41569469848,Publish Chrome Web Store,workflow_run,038468506c54a635754fd933faf900d4a213a0b8,publish,success,4.0,12.0,10.0,22.0
+41569340430,https://github.com/cqu-moe/quick-login/actions/runs/41569340430,Checks,push,038468506c54a635754fd933faf900d4a213a0b8,verify,success,2.0,23.6634578704834,22.3365421295166,46.0
+41569340402,https://github.com/cqu-moe/quick-login/actions/runs/41569340402,Publish canary,push,038468506c54a635754fd933faf900d4a213a0b8,select,success,2.0,14.0,0,14.0
+41569340402,https://github.com/cqu-moe/quick-login/actions/runs/41569340402,Publish canary,push,038468506c54a635754fd933faf900d4a213a0b8,publish,success,3.0,32.42625331878662,26.57374668121338,59.0
+41569340400,https://github.com/cqu-moe/quick-login/actions/runs/41569340400,Extension E2E,push,038468506c54a635754fd933faf900d4a213a0b8,"Real MV3 journeys (core, desktop)",success,2.0,145.0,1138.0,1283.0
+41569340400,https://github.com/cqu-moe/quick-login/actions/runs/41569340400,Extension E2E,push,038468506c54a635754fd933faf900d4a213a0b8,"Real MV3 journeys (devices, mobile)",success,2.0,119.0,894.0,1013.0
+41569340400,https://github.com/cqu-moe/quick-login/actions/runs/41569340400,Extension E2E,push,038468506c54a635754fd933faf900d4a213a0b8,"Real MV3 journeys (devices, desktop)",success,2.0,133.0,899.0,1032.0
+41569340400,https://github.com/cqu-moe/quick-login/actions/runs/41569340400,Extension E2E,push,038468506c54a635754fd933faf900d4a213a0b8,"Real MV3 journeys (core, mobile)",success,2.0,125.0,1096.0,1221.0
+41569340400,https://github.com/cqu-moe/quick-login/actions/runs/41569340400,Extension E2E,push,038468506c54a635754fd933faf900d4a213a0b8,"Real MV3 Auth, school cookies and recovery",success,2.0,2.0,0,2.0
+41548642726,https://github.com/cqu-moe/quick-login/actions/runs/41548642726,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,8.0,19.0
+41487217629,https://github.com/cqu-moe/quick-login/actions/runs/41487217629,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,14.0,39.0,7.0,46.0
+41402400684,https://github.com/cqu-moe/quick-login/actions/runs/41402400684,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,12.0,8.0,20.0
+41368487648,https://github.com/cqu-moe/quick-login/actions/runs/41368487648,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,13.0,5.0,18.0
+41348812023,https://github.com/cqu-moe/quick-login/actions/runs/41348812023,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,3.0,10.0,9.0,19.0
+41326101719,https://github.com/cqu-moe/quick-login/actions/runs/41326101719,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,4.0,15.0
+41294351502,https://github.com/cqu-moe/quick-login/actions/runs/41294351502,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,8.0,19.0
+41265944680,https://github.com/cqu-moe/quick-login/actions/runs/41265944680,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,3.0,12.0,9.0,21.0
+41253807749,https://github.com/cqu-moe/quick-login/actions/runs/41253807749,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,5.0,16.0
+41239984871,https://github.com/cqu-moe/quick-login/actions/runs/41239984871,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,10.0,21.0
+41225832415,https://github.com/cqu-moe/quick-login/actions/runs/41225832415,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,10.0,4.0,14.0
+41203886211,https://github.com/cqu-moe/quick-login/actions/runs/41203886211,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,3.0,15.0,7.0,22.0
+41176203668,https://github.com/cqu-moe/quick-login/actions/runs/41176203668,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,8.0,19.0
+41151947511,https://github.com/cqu-moe/quick-login/actions/runs/41151947511,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,10.0,21.0
+41127945297,https://github.com/cqu-moe/quick-login/actions/runs/41127945297,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,14.0,9.0,23.0
+41107596994,https://github.com/cqu-moe/quick-login/actions/runs/41107596994,Extension E2E,pull_request,38c2d1156de8a5c30473675e0f5a1f831b86feac,"Real MV3 journeys (core, desktop)",success,2.0,117.0,1132.0,1249.0
+41107596994,https://github.com/cqu-moe/quick-login/actions/runs/41107596994,Extension E2E,pull_request,38c2d1156de8a5c30473675e0f5a1f831b86feac,"Real MV3 journeys (devices, desktop)",success,2.0,151.0,876.0,1027.0
+41107596994,https://github.com/cqu-moe/quick-login/actions/runs/41107596994,Extension E2E,pull_request,38c2d1156de8a5c30473675e0f5a1f831b86feac,"Real MV3 journeys (core, mobile)",success,2.0,139.0,1150.0,1289.0
+41107596994,https://github.com/cqu-moe/quick-login/actions/runs/41107596994,Extension E2E,pull_request,38c2d1156de8a5c30473675e0f5a1f831b86feac,"Real MV3 journeys (devices, mobile)",success,2.0,111.0,845.0,956.0
+41107596994,https://github.com/cqu-moe/quick-login/actions/runs/41107596994,Extension E2E,pull_request,38c2d1156de8a5c30473675e0f5a1f831b86feac,"Real MV3 Auth, school cookies and recovery",success,2.0,3.0,0,3.0
+41107596929,https://github.com/cqu-moe/quick-login/actions/runs/41107596929,Checks,pull_request,38c2d1156de8a5c30473675e0f5a1f831b86feac,verify,success,2.0,23.75011110305786,23.24988889694214,47.0
+41092164830,https://github.com/cqu-moe/quick-login/actions/runs/41092164830,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,11.0,9.0,20.0
+41037977374,https://github.com/cqu-moe/quick-login/actions/runs/41037977374,Extension E2E,pull_request,12c888de5a4e8e762318a10b71eb9e7c192d3082,"Real MV3 journeys (core, desktop)",success,2.0,117.0,1123.0,1240.0
+41037977374,https://github.com/cqu-moe/quick-login/actions/runs/41037977374,Extension E2E,pull_request,12c888de5a4e8e762318a10b71eb9e7c192d3082,"Real MV3 journeys (devices, desktop)",success,2.0,97.0,797.0,894.0
+41037977374,https://github.com/cqu-moe/quick-login/actions/runs/41037977374,Extension E2E,pull_request,12c888de5a4e8e762318a10b71eb9e7c192d3082,"Real MV3 journeys (core, mobile)",failure,2.0,101.0,862.0,963.0
+41037977374,https://github.com/cqu-moe/quick-login/actions/runs/41037977374,Extension E2E,pull_request,12c888de5a4e8e762318a10b71eb9e7c192d3082,"Real MV3 journeys (devices, mobile)",success,2.0,118.0,869.0,987.0
+41037977374,https://github.com/cqu-moe/quick-login/actions/runs/41037977374,Extension E2E,pull_request,12c888de5a4e8e762318a10b71eb9e7c192d3082,"Real MV3 Auth, school cookies and recovery",failure,2.0,3.0,0,3.0
+41037977322,https://github.com/cqu-moe/quick-login/actions/runs/41037977322,Checks,pull_request,12c888de5a4e8e762318a10b71eb9e7c192d3082,verify,success,2.0,19.928487062454224,23.071512937545776,43.0
+41037118111,https://github.com/cqu-moe/quick-login/actions/runs/41037118111,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,5.0,13.0,4.0,17.0
+41036241370,https://github.com/cqu-moe/quick-login/actions/runs/41036241370,Extension E2E,pull_request,50e4391f750c786da1b89426ddb195f6c70c9597,"Real MV3 journeys (core, desktop)",failure,2.0,122.0,317.0,439.0
+41036241370,https://github.com/cqu-moe/quick-login/actions/runs/41036241370,Extension E2E,pull_request,50e4391f750c786da1b89426ddb195f6c70c9597,"Real MV3 journeys (devices, mobile)",cancelled,2.0,111.0,806.0,917.0
+41036241370,https://github.com/cqu-moe/quick-login/actions/runs/41036241370,Extension E2E,pull_request,50e4391f750c786da1b89426ddb195f6c70c9597,"Real MV3 journeys (devices, desktop)",cancelled,2.0,98.0,809.0,907.0
+41036241370,https://github.com/cqu-moe/quick-login/actions/runs/41036241370,Extension E2E,pull_request,50e4391f750c786da1b89426ddb195f6c70c9597,"Real MV3 journeys (core, mobile)",failure,2.0,115.0,332.0,447.0
+41036241370,https://github.com/cqu-moe/quick-login/actions/runs/41036241370,Extension E2E,pull_request,50e4391f750c786da1b89426ddb195f6c70c9597,"Real MV3 Auth, school cookies and recovery",failure,2.0,3.0,0,3.0
+41036241364,https://github.com/cqu-moe/quick-login/actions/runs/41036241364,Checks,pull_request,50e4391f750c786da1b89426ddb195f6c70c9597,verify,success,2.0,25.708522081375122,17.291477918624878,43.0
+40994615128,https://github.com/cqu-moe/quick-login/actions/runs/40994615128,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,10.0,7.0,17.0
+40972130618,https://github.com/cqu-moe/quick-login/actions/runs/40972130618,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,12.0,8.0,20.0
+40938158167,https://github.com/cqu-moe/quick-login/actions/runs/40938158167,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,5.0,14.0,4.0,18.0
+40884629039,https://github.com/cqu-moe/quick-login/actions/runs/40884629039,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,10.0,10.0,20.0
+40829376922,https://github.com/cqu-moe/quick-login/actions/runs/40829376922,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,13.0,3.0,16.0
+40793857540,https://github.com/cqu-moe/quick-login/actions/runs/40793857540,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,3.0,11.0,10.0,21.0
+40764325797,https://github.com/cqu-moe/quick-login/actions/runs/40764325797,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,12.0,6.0,18.0
+40716082378,https://github.com/cqu-moe/quick-login/actions/runs/40716082378,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,7.0,16.0,12.0,28.0
+40656872606,https://github.com/cqu-moe/quick-login/actions/runs/40656872606,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,13.0,5.0,18.0
+40619561231,https://github.com/cqu-moe/quick-login/actions/runs/40619561231,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,4.0,14.0,5.0,19.0
+40600427549,https://github.com/cqu-moe/quick-login/actions/runs/40600427549,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,3.0,12.0,9.0,21.0
+40570909559,https://github.com/cqu-moe/quick-login/actions/runs/40570909559,Publish Chrome Web Store,schedule,1baf1b2d3bef7d741c6230e6d2bc9c8d3bfa9380,publish,success,3.0,9.0,8.0,17.0

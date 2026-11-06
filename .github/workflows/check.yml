@@ -7,28 +7,39 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: checks-${{ github.ref }}
-  cancel-in-progress: true
+  group: checks-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
     timeout-minutes: 20
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: ./.github/actions/changes
+        id: changes
+      - if: steps.changes.outputs.required == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22.22.3"
           cache: npm
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - if: steps.changes.outputs.required == 'true'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - uses: ./.github/actions/verify
+      - if: steps.changes.outputs.required == 'true'
+        uses: ./.github/actions/verify
         with:
           posthog-project-token: ${{ vars.POSTHOG_PROJECT_TOKEN }}
+      - name: Check E2E harness types and admission
+        if: steps.changes.outputs.required == 'true'
+        run: |
+          npm run typecheck:e2e
+          node e2e/shard-check.mjs
       - name: Package verified build artifacts
+        if: steps.changes.outputs.required == 'true'
         run: python3 scripts/package_ci.py --output ci-artifacts
       - name: Upload main build artifacts
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: steps.changes.outputs.required == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: quicklogin-main-${{ github.sha }}

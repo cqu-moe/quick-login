@@ -1,0 +1,30 @@
+run,url,sha,job,conclusion,queue,preparation,execution,elapsed
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,changes,success,90.0,7.0,0,7.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, desktop, 3/4)",success,182.0,97.0,398.0,495.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, mobile, 4/4)",success,199.0,125.0,411.0,536.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (devices, desktop, 2/2)",success,271.0,132.0,501.0,633.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, mobile, 2/4)",success,290.0,638.0,198.0,836.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, desktop, 4/4)",success,296.0,126.0,422.0,548.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (devices, mobile, 2/2)",success,286.0,627.0,492.0,1119.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, mobile, 1/4)",success,297.0,127.0,79.0,206.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (devices, desktop, 1/2)",success,299.0,110.0,310.0,420.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, desktop, 1/4)",success,315.0,158.0,56.0,214.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (devices, mobile, 1/2)",success,314.0,110.0,303.0,413.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, desktop, 2/4)",success,335.0,119.0,203.0,322.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 journeys (core, mobile, 3/4)",success,319.0,128.0,422.0,550.0
+42159008624,https://github.com/cqu-moe/quick-login/actions/runs/42159008624,0d58785fb5705d2c9609f8e2e7b68a2202956d24,"Real MV3 Auth, school cookies and recovery",success,165.0,12.0,0.0,12.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,changes,success,73.0,6.0,0,6.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (devices, mobile, 2/2)",success,617.0,97.0,297.0,394.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, mobile, 4/4)",success,305.0,83.0,234.0,317.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, desktop, 3/4)",success,362.0,79.0,214.0,293.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (devices, desktop, 1/2)",success,669.0,85.0,200.0,285.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (devices, desktop, 2/2)",success,654.0,85.0,250.0,335.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (devices, mobile, 1/2)",success,657.0,87.0,197.0,284.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, desktop, 2/4)",success,480.0,79.0,99.0,178.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, desktop, 1/4)",success,831.0,94.0,71.0,165.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, desktop, 4/4)",success,660.0,91.0,262.0,353.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, mobile, 2/4)",success,805.0,95.0,106.0,201.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, mobile, 1/4)",success,893.0,99.0,73.0,172.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 journeys (core, mobile, 3/4)",success,359.0,85.0,223.0,308.0
+42164490941,https://github.com/cqu-moe/quick-login/actions/runs/42164490941,5209f8f54477ef8f25eff081426f5c4cef27030e,"Real MV3 Auth, school cookies and recovery",success,53.0,6.0,2.0,8.0
+42164490963,https://github.com/cqu-moe/quick-login/actions/runs/42164490963,5209f8f54477ef8f25eff081426f5c4cef27030e,verify,success,31.0,18.32273507118225,21.67726492881775,40.0

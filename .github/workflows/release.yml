@@ -3,6 +3,10 @@ on:
   push:
     tags: ["v*"]
     branches: ["main"]
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "docs/releases/**"
   workflow_dispatch:
     inputs:
       tag:
@@ -14,6 +18,7 @@ permissions:
 concurrency:
   group: quicklogin-canary-publish
   cancel-in-progress: false
+  queue: max
 jobs:
   select:
     timeout-minutes: 5

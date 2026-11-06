@@ -147,3 +147,28 @@ QUICKLOGIN_E2E_VIEWPORT=mobile QUICKLOGIN_E2E_SUITE=all QUICKLOGIN_E2E_PUBLISH_D
 ```
 
 将viewport改为desktop可运行相同桌面门禁。局部grep证明只属于其实际选择；CI collector要求完整分片。适用Web的Firefox/WebKit发布前补验、原生权限和独立live验收仍分别待验；本票不发布。
+
+## CI sharding and required checks
+
+CI keeps both desktop/mobile viewports and two independent rounds per test. The
+two rounds run concurrently with distinct output directories, profiles, ports
+and runtime state; assigned device controls have their own runtime. The shell
+waits for every child and fails if any child fails. The framework selects four core shards and two device shards per viewport with
+`--shard`; isolated school/device runtimes select their exact discovered tests
+without applying that shard a second time. Each shard still validates actual
+selected/executed IDs, viewport observations, source identity, cleanup and
+sanitized evidence before upload. The required aggregate check rejects missing
+or duplicated partitions, overlapping tests, incomplete suite coverage, reused
+round identities, mismatched source builds and missing assigned controls.
+
+Shared assertion/zero-selection/lifecycle controls run on core shard 1 for each
+viewport; native alarm/held-ACK controls run on device shard 1. The other shards
+cannot substitute for these controls. Native toolbar, denied CONNECT, capture
+failure and explicit secret-scanning checks retain their existing viewport
+coverage. Unsharded local runs retain the original full-suite/control admission.
+
+Prose-only PRs still report the two required check contexts but skip expensive
+verification. Release notes under `docs/releases/` remain build inputs and run
+CI. PR updates cancel superseded routing and matching shard jobs; main commits
+run independently. Required aggregates remain fail-closed after cancellation but
+do not hold a workflow concurrency lock that could block the next commit.
