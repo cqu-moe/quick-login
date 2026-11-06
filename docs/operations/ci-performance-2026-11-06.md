@@ -46,4 +46,6 @@ The latest matching successful main E2E run is [41569340400](https://github.com/
 
 ## Remote verification
 
-Measurements will be filled after the pushed PR runs complete. No merge, release, store upload or real-account acceptance is part of this task.
+The temporary [README-only probe PR #41](https://github.com/cqu-moe/quick-login/pull/41) passed: `verify` 5 s, change routing 5 s, aggregate 5 s; journeys skipped and no dependency install/build/test ran. It is closed without merging. Superseded E2E runs [42156633249](https://github.com/cqu-moe/quick-login/actions/runs/42156633249) and [42156794828](https://github.com/cqu-moe/quick-login/actions/runs/42156794828) were cancelled automatically. The latter exposed the old `always()` aggregate continuing after cancellation; changed failure-evidence/aggregate conditions to [`!cancelled()`](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions) so failures still report but superseded work does not hold the concurrency slot.
+
+Full-run performance measurements will be filled after the pushed PR runs complete. No merge, release, store upload or real-account acceptance is part of this task.

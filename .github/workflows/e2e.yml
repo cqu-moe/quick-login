@@ -91,7 +91,7 @@ jobs:
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
         run: npm run test:popup
       - name: Keep native popup layout evidence
-        if: always() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
+        if: ${{ !cancelled() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quicklogin-popup-layout-${{ github.sha }}
@@ -103,7 +103,7 @@ jobs:
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/network-reset-check.mjs .e2e/network-reset-control
       - name: Keep CONNECT reset control evidence
-        if: always() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
+        if: ${{ !cancelled() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quicklogin-network-control-${{ github.sha }}-${{ matrix.viewport }}
@@ -114,7 +114,7 @@ jobs:
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node --experimental-strip-types e2e/artifact-failure-check.ts .e2e/artifact-failure-control
       - name: Keep artifact-capture control evidence
-        if: always() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
+        if: ${{ !cancelled() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quicklogin-capture-control-${{ github.sha }}-${{ matrix.viewport }}
@@ -161,10 +161,10 @@ jobs:
         if: matrix.partition.suite == 'devices' && matrix.partition.shard == '1/2'
         run: node e2e/device-controls.mjs
       - name: Prepare sanitized evidence even after a failure
-        if: always()
+        if: ${{ !cancelled() }}
         run: node e2e/prepare-ci-artifacts.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: quicklogin-e2e-${{ github.sha }}-${{ matrix.partition.suite }}-${{ matrix.viewport }}-${{ strategy.job-index }}
           path: ci-e2e-artifacts/
@@ -175,7 +175,7 @@ jobs:
   quicklogin:
     name: Real MV3 Auth, school cookies and recovery
     needs: [changes, journeys]
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
