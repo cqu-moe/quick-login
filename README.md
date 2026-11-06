@@ -66,3 +66,5 @@ Chrome 商店自动上传、送审、等待队列和 Verified CRX Uploads 配置
 Cloudflare 的根目录保持仓库根目录。根级 `wrangler.jsonc` 是官网唯一部署配置，`assets.directory` 指向 `website/dist`，`previews: {}` 支持默认 `npx wrangler preview`；扩展构建目录 `dist` 不会作为网站资源发布。
 
 开发约定见 [AGENTS.md](AGENTS.md)。
+
+<!-- CI prose-only routing probe; temporary validation branch. -->
