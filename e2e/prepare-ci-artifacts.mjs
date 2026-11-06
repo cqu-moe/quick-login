@@ -1,6 +1,7 @@
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { assertRunEvidence, viewport } from "./run-evidence.mjs";
+import { parseShard } from "./shard-evidence.mjs";
 import assert from "node:assert/strict";
 
 const source = resolve(".e2e");
@@ -15,10 +16,14 @@ await mkdir(destination);
 const problems = [];
 let expectedSource;
 let expectedTests;
+let provenance = null;
+const rounds = [];
 const runIds = new Set();
 const suite = process.env.QUICKLOGIN_E2E_SUITE;
+const shard = parseShard(process.env.QUICKLOGIN_E2E_SHARD);
 if (process.env.CI === 'true' && !suite) problems.push('CI artifact admission requires an explicit core/devices/all suite');
-let requireDeviceControls = false;
+const genericControlsRequired = !shard || (suite === 'core' && shard.index === 1);
+let deviceControlsRequired = Boolean(shard && suite === 'devices' && shard.index === 1);
 const copiedPaths = [];
 const redactedPaths = [];
 const excludedDirectories = new Set(["auth-runtime", "tls", "profiles"]);
@@ -106,7 +111,7 @@ for (const name of requiredRuns) {
   try {
     const { runtime, report } = await readRun(path);
     const discovery = JSON.parse(await readFile(join(path, 'discovery.json'), 'utf8'));
-    const actualTests = assertRunEvidence(runtime, report, discovery, suite);
+    const actualTests = assertRunEvidence(runtime, report, discovery, shard ? undefined : suite);
     const groups = runtime.groups ?? [{ ...runtime, group: '' }];
     const actualObservations = [];
     for (const group of groups) {
@@ -122,9 +127,11 @@ for (const name of requiredRuns) {
     assert.deepEqual(actualObservations, runtime.viewportObservations, 'Aggregate page dimensions differ from actual groups');
     if (expectedTests && JSON.stringify(actualTests) !== JSON.stringify(expectedTests)) problems.push('Independent rounds executed different actual test IDs');
     expectedTests ??= actualTests;
+    provenance ??= { extensionCommit: runtime.extensionCommit, authCommit: runtime.authCommit, backgroundSha256: runtime.backgroundSha256 };
+    if (!shard) deviceControlsRequired ||= report.run.results.some(test => test.selected && test.titlePath?.join(' ').startsWith('QUICKLOGIN-03 '));
+    rounds.push({ runId: report.run.id, tests: actualTests.map(test => test.id) });
     if (!report.run.id || runIds.has(report.run.id)) problems.push('Independent rounds reused a framework run identity');
     runIds.add(report.run.id);
-    requireDeviceControls ||= report.run.results.some(test => test.selected && test.titlePath?.join(' ').startsWith('QUICKLOGIN-03 '));
     if (runtime.sourceDirty !== false || runtime.build?.sourceCommit !== runtime.extensionCommit || !runtime.backgroundSha256) {
       problems.push(name + " did not use a clean fixed build");
     }
@@ -146,20 +153,20 @@ for (const name of requiredRuns) {
   catch (error) { if (error.code !== "ENOENT") throw error; }
 }
 
-const negative = await findControl("negative-", async path => {
+const negative = genericControlsRequired ? await findControl("negative-", async path => {
   const { runtime, report } = await readRun(join(path, "run"));
   const summary = report.run.summary;
   const error = report.run.results.find(result => result.selected)?.attempts[0]?.error;
   return sameSource(runtime) && runtime.cleanup === "passed" && summary.failed === 1 && summary.executed === 1 &&
     !summary.passed && !summary.skipped && error?.code === "ASSERTION_FAILED" &&
     error.message === 'expected "forced-negative-control" to be "expected-failure"';
-});
-const zero = await findControl("zero-", async path => {
+}) : undefined;
+const zero = genericControlsRequired ? await findControl("zero-", async path => {
   const runtime = JSON.parse(await readFile(join(path, "run/runtime.json"), "utf8"));
   const log = await readFile(join(path, "zero-selection.log"), "utf8");
   return sameSource(runtime) && runtime.cleanup === "passed" && runtime.runnerExitCode === 2 && log.includes("NO_TESTS");
-});
-const lifecycle = await findControl("lifecycle-", async path => {
+}) : undefined;
+const lifecycle = genericControlsRequired ? await findControl("lifecycle-", async path => {
   const result = JSON.parse(await readFile(join(path, "control.json"), "utf8"));
   const names = result.checks.map(check => check.name).sort();
   if (result.status !== "passed" || JSON.stringify(names) !== JSON.stringify([
@@ -170,13 +177,14 @@ const lifecycle = await findControl("lifecycle-", async path => {
     if (!sameSource(runtime)) return false;
   }
   return true;
-});
+}) : undefined;
 for (const [name, path] of [["negative", negative], ["zero", zero], ["lifecycle", lifecycle]]) {
   if (path) await copySafe(path);
-  else problems.push("Verified " + name + " control is missing");
+  else if (genericControlsRequired) problems.push("Verified " + name + " control is missing");
 }
-if (requireDeviceControls) {
-  const controls = await findControl('device-control-', async path => {
+let deviceControl;
+if (deviceControlsRequired) {
+  deviceControl = await findControl('device-control-', async path => {
     const result = JSON.parse(await readFile(join(path, 'control.json'), 'utf8'));
     if (result.status !== 'passed' || JSON.stringify(result.checks.map(check => check.name).sort()) !== JSON.stringify(['held-ack', 'missing-alarm'])) return false;
     for (const check of result.checks) {
@@ -186,14 +194,28 @@ if (requireDeviceControls) {
     }
     return true;
   });
-  if (controls) await copySafe(controls);
+  if (deviceControl) await copySafe(deviceControl);
   else problems.push('Verified actual MV3 alarm/ACK fault controls are missing');
 }
+const controls = {};
+if (genericControlsRequired) {
+  for (const [name, path] of [['negative', negative], ['zero', zero], ['lifecycle', lifecycle]]) {
+    controls[name] = path ? relative(source, path) : 'missing';
+  }
+}
+if (deviceControlsRequired) controls.device = deviceControl ? relative(source, deviceControl) : 'missing';
+const fullSuiteIds = expectedTests
+  ? JSON.parse(await readFile(join(source, requiredRuns[0], 'discovery.json'), 'utf8')).all
+    .filter(pair => pair.kind === 'test' && pair.disposition === 'run')
+    .filter(pair => !suite || suite === 'all' || pair.titlePath.join(' ').startsWith('QUICKLOGIN-03 ') === (suite === 'devices'))
+    .map(pair => pair.id).sort()
+  : [];
 await writeFile(join(destination, "sanitization.json"), JSON.stringify({
   copiedFiles: copiedPaths.length,
   filesChangedByRedaction: redactedPaths,
   requestedRuns: requiredRuns,
-  viewport, suite: suite ?? 'explicit local selection', actualTests: expectedTests ?? [],
+  viewport, suite: suite ?? 'explicit local selection', shard: shard?.label ?? 'unsharded',
+  actualTests: expectedTests ?? [], rounds, fullSuiteIds, source: provenance, controls,
   negativeControl: negative ? relative(source, negative) : "missing",
   zeroControl: zero ? relative(source, zero) : "missing",
   lifecycleControl: lifecycle ? relative(source, lifecycle) : "missing",

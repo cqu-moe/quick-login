@@ -2,9 +2,11 @@ import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { viewport } from './run-evidence.mjs';
+import { parseShard, stripShard } from './shard-evidence.mjs';
 
 const startedAt = new Date().toISOString();
 const args = process.argv.slice(2);
+const shard = parseShard(process.env.QUICKLOGIN_E2E_SHARD);
 let active;
 let interrupted = false;
 function stop() { interrupted = true; active?.kill('SIGINT'); }
@@ -41,7 +43,7 @@ else {
     await writeFile(join(output, 'discovery.json'), JSON.stringify({ ...JSON.parse(discovery.stdout), all: JSON.parse(full.stdout).pairs }, null, 2) + '\n');
     const base = pairs.filter(pair => !independent.includes(pair));
     const groups = [...(base.length ? [{ name: 'authorization', pairs: base, school: false }] : []), ...independent.map((pair, index) => ({ name: `isolated-${index + 1}-${pair.id.slice(0, 12)}`, pairs: [pair], school: school.includes(pair) }))];
-    const executionArgs = args.filter((arg, index) => arg !== '--grep' && !arg.startsWith('--grep=') && args[index - 1] !== '--grep');
+    const executionArgs = stripShard(args.filter((arg, index) => arg !== '--grep' && !arg.startsWith('--grep=') && args[index - 1] !== '--grep'));
     const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const reports = [], runtimes = [], logs = [], failures = [];
     for (const group of groups) {
@@ -76,7 +78,7 @@ else {
     const report = { ...(reports[0] ?? {}), run: { ...(reports[0]?.run ?? {}), startedAt, finishedAt: new Date().toISOString(), exitCode: failures.length ? 1 : 0, status: failures.length ? 'failed' : 'passed', summary, results, errors: failures.map(message => ({ message })) } };
     await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');
     await writeFile(join(output, 'runner.log'), logs.join('\n'));
-    const runtime = { ...(runtimes[0] ?? {}), output, viewport,
+    const runtime = { ...(runtimes[0] ?? {}), output, viewport, shard: shard?.label,
       selection: runtimes.flatMap(value => value.selection ?? []).sort((a, b) => a.id.localeCompare(b.id)),
       viewportObservations: runtimes.flatMap(value => value.viewportObservations ?? []),
       groups: runtimes, completedGroups: runtimes.length, expectedGroups: groups.length, cleanup: runtimes.length && runtimes.every(value => value.cleanup === 'passed') ? 'passed' : 'incomplete-or-failed', primaryFailures: failures, cleanupFailures: runtimes.flatMap(value => value.cleanupFailures ?? []) };

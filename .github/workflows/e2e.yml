@@ -10,24 +10,37 @@ permissions:
   contents: read
 
 concurrency:
-  group: extension-e2e-${{ github.ref }}
-  cancel-in-progress: true
+  group: extension-e2e-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      required: ${{ steps.changes.outputs.required }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: ./.github/actions/changes
+        id: changes
+
   journeys:
-    name: Real MV3 journeys (${{ matrix.suite }}, ${{ matrix.viewport }})
+    needs: changes
+    if: needs.changes.outputs.required == 'true'
+    name: Real MV3 journeys (${{ matrix.partition.suite }}, ${{ matrix.viewport }}, ${{ matrix.partition.shard }})
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        suite: [core, devices]
         viewport: [desktop, mobile]
-        include:
-          - suite: core
-            selector: --grep-invert
-          - suite: devices
-            selector: --grep
+        partition:
+          - { suite: core, shard: 1/4, selector: --grep-invert }
+          - { suite: core, shard: 2/4, selector: --grep-invert }
+          - { suite: core, shard: 3/4, selector: --grep-invert }
+          - { suite: core, shard: 4/4, selector: --grep-invert }
+          - { suite: devices, shard: 1/2, selector: --grep }
+          - { suite: devices, shard: 2/2, selector: --grep }
     env:
       E2E_TELEMETRY_DISABLED: "1"
       DO_NOT_TRACK: "1"
@@ -36,7 +49,8 @@ jobs:
       QUICKLOGIN_E2E_AUTH_PATH: ${{ github.workspace }}/.e2e-auth
       QUICKLOGIN_E2E_AUTH_COMMIT: 41147c934c577f6a10f5bf3d9cb71597c362a07f
       QUICKLOGIN_E2E_VIEWPORT: ${{ matrix.viewport }}
-      QUICKLOGIN_E2E_SUITE: ${{ matrix.suite }}
+      QUICKLOGIN_E2E_SUITE: ${{ matrix.partition.suite }}
+      QUICKLOGIN_E2E_SHARD: ${{ matrix.partition.shard }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -48,25 +62,36 @@ jobs:
           git -C .e2e-auth fetch --depth 1 origin "$QUICKLOGIN_E2E_AUTH_COMMIT"
           git -C .e2e-auth checkout --detach FETCH_HEAD
           test "$(git -C .e2e-auth rev-parse HEAD)" = "$QUICKLOGIN_E2E_AUTH_COMMIT"
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - name: Restore pinned Auth frontend
+        id: auth-frontend
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .e2e-auth/frontend/dist
+          key: auth-frontend-${{ runner.os }}-${{ runner.arch }}-${{ env.QUICKLOGIN_E2E_AUTH_COMMIT }}-node22.22.3-no-telemetry-v1
+      - if: steps.auth-frontend.outputs.cache-hit != 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:
           package_json_file: .e2e-auth/frontend/package.json
+          cache: true
+          cache_dependency_path: .e2e-auth/frontend/pnpm-lock.yaml
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: "22.22.3"
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck:e2e
+          cache-dependency-path: |
+            package-lock.json
+            .e2e-auth/package-lock.json
+      - run: npm ci --prefer-offline
       - run: npx --no-install e2e-web install chromium --with-deps
       - run: npm run build
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
           VITE_POSTHOG_HOST: ""
       - name: Verify native toolbar popup layout
-        if: matrix.suite == 'core' && matrix.viewport == 'desktop'
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
         run: npm run test:popup
       - name: Keep native popup layout evidence
-        if: always() && matrix.suite == 'core' && matrix.viewport == 'desktop'
+        if: always() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quicklogin-popup-layout-${{ github.sha }}
@@ -75,10 +100,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Require denied CONNECT reset survival and tunnel cleanup
-        if: matrix.suite == 'core'
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/network-reset-check.mjs .e2e/network-reset-control
       - name: Keep CONNECT reset control evidence
-        if: always() && matrix.suite == 'core'
+        if: always() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quicklogin-network-control-${{ github.sha }}-${{ matrix.viewport }}
@@ -86,27 +111,29 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Preserve business and closed-page capture failures
-        if: matrix.suite == 'core'
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node --experimental-strip-types e2e/artifact-failure-check.ts .e2e/artifact-failure-control
       - name: Keep artifact-capture control evidence
-        if: always() && matrix.suite == 'core'
+        if: always() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quicklogin-capture-control-${{ github.sha }}-${{ matrix.viewport }}
           path: .e2e/artifact-failure-control/control.json
           if-no-files-found: error
           retention-days: 14
-      - run: npm ci
+      - run: npm ci --prefer-offline
         working-directory: .e2e-auth
-      - run: pnpm install --frozen-lockfile
+      - if: steps.auth-frontend.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
         working-directory: .e2e-auth/frontend
-      - run: pnpm run build
+      - if: steps.auth-frontend.outputs.cache-hit != 'true'
+        run: pnpm run build
         working-directory: .e2e-auth/frontend
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
           VITE_POSTHOG_HOST: ""
       - name: Verify OTP metadata collisions and explicit secret scanning
-        if: matrix.suite == 'core' && matrix.viewport == 'desktop'
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
         run: node e2e/artifact-mail-check.mjs
       - name: Build actual pinned Auth browser runtime
         working-directory: .e2e-auth
@@ -114,21 +141,24 @@ jobs:
       - name: Pull pinned native container interceptor
         run: docker pull cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8
       - name: Run first independent E2E journey
-        run: node e2e/run.mjs ${{ matrix.selector }} '^QUICKLOGIN-03 '
+        run: node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}'
         env:
           QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-1
       - name: Run second independent E2E journey
-        run: node e2e/run.mjs ${{ matrix.selector }} '^QUICKLOGIN-03 '
+        run: node e2e/run.mjs ${{ matrix.partition.selector }} '^QUICKLOGIN-03 ' --shard '${{ matrix.partition.shard }}'
         env:
           QUICKLOGIN_E2E_OUTPUT: .e2e/ci-run-2
       - name: Require expected assertion failure
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/self-check.mjs
       - name: Require zero-selection failure
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/zero-check.mjs
       - name: Require startup, cleanup and combined failures
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4'
         run: node e2e/lifecycle-check.mjs
       - name: Require native alarm and genuine pending ACK failure controls
-        if: matrix.suite == 'devices'
+        if: matrix.partition.suite == 'devices' && matrix.partition.shard == '1/2'
         run: node e2e/device-controls.mjs
       - name: Prepare sanitized evidence even after a failure
         if: always()
@@ -136,7 +166,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: quicklogin-e2e-${{ github.sha }}-${{ matrix.suite }}-${{ matrix.viewport }}
+          name: quicklogin-e2e-${{ github.sha }}-${{ matrix.partition.suite }}-${{ matrix.viewport }}-${{ strategy.job-index }}
           path: ci-e2e-artifacts/
           include-hidden-files: true
           if-no-files-found: error
@@ -144,12 +174,30 @@ jobs:
 
   quicklogin:
     name: Real MV3 Auth, school cookies and recovery
-    needs: journeys
+    needs: [changes, journeys]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - name: Require every suite and its two-round artifact admission
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          REQUIRED: ${{ needs.changes.outputs.required }}
           SUITES_RESULT: ${{ needs.journeys.result }}
-        run: test "$SUITES_RESULT" = success
+        run: |
+          test "$CHANGES_RESULT" = success
+          test "$REQUIRED" = false || test "$SUITES_RESULT" = success
+      - if: needs.changes.outputs.required == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - if: needs.changes.outputs.required == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22.22.3"
+      - if: needs.changes.outputs.required == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: quicklogin-e2e-${{ github.sha }}-*
+          path: .e2e/admission
+      - name: Require complete disjoint coverage and all failure controls
+        if: needs.changes.outputs.required == 'true'
+        run: node e2e/check-shards.mjs .e2e/admission
