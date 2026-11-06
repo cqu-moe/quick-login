@@ -111,7 +111,7 @@ function check(): void {
   void send({ type: "LOGIN_FORM_VISIBLE" });
 }
 function noticeManualEdit(event: Event): void {
-  if (userEditing || !(event.target instanceof HTMLInputElement) ||
+  if (!event.isTrusted || userEditing || !(event.target instanceof HTMLInputElement) ||
       !["text", "email", "password"].includes(event.target.type)) return;
   userEditing = true;
   stopped = true;
