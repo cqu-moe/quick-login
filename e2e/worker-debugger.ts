@@ -35,7 +35,7 @@ export async function pauseWorkerAt(boundary: 'expiry' | 'cookie-written', cooki
   const source = await readFile(join(process.cwd(), 'dist/background.js'), 'utf8');
   const matches = [...source.matchAll(boundary === 'expiry'
     ? /if\([\w$]+\.applyBefore<=Date\.now\(\)\)throw new [\w$]+\(`STALE_SNAPSHOT`\)/g
-    : /([\w$]+)\.completed=!0,await [\w$]+\(/g)];
+    : /([\w$]+)\.completed=!0/g)];
   if (matches.length !== 1) { socket.close(); throw new Error(`Cannot identify unique real ${boundary} scheduling boundary`); }
   const prefix = source.slice(0, matches[0]!.index);
   const location = { url: `${extensionOrigin}/background.js`, lineNumber: prefix.split('\n').length - 1, columnNumber: prefix.split('\n').at(-1)!.length };
