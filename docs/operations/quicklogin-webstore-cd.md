@@ -8,6 +8,8 @@
 
 R2 的 `quicklogin/channels/canary.json` 是最新候选来源。没有额外队列数据库，也不依赖会过期的 Actions artifact：每次重新读取指针、不可变版本记录及 ZIP，检查 SHA-256、CRC、版本和来源提交，再准备商店包。Canary 在 A 审核期间发布 B、C 后，下一次可提交时只取 C。回滚 Canary 会改变候选；商店已有更新版本时记录 `SUPERSEDED`，不会降级。
 
+R2 元数据只证明包内一致性，不能证明源码来源。签名前，准备脚本从工作流完整 Git checkout 解析 `refs/tags/v<version>`，要求其提交与候选一致且属于当前 main checkout 的历史，再在独立目录检出该提交，以锁文件安装依赖、构建并运行包检查。重建使用与 Canary 相同的 Node/Python 版本及 `POSTHOG_PROJECT_TOKEN`、`https://p.cqu.moe` 构建配置；完整 ZIP 必须逐字节一致。缺失标签、非 main 提交、构建失败或字节不一致均停止签名。main 后续提交不影响较早合法 Canary 或回滚版本；构建配置变化可能使旧包无法重现，此时需调查差异，不能绕过比对。
+
 | 商店状态 | 自动动作 |
 | --- | --- |
 | 目标版本已发布 | 记录 `PUBLISHED`，不重复上传 |

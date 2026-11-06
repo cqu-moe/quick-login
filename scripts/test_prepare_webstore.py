@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -12,7 +13,7 @@ from unittest.mock import patch
 import zipfile
 
 import prepare_webstore
-from release import CHANNEL_KEY, archive_directory, json_bytes
+from release import CHANNEL_KEY, archive_directory, git, json_bytes
 
 
 COMMIT = "a" * 40
@@ -54,6 +55,9 @@ class PrepareWebstoreTests(unittest.TestCase):
         }
         self.calls = []
         self.pointer_race = False
+        rebuild = patch.object(prepare_webstore, "rebuild_canary", return_value=self.canary)
+        rebuild.start()
+        self.addCleanup(rebuild.stop)
 
     def get(self, bucket, endpoint, key, destination, **kwargs):
         self.calls.append(key)
@@ -148,6 +152,96 @@ class PrepareWebstoreTests(unittest.TestCase):
             self.invoke(output)
         self.assertEqual(failure.exception.code, 1)
         self.assertFalse(output.exists())
+
+    def test_rejects_coherent_r2_substitution_before_writing(self):
+        for change in ("runtime", "extra", "missing", "commit"):
+            with self.subTest(change=change):
+                with zipfile.ZipFile(io.BytesIO(self.canary)) as archive:
+                    files = {name: archive.read(name) for name in archive.namelist()}
+                commit = COMMIT
+                if change == "runtime":
+                    files["background.js"] = b"/* attacker-controlled runtime */"
+                elif change == "extra":
+                    files["extra.js"] = b"/* additional runtime */"
+                elif change == "missing":
+                    del files["background.js"]
+                else:
+                    commit = "c" * 40
+                    info = json.loads(files["build-info.json"])
+                    files["build-info.json"] = json_bytes({**info, "sourceCommit": commit})
+                buffer = io.BytesIO()
+                with zipfile.ZipFile(buffer, "w") as archive:
+                    for name, content in files.items():
+                        archive.writestr(name, content)
+                payload = buffer.getvalue()
+                record = {**self.record, "sourceCommit": commit, "size": len(payload),
+                          "sha256": hashlib.sha256(payload).hexdigest()}
+                self.objects = {
+                    CHANNEL_KEY: json_bytes(record),
+                    "quicklogin/releases/0.4.9/release.json": json_bytes(record),
+                    record["objectKey"]: payload,
+                }
+                output = self.root / change
+                stderr = io.StringIO()
+                with redirect_stderr(stderr), self.assertRaises(SystemExit) as failure:
+                    self.invoke(output)
+                self.assertEqual(failure.exception.code, 1)
+                self.assertIn("Canary ZIP differs from the trusted Git build", stderr.getvalue())
+                self.assertFalse(output.exists())
+
+
+class RebuildCanaryTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.repo = self.root / "repo"
+        original = Path(__file__).resolve().parent.parent
+        git(original, "clone", "--quiet", "--shared", "--no-checkout", "--no-tags",
+            "--", str(original), str(self.repo))
+        self.commit = git(self.repo, "rev-parse", "HEAD")
+        git(self.repo, "tag", "v0.0.1", self.commit)
+        self.record = {"version": "0.0.1", "sourceCommit": self.commit}
+
+    def test_rebuilds_the_tag_in_a_clean_checkout(self):
+        run = subprocess.run
+
+        def build(command, **kwargs):
+            if command[0] != "npm":
+                return run(command, **kwargs)
+            source = kwargs["cwd"]
+            self.assertNotEqual(source, self.repo)
+            self.assertEqual(git(source, "rev-parse", "HEAD"), self.commit)
+            if command == ["npm", "run", "build"]:
+                (source / "dist").mkdir()
+                (source / "dist/background.js").write_bytes(b"/* trusted build */")
+            return subprocess.CompletedProcess(command, 0)
+
+        with patch.object(prepare_webstore.subprocess, "run", side_effect=build):
+            payload = prepare_webstore.rebuild_canary(self.repo, self.record, self.root)
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            self.assertEqual(archive.namelist(), ["background.js"])
+            self.assertEqual(archive.read("background.js"), b"/* trusted build */")
+
+    def test_rejects_missing_tag_and_forged_commit_before_build(self):
+        for record in ({**self.record, "version": "0.0.2"},
+                       {**self.record, "sourceCommit": "c" * 40}):
+            with self.subTest(record=record), self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                prepare_webstore.rebuild_canary(self.repo, record, self.root)
+            self.assertFalse((self.root / "source").exists())
+
+    def test_rejects_tag_outside_trusted_history_before_build(self):
+        real_git = prepare_webstore.git
+
+        def git_without_ancestry(root, *args):
+            if args[0] == "merge-base":
+                raise subprocess.CalledProcessError(1, ["git", *args])
+            return real_git(root, *args)
+
+        with patch.object(prepare_webstore, "git", side_effect=git_without_ancestry):
+            with self.assertRaises(subprocess.CalledProcessError):
+                prepare_webstore.rebuild_canary(self.repo, self.record, self.root)
+        self.assertFalse((self.root / "source").exists())
 
 
 if __name__ == "__main__":

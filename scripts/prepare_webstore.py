@@ -6,11 +6,12 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import tempfile
 from urllib.parse import urlparse
 import zipfile
 
-from release import CHANNEL_KEY, s3_get, validate_record, verify_package
+from release import CHANNEL_KEY, archive_directory, git, s3_get, validate_record, verify_package
 
 
 _spec = importlib.util.spec_from_file_location(
@@ -19,6 +20,22 @@ _spec = importlib.util.spec_from_file_location(
 _package_webstore = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_package_webstore)
 write_webstore = _package_webstore.write_webstore
+
+
+def rebuild_canary(repo, record, directory):
+    commit = git(repo, "rev-parse", "--verify", f"refs/tags/v{record['version']}^{{commit}}")
+    if commit != record["sourceCommit"]:
+        raise ValueError("Canary source commit differs from the trusted release tag")
+    git(repo, "merge-base", "--is-ancestor", commit, "HEAD")
+
+    # Build only Git-authenticated source; R2 controls neither the checkout nor its scripts.
+    source = directory / "source"
+    git(repo, "clone", "--quiet", "--shared", "--no-checkout", "--", str(repo), str(source))
+    git(source, "checkout", "--quiet", "--detach", commit)
+    for command in (["npm", "ci", "--prefer-offline"], ["npm", "run", "build"],
+                    ["npm", "run", "check:package"]):
+        subprocess.run(command, cwd=source, check=True)
+    return archive_directory(source / "dist")
 
 
 def prepare_webstore(bucket, endpoint, output):
@@ -42,6 +59,9 @@ def prepare_webstore(bucket, endpoint, output):
             raise ValueError("Published Canary package is missing")
         canary_payload = archive.read_bytes()
         verify_package(record, canary_payload)
+        repo = Path(__file__).resolve().parent.parent
+        if canary_payload != rebuild_canary(repo, record, directory):
+            raise ValueError("Canary ZIP differs from the trusted Git build")
 
         checked_pointer = directory / "checked.json"
         if (s3_get(bucket, endpoint, CHANNEL_KEY, checked_pointer) is None
@@ -69,7 +89,8 @@ def main():
 
     try:
         result = prepare_webstore(args.bucket, args.endpoint, args.output.resolve())
-    except (KeyError, OSError, RuntimeError, ValueError, zipfile.BadZipFile) as error:
+    except (KeyError, OSError, RuntimeError, ValueError, subprocess.CalledProcessError,
+            zipfile.BadZipFile) as error:
         parser.exit(1, f"{error}\n")
 
     print(json.dumps(result, ensure_ascii=False))
