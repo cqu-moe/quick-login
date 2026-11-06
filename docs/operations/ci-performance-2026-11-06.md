@@ -54,4 +54,24 @@ The first complete sharded run [42159008624](https://github.com/cqu-moe/quick-lo
 
 The second iteration exposed an ordering assumption in the device control: starting before either round created `.e2e/` caused `ENOENT`, while both actual journey rounds passed and cleaned up. Explicitly create the common parent before launching children. A clean-directory shell regression failed before this fix; all 16 exit/assignment combinations passed afterward. The failed run is retained as [42162139364](https://github.com/cqu-moe/quick-login/actions/runs/42162139364), not counted as a successful performance sample. Its cold official-mirror fetch took less than one second for the same 21.1 MB; full browser/dependency installation was 20 seconds, and the archive cache was saved.
 
-Final corrected-iteration measurements will be filled after its pushed PR run completes. No merge, release, store upload or real-account acceptance is part of this task.
+## Corrected complete-run comparison
+
+The final implementation passed [E2E 42164490941](https://github.com/cqu-moe/quick-login/actions/runs/42164490941) and [Checks 42164490963](https://github.com/cqu-moe/quick-login/actions/runs/42164490963), head `5209f8f54477ef8f25eff081426f5c4cef27030e`. GitHub tested merge commit `2206d0201bfe0abc62c4386c239e6ded4468b974`, whose parent is that head. The downloaded 12 shard admissions independently verified **96 journey executions, 24 distinct round IDs, all assigned controls and zero admission problems**. Both three-runtime device-control shards passed; their logs contain no OOM markers.
+
+| Metric | Baseline | Corrected run | Change |
+| --- | ---: | ---: | ---: |
+| E2E wall time, including queues | 21m 30s | 20m 07s | −6.4% |
+| Longest E2E job, including preparation | 21m 23s | 6m 34s | −69.3% |
+| Longest job's execution phase | 18m 58s | 4m 57s | −73.9% |
+| Median journey preparation | 2m 09s | 1m 26s | −33.3% |
+| Total E2E runner occupancy | 75m 51s | 54m 59s | −27.5% |
+| Median journey queue | 2s | 10m 55.5s | increased |
+| Checks / verify job | 46s | 40s | −13.0% |
+
+These are two actual complete runs, not a guaranteed long-term latency distribution. The optimized shards queued **305–893 seconds**; the last-starting light core shard determined completion, rather than the longest test. The measured end-to-end improvement is therefore 6.4%, not 69.3%. A no-queue path computed from these job durations would be roughly 6m 48s, but that is an estimate, not an observed workflow result. The official GitHub status page reported Actions operational during measurement, so no specific incident is asserted as the cause.
+
+The per-job queue/preparation/execution data for the first complete experiment and corrected run, plus corrected Checks, is in [after-jobs.csv](ci-performance/2026-11-06-after-jobs.csv). The full browser/dependency step took **16–25 s** (median 20 s), archive cache restore 0–2 s, and the two device-control logs confirmed `Need to get 0 B/21.1 MB of archives`. All libraries and fonts were still installed. The cache listing totaled **732,841,043 bytes / 698.9 MiB across seven entries**; the new APT cache was 21,103,331 bytes and the pinned frontend cache 486,727 bytes. This is comfortably below 10 GB. The aggregate cache-usage endpoint was delayed, so these sizes are summed from the actual entries.
+
+Twelve shards balance the longest journeys against repeated preparation and hosted-runner queuing. Further splitting would add more dependency/Docker setup and queue entries; it is not justified by this queue-constrained sample. Browser binaries download in seconds and are not separately cached. Canary keeps its independent verification for tag/manual publication paths; no new cross-workflow release-artifact trust mechanism was introduced merely to remove that short, infrequent gate.
+
+The final documentation commit changes no CI/test implementation. Its same-code confirmation run is recorded in PR #40 rather than recursively committing each new run ID and triggering another full run. No merge, release, store upload or real-account acceptance is part of this task.

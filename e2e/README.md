@@ -169,4 +169,6 @@ coverage. Unsharded local runs retain the original full-suite/control admission.
 
 Prose-only PRs still report the two required check contexts but skip expensive
 verification. Release notes under `docs/releases/` remain build inputs and run
-CI. PR updates cancel superseded runs; main commits run independently.
+CI. PR updates cancel superseded routing and matching shard jobs; main commits
+run independently. Required aggregates remain fail-closed after cancellation but
+do not hold a workflow concurrency lock that could block the next commit.
