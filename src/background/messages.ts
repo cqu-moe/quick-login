@@ -9,7 +9,7 @@ import {
   sync,
 } from "./sync";
 import { readLocalState } from "./storage";
-import type { ContentMessage, ContentAction, LoginRecoveryResult } from "../shared/messages";
+import { CONTENT_MESSAGE_TYPES, type ContentMessage, type ContentAction, type LoginRecoveryResult } from "../shared/messages";
 import { config } from "../shared/config";
 import { localCookieState } from "./api-v3";
 import { recordFailure } from "./sync";
@@ -67,7 +67,7 @@ async function processContentMessage(
   sender: chrome.runtime.MessageSender
 ): Promise<LoginRecoveryResult> {
   if (!validSsoSender(sender)) throw new Error("FORBIDDEN");
-  if (["OPEN_SETTINGS","LOGIN","SWITCH_TO_MANAGED","OPEN_EXTENSION_SETTINGS","CHECK_EXTENSION_UPDATE"].includes(message.type)) {
+  if (["OPEN_SETTINGS","LOGIN","OPEN_EXTENSION_SETTINGS","CHECK_EXTENSION_UPDATE"].includes(message.type)) {
     await handleMessage(message as BackgroundMessage);
     return processContentMessage({type:"GET_UI_STATE"},sender);
   }
@@ -98,8 +98,11 @@ async function processContentMessage(
   }
   after = await readLocalState();
   const view = derivePopupView(popupInput(after));
-  const actionTypes:Record<NonNullable<typeof view.actions[0]>,ContentAction>={
-    login:"LOGIN",open_settings:"OPEN_SETTINGS",resume:"RETRY_AUTOMATIC",switch_managed:"SWITCH_TO_MANAGED",
+  if (view.actions[0] === "switch_managed") {
+    return {kind:"manual_required",message:`${view.heading}。请点击浏览器工具栏中的 QuickLogin，在插件弹窗中确认切换。`,action:null};
+  }
+  const actionTypes:Record<Exclude<NonNullable<typeof view.actions[0]>,"switch_managed">,ContentAction>={
+    login:"LOGIN",open_settings:"OPEN_SETTINGS",resume:"RETRY_AUTOMATIC",
     retry:"RETRY_AUTOMATIC",retry_local:"RETRY_AUTOMATIC",update:"CHECK_EXTENSION_UPDATE",fix_permissions:"OPEN_EXTENSION_SETTINGS",manual_login:"ENTER_MANUAL",
   };
   const action=view.actions[0];
@@ -108,9 +111,12 @@ async function processContentMessage(
 }
 
 export function handleContentMessage(
-  message: ContentMessage,
+  input: unknown,
   sender: chrome.runtime.MessageSender
 ): Promise<LoginRecoveryResult> {
+  if (typeof input !== "object" || input === null || !("type" in input) ||
+      !CONTENT_MESSAGE_TYPES.some(type => type === input.type)) return Promise.reject(new Error("FORBIDDEN"));
+  const message = input as ContentMessage;
   if (message.type !== "LOGIN_FORM_VISIBLE" || !validSsoSender(sender)) {
     return processContentMessage(message, sender);
   }

@@ -1,21 +1,15 @@
-export type ContentMessage =
-  | { type: "LOGIN_FORM_VISIBLE" }
-  | { type: "CHECK_STATE" }
-  | { type: "ENTER_MANUAL" }
-  | { type: "RETRY_AUTOMATIC" }
-  | { type: "OPEN_SETTINGS" }
-  | { type: "LOGIN" }
-  | { type: "SWITCH_TO_MANAGED" }
-  | { type: "OPEN_EXTENSION_SETTINGS" }
-  | { type: "CHECK_EXTENSION_UPDATE" }
-  | { type: "GET_UI_STATE" };
+export const CONTENT_MESSAGE_TYPES = [
+  "LOGIN_FORM_VISIBLE", "CHECK_STATE", "ENTER_MANUAL", "RETRY_AUTOMATIC", "OPEN_SETTINGS",
+  "LOGIN", "OPEN_EXTENSION_SETTINGS", "CHECK_EXTENSION_UPDATE", "GET_UI_STATE",
+] as const;
+
+export type ContentMessage = { type: typeof CONTENT_MESSAGE_TYPES[number] };
 
 export type ContentAction =
   | "ENTER_MANUAL"
   | "RETRY_AUTOMATIC"
   | "OPEN_SETTINGS"
   | "LOGIN"
-  | "SWITCH_TO_MANAGED"
   | "OPEN_EXTENSION_SETTINGS"
   | "CHECK_EXTENSION_UPDATE";
 

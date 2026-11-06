@@ -105,6 +105,9 @@ jobs:
       - name: Verify native toolbar popup layout
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
         run: npm run test:popup
+      - name: Verify content event trust boundary
+        if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
+        run: npm run test:content-events
       - name: Keep native popup layout evidence
         if: ${{ !cancelled() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

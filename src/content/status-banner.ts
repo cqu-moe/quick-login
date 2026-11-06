@@ -1,6 +1,7 @@
 import type { ContentAction, LoginRecoveryResult } from "../shared/messages";
 
 const BANNER_ID = "cqu-quicklogin-status";
+const actionsByButton = new WeakMap<HTMLButtonElement, ContentAction>();
 
 type ActionSpec = { type: ContentAction; label: string };
 type ProvidedAction = ActionSpec | null | undefined;
@@ -24,7 +25,7 @@ export function renderStatusBanner(
     syncAction(existing.querySelector<HTMLButtonElement>("button:nth-child(1)")!, primarySpec);
     const secondary = existing.querySelector<HTMLButtonElement>("button:nth-child(2)")!;
     if (secondarySpec) syncAction(secondary, secondarySpec);
-    else secondary.hidden = true;
+    else { secondary.hidden = true; actionsByButton.delete(secondary); }
     if (document.activeElement instanceof HTMLButtonElement && document.activeElement.hidden) {
       existing.querySelector<HTMLButtonElement>("button:not([hidden])")?.focus({ preventScroll: true });
     }
@@ -63,6 +64,7 @@ export function renderStatusBanner(
     const control = document.createElement("button");
     control.type = "button";
     control.dataset.action = spec.type;
+    if (!hidden) actionsByButton.set(control, spec.type);
     control.textContent = spec.label;
     control.hidden = hidden;
     control.style.cssText = [
@@ -70,7 +72,10 @@ export function renderStatusBanner(
       "border-radius:6px", "background:#f7f8f9", "color:#202326",
       "font:600 14px/1 system-ui,sans-serif", "touch-action:manipulation", "cursor:pointer",
     ].join(";");
-    control.addEventListener("click", () => send(control.dataset.action as ContentAction));
+    control.addEventListener("click", event => {
+      const action = actionsByButton.get(control);
+      if (event.isTrusted && action) send(action);
+    });
     return control;
   };
   actions.append(
@@ -92,6 +97,7 @@ function secondaryAction(result: LoginRecoveryResult, primary: ProvidedAction): 
 }
 
 function syncAction(button: HTMLButtonElement, spec: ActionSpec): void {
+  actionsByButton.set(button, spec.type);
   button.dataset.action = spec.type;
   if (button.textContent !== spec.label) button.textContent = spec.label;
   button.hidden = false;

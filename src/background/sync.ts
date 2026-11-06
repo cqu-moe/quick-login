@@ -421,7 +421,8 @@ export async function switchToManagedOnce(): Promise<boolean> {
   await updateLocalState(state => {
     const versions = state.snapshot?.versions;
     if (!state.deviceId || !versions || versions.bindingEpoch === null || versions.credentialRevision === null ||
-        !state.enabledIntent || state.manualOverride || state.authorization !== "authorized") return state;
+        !state.enabledIntent || state.manualOverride || state.authorization !== "authorized" ||
+        api.localCookieState(state) !== "foreign") return state;
     accepted = true;
     return { ...state, managedSwitch: { id:crypto.randomUUID(), deviceId:state.deviceId,
       authGeneration:state.authGeneration, localGeneration:state.localGeneration, generation:versions.generation,

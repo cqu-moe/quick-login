@@ -2,6 +2,16 @@ import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {installChromeFake} from "../test/chrome-fake";
 import {renderStatusBanner} from "./status-banner";
 type RuntimeListener=(message:unknown,sender:chrome.runtime.MessageSender)=>void;
+let listeners:Array<{target:EventTarget;type:string;listener:EventListenerOrEventListenerObject}>=[];
+// jsdom cannot generate trusted input; browser coverage exercises the real event boundary.
+function userEvent(target:HTMLElement,type:"click"|"input"):void {
+ const event={type,target,isTrusted:true} as unknown as Event;
+ for(const entry of [...listeners]) {
+  if(entry.type!==type || (entry.target!==target && entry.target!==document)) continue;
+  if(typeof entry.listener==="function") entry.listener.call(entry.target,event);
+  else entry.listener.handleEvent(event);
+ }
+}
 function installStateNotification(){
  const runtimeListeners=new Set<RuntimeListener>(),storageListeners=new Set<()=>void>();
  Object.assign(chrome.runtime,{onMessage:{
@@ -26,8 +36,26 @@ beforeEach(()=>{
  vi.stubGlobal("location",new URL("https://sso.cqu.edu.cn/login"));
  vi.spyOn(document,"hidden","get").mockReturnValue(false);
  document.body.innerHTML='<form><input type="text"><input type="password"><button type="submit">登录</button></form>';
+ listeners=[];
+ const add=EventTarget.prototype.addEventListener;
+ vi.spyOn(EventTarget.prototype,"addEventListener").mockImplementation(function(this:EventTarget,type,listener,options){
+  if(listener) listeners.push({target:this,type,listener});
+  add.call(this,type,listener,options);
+ });
 });
 afterEach(()=>{window.dispatchEvent(new Event("pagehide"));vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();});
+it.each(["click", "dispatchEvent", "input"])("ignores page-script %s instead of authorizing an extension action",async method=>{
+ const send=vi.fn(async()=>({kind:"manual_required",message:"请重试。"}));
+ Object.assign(chrome.runtime,{sendMessage:send});
+ await import("./index");await vi.advanceTimersByTimeAsync(0);
+ const button=document.querySelector<HTMLButtonElement>('#cqu-quicklogin-status button')!;
+ button.dataset.action="SWITCH_TO_MANAGED";
+ if(method==="click") button.click();
+ else if(method==="dispatchEvent") button.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+ else document.querySelector("input")!.dispatchEvent(new Event("input",{bubbles:true}));
+ await vi.advanceTimersByTimeAsync(0);
+ expect(send.mock.calls).toEqual([[{type:"LOGIN_FORM_VISIBLE"}]]);
+});
 it("stops automatic checks after manual_required until explicit retry",async()=>{
  const send=vi.fn(async()=>({kind:"manual_required",message:"手动登录"}));
  Object.assign(chrome.runtime,{sendMessage:send});
@@ -36,7 +64,7 @@ it("stops automatic checks after manual_required until explicit retry",async()=>
  expect(send).toHaveBeenCalledTimes(1);
  for(let i=0;i<2;i++){
   const retry=[...document.querySelectorAll('button')].find(button=>button.textContent==='重试快捷登录')!;
-  retry.focus();retry.click();
+  retry.focus();userEvent(retry,"click");
   await vi.advanceTimersByTimeAsync(0);
   expect(send).toHaveBeenLastCalledWith({type:"RETRY_AUTOMATIC"});
   expect(document.activeElement).toBe(retry);
@@ -105,7 +133,7 @@ it("does not show stale automatic progress after the user starts typing",async()
  Object.assign(chrome.runtime,{sendMessage:send});
  await import("./index");
  await vi.advanceTimersByTimeAsync(0);
- document.querySelector("input")!.dispatchEvent(new Event("input",{bubbles:true}));
+ userEvent(document.querySelector("input")!,"input");
  expect(document.body.textContent).toContain("已切换为手动登录，可直接在下方输入。");
  const retry=document.querySelector<HTMLButtonElement>('[data-action="RETRY_AUTOMATIC"]')!;
  expect(retry.textContent).toBe("恢复快捷登录");
@@ -119,8 +147,8 @@ it("does not show stale automatic progress after the user starts typing",async()
  expect(document.body.textContent).not.toContain("正在恢复快捷登录");
  expect(document.body.textContent).toContain("已切换为手动登录，可直接在下方输入。");
 });
-it("renders and sends a recovery-specific primary action",async()=>{
- const result={kind:"recovering",message:"已有学校登录。",action:{type:"SWITCH_TO_MANAGED",label:"切换到快捷登录"}};
+it("keeps the current action in isolated memory when page attributes change",async()=>{
+ const result={kind:"manual_required",message:"需要重新连接。",action:{type:"LOGIN",label:"连接 Auth"}};
  const sent: string[]=[];
  Object.assign(chrome.runtime,{sendMessage:vi.fn(async(message:{type:string})=>{
   sent.push(message.type);return result;
@@ -130,12 +158,13 @@ it("renders and sends a recovery-specific primary action",async()=>{
  const banner=document.getElementById("cqu-quicklogin-status")!;
  const primary=banner.querySelector<HTMLButtonElement>("button:nth-child(1)")!;
  const manual=banner.querySelector<HTMLButtonElement>("button:nth-child(2)")!;
- expect(primary.dataset.action).toBe("SWITCH_TO_MANAGED");
- expect(primary.textContent).toBe("切换到快捷登录");
+ expect(primary.dataset.action).toBe("LOGIN");
+ expect(primary.textContent).toBe("连接 Auth");
  expect(manual.hidden).toBe(false);
- primary.click();
+ primary.dataset.action="SWITCH_TO_MANAGED";
+ userEvent(primary,"click");
  await vi.advanceTimersByTimeAsync(0);
- expect(sent).toEqual(["LOGIN_FORM_VISIBLE","SWITCH_TO_MANAGED"]);
+ expect(sent).toEqual(["LOGIN_FORM_VISIBLE","LOGIN"]);
  expect(document.getElementById("cqu-quicklogin-status")).toBe(banner);
 });
 it("keeps only manual login when recovery explicitly has no action",()=>{
@@ -191,7 +220,7 @@ it("lets notifications observe a popup retry after manual_required but not direc
  expect(sent).toEqual(["LOGIN_FORM_VISIBLE","GET_UI_STATE"]);
  expect(document.body.textContent).toContain("正在应用重试结果。");
 
- document.querySelector("input")!.dispatchEvent(new Event("input",{bubbles:true}));
+ userEvent(document.querySelector("input")!,"input");
  await vi.advanceTimersByTimeAsync(0);
  for(let i=0;i<3;i++) states.notify();
  await vi.advanceTimersByTimeAsync(6000);
@@ -250,7 +279,7 @@ it("moves focus to the remaining manual action when retry starts navigation",asy
   ? {kind:"navigating"} : {kind:"manual_required",message:"请重试。"})});
  await import("./index");await vi.advanceTimersByTimeAsync(0);
  const retry=document.querySelector<HTMLButtonElement>('[data-action="RETRY_AUTOMATIC"]')!;
- retry.focus();retry.click();await vi.advanceTimersByTimeAsync(0);
+ retry.focus();userEvent(retry,"click");await vi.advanceTimersByTimeAsync(0);
  expect(retry.hidden).toBe(true);
  expect(document.activeElement).toBe(document.querySelector('[data-action="ENTER_MANUAL"]'));
 });

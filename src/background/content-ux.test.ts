@@ -19,7 +19,7 @@ const cases = [
   {
     name: "foreign cookie",
     notice: "正在保留已有学校登录",
-    action: "切换到快捷登录",
+    action: "手动登录",
     authorization: "authorized",
     localWriteState: "foreign_session",
     configureSnapshot: (remote: ReturnType<typeof snapshot>) => remote,
@@ -77,4 +77,17 @@ it.each(cases)("school login page keeps the specific recovery action for $name",
   if (result.kind !== "manual_required") throw new Error("Expected a blocking recovery notice");
   expect(result.message).toContain(scenario.notice);
   expect([...document.querySelectorAll("button")].map(button => button.textContent)).toContain(scenario.action);
+  if (scenario.name === "foreign cookie") {
+    expect(result.action).toBeNull();
+    expect(result.message).toContain("插件弹窗中确认切换");
+  }
 });
+
+it.each([null, [], {}, {type:42}, {type:"SET_ENABLED",enabled:false}, {type:"RESUME"}, {type:"UNKNOWN"}])(
+  "rejects unsupported content messages without changing local state: %j", async message => {
+    const { readLocalState } = await import("./storage");
+    const before = await readLocalState();
+    await expect(handleContentMessage(message,sender)).rejects.toThrow("FORBIDDEN");
+    expect(await readLocalState()).toEqual(before);
+  }
+);

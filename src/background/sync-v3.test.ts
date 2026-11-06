@@ -7,7 +7,7 @@ import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } 
 import { setEnabled, setEnvelopeWriter, sync, switchToManagedOnce } from "./sync";
 import { JOURNAL_KEY } from "./cookie-journal";
 import { observeSchoolLogin } from "./school-recovery";
-import { handleMessage } from "./messages";
+import { handleContentMessage, handleMessage } from "./messages";
 import { derivePopupView, type PopupInput } from "../popup/view-model";
 import * as api from "./api-v3";
 import * as telemetry from "../shared/posthog";
@@ -379,6 +379,31 @@ it.each([
   else expect(api.operate).not.toHaveBeenCalled();
 });
 
+
+it("rejects school-page switch commands while preserving explicit popup consent", async () => {
+  await chrome.cookies.set({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC",value:"synthetic-foreign",path:"/",secure:true});
+  await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
+  setEnvelopeWriter(applyEnvelope);
+  const before = await readLocalState();
+  for (const path of ["/login", "/authserver/login"]) {
+    await expect(handleContentMessage({type:"SWITCH_TO_MANAGED"} as never, {
+      id:chrome.runtime.id,url:`https://sso.cqu.edu.cn${path}`,tab:{id:7} as chrome.tabs.Tab,
+    })).rejects.toThrow("FORBIDDEN");
+  }
+  expect(await readLocalState()).toEqual(before);
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-foreign");
+  expect(api.exportSession).not.toHaveBeenCalled();
+  await handleMessage({type:"SWITCH_TO_MANAGED"});
+  await sync("popup");
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe(envelope().cookies[0].value);
+  expect(await readLocalState()).toMatchObject({managedSwitch:null,localWriteState:"ready",pendingAck:false});
+});
+
+it("does not create advance switch consent when there is no foreign session", async () => {
+  expect(await switchToManagedOnce()).toBe(false);
+  expect((await readLocalState()).managedSwitch).toBeNull();
+  expect(api.exportSession).not.toHaveBeenCalled();
+});
 
 it("keeps a confirmed switch when reconciliation advances only the cloud session", async () => {
   await updateLocalState(s=>({...s,localWriteState:"foreign_session"}));
