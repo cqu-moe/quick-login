@@ -1,3 +1,12 @@
+# 2026-11-06 0.5.6 单次切换授权绑定修复交接
+
+- [PR #44](https://github.com/cqu-moe/quick-login/pull/44) 已在最新基线全部 16 项检查通过后合并；发布源码/标签 `v0.5.6` 为 `db69d5e8327d57ebab3d0a74e7956e8d432f965a`。确认授权绑定完整 TGC 摘要集合，首次写入尝试即消耗，外来会话变化需重新确认；保留 0.5.5 的弹窗确认边界。
+- 正式包 `cqu-quicklogin-0.5.6-canary.zip`：155550 bytes，SHA-256 `8d91cd15342a47dce64e18bfb0f36d085d0d0eeffe4a3a500d8fdd8eb1031149`。实际认证下载 200、匿名 401；ZIP CRC、manifest、build-info 及 CI 字节比对通过。官网自动部署 version `b1aee096-c52c-4844-94ef-ca822765910a` 为 100% 流量，浏览器生产脚本与 CI 一致。
+- 主线 Checks、完整 E2E、Canary 和商店 CD 均成功。2026-11-07 18:02:45（Asia/Shanghai）商店 API 已回读 0.5.6 `PUBLISHED`，审核通过并上架。完整流水线、产物及浏览器证据见 [发布记录](quicklogin-release.md)。
+- Auth 未修改；真实学校 SSO 与已安装商店版升级未验收。Chrome Cookie API 最后读/写间的同身份变更无法原子隔离。
+
+---
+
 # 2026-11-06 0.5.5 已发布 Canary 与官网，商店待审核
 
 [PR #43](https://github.com/cqu-moe/quick-login/pull/43) 的 16 项检查和同一 head 的 Codex 审查通过后已合并；发布源码及 `v0.5.5` 为 `56eb18e6e73d4a414ab537b0036e07e86670d365`。主线 Checks、完整 MV3 E2E 和 Canary 发布均成功。正式 `cqu-quicklogin-0.5.5-canary.zip`：155331 bytes，SHA-256 `6f834f58d1c502e0db6483e8e737ead82e437bccda8ab6afe65e1ecdf1e0af24`；主线 CI ZIP 与发布摘要一致，CRC、manifest、来源和 Chromium 事件安全回归通过。

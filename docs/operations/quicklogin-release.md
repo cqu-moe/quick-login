@@ -1,3 +1,17 @@
+# 2026-11-06 0.5.6 单次切换授权绑定修复正式发布
+
+- [PR #44](https://github.com/cqu-moe/quick-login/pull/44) 在最新 main 基线上的 head `3750a8c4a6f78538898084507f9da8ca5cfcec23` 全部 16 项检查通过后 squash 合并。发布源码及标签 `v0.5.6`：`db69d5e8327d57ebab3d0a74e7956e8d432f965a`。授权绑定确认时完整 TGC 身份和摘要，并在首次写入尝试前消耗；等待期间会话变化需重新确认。
+- PR [Checks 42200311212](https://github.com/cqu-moe/quick-login/actions/runs/42200311212) 与 [12 个分片及汇总 E2E 42200311144](https://github.com/cqu-moe/quick-login/actions/runs/42200311144) 全部通过。首轮 E2E 的旧调试定位规则要求 `completed=true` 后紧接日志写入；修正为定位同一唯一赋值，保留真实 Cookie、worker 终止、回滚和原生 alarm 断言。失败运行 `42197515553` 保留，未放宽业务或准入断言。
+- [主线 Checks 42201355432](https://github.com/cqu-moe/quick-login/actions/runs/42201355432) 与 [Canary 42201355397](https://github.com/cqu-moe/quick-login/actions/runs/42201355397) 成功；[主线 E2E 42201355569](https://github.com/cqu-moe/quick-login/actions/runs/42201355569) 亦于 18:34:08（Asia/Shanghai）完成，12 个分片、两轮业务和最终证据汇总全部成功。最后两个分片耗时来自 Chromium 与系统依赖安装，未重跑或放宽检查。
+- 正式 `cqu-quicklogin-0.5.6-canary.zip`：155550 bytes，SHA-256 `8d91cd15342a47dce64e18bfb0f36d085d0d0eeffe4a3a500d8fdd8eb1031149`。R2 包、不可变元数据与渠道读回通过；主线 artifact `13493174729` 的扩展包与正式发布摘要、大小及内容一致。
+- 浏览器真实下载：公开元数据 200、现有 Auth 会话下载 200、匿名下载 401。实际 ZIP 与主线 CI 逐字节相同；CRC、14 个运行文件、manifest 0.5.6、build-info 来源/协议/契约及公开元数据均核验通过。CI runner 遇到 Cloudflare challenge 的公开 HTTP 验收已由这层浏览器证据补齐。
+- 官网[自动构建 28d98b14-5478-4597-93d1-d211a67476f6](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/28d98b14-5478-4597-93d1-d211a67476f6)成功；18:16:52（Asia/Shanghai）生产 version `b1aee096-c52c-4844-94ef-ca822765910a`、deployment `57a2905c-c79c-4174-8d33-a5ffc761dd2c` 回读为 100% 流量。浏览器已加载的 `main-DpAJ1NwP.js` 与 `telemetry-DhwRrrhq.js` 均与 CI 逐字节一致，后者含 `0.5.6+db69d5e8327d57ebab3d0a74e7956e8d432f965a`；下载页显示正式版本与摘要。
+- [商店 CD 42201531886](https://github.com/cqu-moe/quick-login/actions/runs/42201531886) 成功，18:18:13（Asia/Shanghai）API 回读 0.5.6 `PENDING_REVIEW`，保持 Unlisted、获批后自动发布。准备 ZIP：155184 bytes、SHA-256 `b200f0e66823f569e1a5f97cb9507131850406229903616d1e208808933e15ac`；上传 CRX：157616 bytes、SHA-256 `49f59016e3dc3b9727df8601bafc97042e5cf0e3c33229ed540bfed19948f658`。摘要是上传前校验值；送审不等于商店已上架。
+- 2026-11-07 18:02:45（Asia/Shanghai）[定时商店回读 42362211494](https://github.com/cqu-moe/quick-login/actions/runs/42362211494) 返回 0.5.6 `PUBLISHED`，已审核并上架；该轮识别既有版本，不再次上传。后续本地重签 CRX 摘要不代表商店包被替换。
+- Auth 未修改；真实学校 SSO、已安装商店版升级未验收。Chrome Cookie API 不支持条件写入，最后读回与写入之间的同身份变更仍有平台竞态边界；存活的新增域/路径冲突会被检测并回滚。
+
+---
+
 # 2026-11-06 0.5.5 正式 Canary、官网部署与商店送审
 
 - [PR #43](https://github.com/cqu-moe/quick-login/pull/43) 在同一 head `246b617768b16ce017cfacc67996bf6eb8e60d4d` 的 16 项检查与 [Codex 审查](https://github.com/cqu-moe/quick-login/pull/43#issuecomment-6681593951)通过后 squash 合并。发布源码及标签 `v0.5.5`：`56eb18e6e73d4a414ab537b0036e07e86670d365`；页面只能显示打开工具栏弹窗的指引，切换托管会话需在扩展弹窗明确确认。
