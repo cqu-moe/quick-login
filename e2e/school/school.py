@@ -41,13 +41,16 @@ def form(error=""):
 
 
 def ticket(request, token=None):
+    returning = token is not None
     token = token or secrets.token_hex(12)
     sessions.add(token)
     response = web.HTTPFound(request.cookies.get("service", "https://my.cqu.edu.cn/authserver/authentication/cas") + "?ticket=ST-" + secrets.token_hex(12))
     for name in ("SOURCEID_TGC", "SESSION", "rg_objectid"):
         response.set_cookie(name, token, secure=True, httponly=True, samesite="Lax")
     if state["cookieVariant"] == "attributes":
-        response.set_cookie("path_cookie", "synthetic-path", path="/quicklogin-business", secure=True, httponly=True, max_age=1800, samesite="Strict")
+        response.set_cookie("path_cookie", secrets.token_hex(12) if returning else "synthetic-path", path="/quicklogin-business", secure=True, httponly=True, max_age=1800, samesite="Lax" if returning else "Strict")
+        if returning:
+            response.set_cookie("SESSION", secrets.token_hex(12), secure=True, httponly=True, samesite="Strict")
         response.set_cookie("domain_cookie", "synthetic-domain", domain="sso.cqu.edu.cn", secure=True, max_age=1800, samesite="Lax")
         response.set_cookie("outside_domain", "synthetic-outside", domain="cqu.edu.cn", secure=True)
         response.set_cookie("expired_probe", "expired-synthetic", secure=True, max_age=-1)

@@ -66,7 +66,7 @@ Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生
 
 | 场景（学校用例按此契约归属） | 可信回归及真实断言 |
 | --- | --- |
-| `school.e2e.ts` 绑定→Cookie→业务→ACK | 学校仅续期辅助 Cookie 后下一轮同步仍沿用 receipt，关闭插件保留续期 Cookie；实际域、hostOnly、path、session、SameSite、有效期及过滤结果；真实新登录和导出后，延迟真实 ACK 响应期间不得导航，随后学校业务标题与独立 Auth overview 的 receipt 一致 |
+| `school.e2e.ts` 绑定→Cookie→业务→ACK | 学校轮换辅助 Cookie 的值、SameSite 与有效期后，下一轮同步仍沿用 receipt，关闭插件保留轮换 Cookie；实际域、hostOnly、path、session、SameSite、有效期及过滤结果；真实新登录和导出后，延迟真实 ACK 响应期间不得导航，随后学校业务标题与独立 Auth overview 的 receipt 一致 |
 | revoked ticket | 外部学校撤销会话并以 HTTP 响应删除旧 TGC，扩展补回后再次被拒绝，自动申请一次新会话并进入业务页；不手动重试，不直接修改扩展恢复状态 |
 | foreign cookies | 原生 Cookie API 中 host/domain/path 三种同名外来 TGC；同步冲突及关闭后都保留外来值，不能取得本地成功回执 |
 | manual typing | 真实表单输入切换手动模式；迟到的真实容器登录不能导航或恢复 receipt，页面有手动/重试入口 |

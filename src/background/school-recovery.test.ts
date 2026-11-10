@@ -166,8 +166,8 @@ it("shares an in-flight recovery between waiting tabs but never lends its comple
   expect(fake.tabUpdates.map(update=>update.tabId)).toEqual([7,8]);
 });
 
-it.each(["renewed", "shortened", "value", "security", "missing", "foreign-tgc", "foreign-domain-tgc", "foreign-path-tgc"] as const)(
-  "finishes an acknowledged waiting page only for unchanged cookies or expiry renewal: %s", async change => {
+it.each(["renewed", "shortened", "value", "same-site", "security", "missing", "foreign-tgc", "foreign-domain-tgc", "foreign-path-tgc"] as const)(
+  "finishes an acknowledged waiting page after auxiliary rotation only while its TGC remains owned: %s", async change => {
     await startRecovery();
     const second = {...sender,tab:{id:8},documentId:"delayed-waiter"} as chrome.runtime.MessageSender;
     await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},second);
@@ -185,21 +185,23 @@ it.each(["renewed", "shortened", "value", "security", "missing", "foreign-tgc", 
         path:change === "foreign-path-tgc" ? "/authserver" : "/",
         ...(change === "foreign-domain-tgc" ? {domain:".sso.cqu.edu.cn"} : {}),secure:true,httpOnly:true});
     }
-    else if (change === "value") auxiliary.value = "another-session";
-    else if (change === "security") auxiliary.httpOnly = false;
+    else if (change === "value") auxiliary.value = "rotated-school-cookie";
+    else if (change === "same-site") auxiliary.sameSite = "unspecified";
+    else if (change === "security") fake.getCookie("SOURCEID_TGC")!.httpOnly = false;
     else auxiliary.expirationDate = originalExpiry + (change === "renewed" ? 60 : -60);
     if (change !== "missing") await sync("popup");
     const exports = vi.mocked(api.exportSession).mock.calls.length;
     const acknowledgments = vi.mocked(api.acknowledge).mock.calls.length;
     const result = await handleContentMessage({type:"GET_UI_STATE"},second);
-    expect(result.kind === "navigating").toBe(change === "renewed");
-    expect(fake.tabUpdates.map(update=>update.tabId)).toEqual(change === "renewed" ? [7,8] : [7]);
+    const sameSession = ["renewed", "shortened", "value", "same-site"].includes(change);
+    expect(result.kind === "navigating").toBe(sameSession);
+    expect(fake.tabUpdates.map(update=>update.tabId)).toEqual(sameSession ? [7,8] : [7]);
     expect(api.exportSession).toHaveBeenCalledTimes(exports);
     expect(api.acknowledge).toHaveBeenCalledTimes(acknowledgments);
-    if (change === "renewed") {
+    if (sameSession) {
       expect((await readLocalState()).receipt).toMatchObject({result:"applied",verifiedAt:expect.any(Number)});
       await clearOwnedCookies();
-      expect(fake.getCookie("auxiliary")?.expirationDate).toBe(originalExpiry+60);
+      expect(fake.getCookie("auxiliary")).toEqual(auxiliary);
     }
   }
 );

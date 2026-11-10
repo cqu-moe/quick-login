@@ -65,14 +65,17 @@ test('QUICKLOGIN-03 website revoke clears only truly managed Cookie values and p
     // Observe that real path so preserving the replacement cannot depend on
     // winning the race against the next poll.
     await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
-    await until(() => localState(popup), state => state.receipt?.result === 'foreign' || state.localWriteState === 'foreign_session' ||
-      (!!state.receipt && state.receipt.exportId !== before.receipt?.exportId && !state.pendingAck));
+    await until(() => localState(popup), state => (state.lastConfirmedAt ?? 0) > (before.lastConfirmedAt ?? 0));
     const afterReconcile = await popup.evaluate(async () => (await chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn', name: 'SESSION' }))
       .map(cookie => ({ name: cookie.name, domain: cookie.domain, path: cookie.path, storeId: cookie.storeId, manual: cookie.value === 'manual-before-revoke' })));
     await recordEvent('manual-cookie-after-reconcile', { cookies: JSON.stringify(afterReconcile) });
     expect(afterReconcile.some(cookie => cookie.manual)).toBe(true);
-    expect((await localState(popup)).receipt?.result).toBe('foreign');
-    expect((await localState(popup)).receipt?.verifiedAt).toBe(null);
+    // Session continuity must not grant deletion ownership of the replacement.
+    const reconciled = await localState(popup);
+    expect(reconciled.receipt?.result).toBe('applied');
+    expect(reconciled.receipt?.exportId).toBe(before.receipt!.exportId);
+    expect(reconciled.receipt?.verifiedAt).not.toBe(null);
+    expect(reconciled.managed).toEqual(before.managed);
     await revoke(settings, before.deviceId!);
     await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'CHECK_STATE' }));
     await until(() => popup.evaluate(async () => {

@@ -149,8 +149,8 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
       local = await updateLocalState((state) => {
         if (state.localGeneration !== fence) return state;
         if (currentCookiesVerified && state.receipt) {
-          // 0.5.3 persisted harmless auxiliary renewal as foreign and discarded
-          // its ACK status. Recover the proven write, then acknowledge it again.
+          // Older versions classified auxiliary rotation as foreign. Recheck
+          // the applied session before restoring its receipt and ACK.
           const restored = state.receipt.result === "foreign";
           return { ...state,receipt:{ ...state.receipt,
             result:restored ? "applied" : state.receipt.result,verifiedAt:Date.now() },

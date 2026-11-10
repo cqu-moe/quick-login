@@ -3,7 +3,7 @@ import { expect } from 'e2e';
 import { sameTuple } from '../src/shared/protocol-v3.generated.ts';
 import { isDeepStrictEqual } from 'node:util';
 import { captureArtifacts, networkEvents } from './helpers.ts';
-import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until, popupEnabled } from './school-helpers.ts';
+import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until, popupEnabled, protectedValues } from './school-helpers.ts';
 
 test('QUICKLOGIN-02 restores a deleted ticket once then automatically replaces the revoked school session', { timeout: 240_000, tags: ['school-revoked-ticket'] }, async ({ app }) => {
   const { popup, context, cookies } = await connectSchool(app, 'school-revoked-ticket');
@@ -84,16 +84,25 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   await popup.getByRole('heading', { name: '已就绪', exact: true }).waitFor();
   expect(loads).toBe(2);
   await captureArtifacts('school-business-and-ack', [page, popup]);
-  // The school response renews auxiliary cookies. Their ownership digests must
+  // The school response rotates auxiliary cookies. Their ownership digests must
   // remain unchanged: normal reconciliation preserves the acknowledged session
   // without claiming deletion/overwrite authority over the renewed cookies.
   const schoolCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
+  await protectedValues(schoolCookies.map(cookie => cookie.value).filter(Boolean));
   for (const name of ['path_cookie', 'domain_cookie']) {
     const before = beforeNavigationCookies.find(cookie => cookie.name === name)!;
     const after = schoolCookies.find(cookie => cookie.name === name)!;
     expect(after.expirationDate! > before.expirationDate!).toBe(true);
-    expect(isDeepStrictEqual({ ...after, expirationDate: undefined }, { ...before, expirationDate: undefined })).toBe(true);
+    if (name === 'path_cookie') {
+      expect(after.value !== before.value).toBe(true);
+      expect(after.sameSite).toBe('lax');
+    } else {
+      expect(isDeepStrictEqual({ ...after, expirationDate: undefined }, { ...before, expirationDate: undefined })).toBe(true);
+    }
   }
+  const requestSession = schoolCookies.find(cookie => cookie.name === 'SESSION')!;
+  expect(requestSession.value !== beforeNavigationCookies.find(cookie => cookie.name === 'SESSION')!.value).toBe(true);
+  expect(requestSession.sameSite).toBe('strict');
   expect(isDeepStrictEqual(schoolCookies.find(cookie => cookie.name === 'SOURCEID_TGC'),
     beforeNavigationCookies.find(cookie => cookie.name === 'SOURCEID_TGC'))).toBe(true);
   const operationsBefore = await networkEvents();
@@ -129,7 +138,7 @@ test('QUICKLOGIN-02 real binding/container cookies reach a school business page 
   await relay({ hold: false });
   await popupEnabled(popup, false);
   const remainingCookies = await popup.evaluate(() => chrome.cookies.getAll({ domain: 'sso.cqu.edu.cn' }));
-  for (const name of ['path_cookie', 'domain_cookie']) {
+  for (const name of ['path_cookie', 'domain_cookie', 'SESSION']) {
     expect(isDeepStrictEqual(remainingCookies.find(cookie => cookie.name === name),
       schoolCookies.find(cookie => cookie.name === name))).toBe(true);
   }
