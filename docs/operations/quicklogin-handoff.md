@@ -2,7 +2,7 @@
 
 - [PR #48](https://github.com/cqu-moe/quick-login/pull/48) 的全部 CI、独立代码规范和需求审查通过后已合并；发布源码及标签 `v0.5.7` 为 `3ebd9d7479c3af201295c9eef838650ef4099471`。修复隐藏提示、切换进度与缓存票据再次被拒后的有界自动恢复，保留多标签页、手动取消和 Cookie 所有权边界。
 - 正式包 `cqu-quicklogin-0.5.7-canary.zip`：155834 bytes，SHA-256 `b19bddffb94d07586014a0cee90fb6de4d0cdd86d63b1dfb5ae176682ad75882`。真实认证下载与主线 CI 逐字节相同，CRC、manifest 和 build-info 验证通过。官网自动部署 version `6ff04282-8a60-4188-91e9-5402437bcd17` 承接 100% 流量，下载页与更新说明显示 0.5.7。
-- 主线 Checks、Canary 与商店 CD 成功；主线 E2E 一个移动端分片在 Docker 构建时断开连接，业务测试未开始，正在仅重跑失败分片及汇总。商店 API 在 09:38:34（Asia/Shanghai）回读 `PENDING_REVIEW`，保留 Unlisted，获批后自动发布，当前尚不能称商店已上架。
+- 主线 Checks、Canary、[同提交的完整 E2E](https://github.com/cqu-moe/quick-login/actions/runs/42739249106) 与商店 CD 成功。E2E 首次 Docker EOF，重跑业务分片通过后汇总误取同名旧产物，因此以全新运行通过全部 12 个分片及最终汇总；原失败证据保留，源码和断言未改。商店 API 在 09:38:34（Asia/Shanghai）回读 `PENDING_REVIEW`，保留 Unlisted，获批后自动发布，当前尚不能称商店已上架。
 - Auth 未修改；用户已安装扩展升级和真实学校账号未验收。匿名下载 401 及线上脚本字节读回被 Cloudflare challenge 阻断，认证下载已验证；学校撤销 TGC 原因及 `casLogout` 400 仍未知，Issue #47 保持开放。详细流程、产物与限制见[发布记录](quicklogin-release.md)。
 
 ---
