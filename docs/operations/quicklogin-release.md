@@ -1,4 +1,16 @@
-# 2026-11-10 0.5.7 Issue #47 PR 候选（未发布）
+# 2026-11-10 0.5.7 Canary 与官网已发布，商店待审核
+
+- [PR #48](https://github.com/cqu-moe/quick-login/pull/48) 在 head `aee2cd7b610f06933d8ede890b0db8933f8ce0bc` 的 [Checks](https://github.com/cqu-moe/quick-login/actions/runs/42735403973)、[12 个 MV3 E2E 分片及汇总](https://github.com/cqu-moe/quick-login/actions/runs/42735403969) 和官网预览构建全部通过后 squash 合并。独立代码规范审查无阻断项，独立需求审查无发现；GitHub 无未解决审查线程。这两项是本地代理审查，不是 GitHub 的 APPROVED 记录。
+- 发布源码及 `v0.5.7` 标签：`3ebd9d7479c3af201295c9eef838650ef4099471`。[主线 Checks](https://github.com/cqu-moe/quick-login/actions/runs/42736957546)、[Canary](https://github.com/cqu-moe/quick-login/actions/runs/42736957666) 与[同提交的完整 E2E 新运行](https://github.com/cqu-moe/quick-login/actions/runs/42739249106) 均成功；后者完整验证 12 个分片、各自两轮业务和最终证据汇总，等待进程在结束后再次核对了发布提交。
+- [首次主线 E2E](https://github.com/cqu-moe/quick-login/actions/runs/42736957488) 的 devices/mobile 2/2 分片在 Docker 构建阶段报 `Unavailable: error reading from server: EOF`，两轮业务测试均未开始，汇总按规则失败。第二次尝试中该业务分片通过，但汇总取到同名旧产物：失败 artifact `13728130761`（01:38:59 UTC、14207 bytes）与通过 artifact `13727494521`（01:53:08 UTC、204914 bytes）共用 `quicklogin-e2e-3ebd9d7479c3af201295c9eef838650ef4099471-devices-mobile-11` 名称；旧报告缺失 viewport，汇总再次失败。因此以全新 workflow_dispatch 运行隔离产物，保留原日志和失败产物，源码、测试断言及准入规则均未修改。
+- 正式 `cqu-quicklogin-0.5.7-canary.zip`：155834 bytes，SHA-256 `b19bddffb94d07586014a0cee90fb6de4d0cdd86d63b1dfb5ae176682ad75882`。R2 不可变包、版本记录与 Canary 指针读回通过。官网在现有 Auth 会话下实际下载的 ZIP 与主线 artifact `quicklogin-main-3ebd9d7479c3af201295c9eef838650ef4099471` 中的扩展 ZIP 逐字节一致；CRC、14 个运行文件、manifest 0.5.7 和 build-info 来源、协议及契约核验通过。
+- 官网[生产自动构建](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/6e4cf020-810b-44c0-a6d2-49e950152983) 对应上述合并提交；09:37:10（Asia/Shanghai）创建 version `6ff04282-8a60-4188-91e9-5402437bcd17`、deployment `4f006c46-094b-414b-9d12-e20d7195c6db`，回读为 100% 流量。浏览器下载页显示正式版本、文件名及摘要，更新记录包含 0.5.7 的四项修复；实际加载的 `main-CQwjChgz.js` 文件名与主线网站产物一致。
+- [商店 CD](https://github.com/cqu-moe/quick-login/actions/runs/42737116928) 完成可信标签/祖先检查、Canary 重建字节比对、CRX 签名验证、OIDC 上传和送审，09:38:34（Asia/Shanghai）API 回读 0.5.7 `PENDING_REVIEW`，保持 Unlisted，获批后按既有流程自动发布。准备 ZIP：155465 bytes、SHA-256 `b6b7246fbadb436b3fa330c09940eb3e023b0b157ad7af0fc367c54e676ffa3f`；上传 CRX：157837 bytes、SHA-256 `73e577825910aefc87e3d74c9ff1e39c32f6aa42ff3583b87f769eccfaf4f407`。摘要是上传前的校验值，Google 不提供远端包摘要，送审不等于上架。
+- 验收边界：CI 和本地 CLI 的公开 HTTP 请求均遇到 Cloudflare challenge 403；浏览器已补齐元数据显示和认证下载，但本次匿名 401 及线上脚本字节读回未完成，不能用 403 代替。未升级用户当前扩展，未执行 0.5.7 真实学校账号验收；学校撤销 TGC 的原因和 `casLogout` 400 仍待研究，Issue #47 保持开放。Auth 无修改。
+
+---
+
+# 2026-11-10 0.5.7 PR 提交前历史快照（当时未发布）
 
 - [Issue #47](https://github.com/cqu-moe/quick-login/issues/47) 与 [Jam](https://jam.dev/c/4e8c271c-3d77-4a65-b3db-65c0d3b765de)：已修复隐藏的学校页面提示、切换进度及误导说明，并补上缓存 TGC 再次被拒绝后的新会话恢复；先前 TGC 消失的具体原因仍未确认，不能称 Issue 已完整根治。证据见 [排障记录](../research/2026-11-09-issue-47.md)。
 - QuickLogin 分支 `codex/fix-issue-47-school-login`，修复源码提交 `da1095e2a6d4803b2061be8242e3abb6b1d65f0d`，用户授权先开 PR；09:20 的应用测试复跑为 28 个文件、276 项通过。Auth 调查工作树位于 `.worktrees/auth-issue47`，强制重新登录的候选已撤回，当前无 Auth 改动。
