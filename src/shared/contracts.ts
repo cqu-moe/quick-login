@@ -96,6 +96,7 @@ export interface LocalState {
   schoolAccess: "unverified" | "accepted" | "login_form_seen";
   loginRecovery?: {
     id: string;
+    stage?: "restoring" | "refreshing";
     rejectedTuple: VersionTuple | null;
     appliedExportId: string | null;
     acknowledgedExportId?: string | null;

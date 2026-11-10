@@ -84,8 +84,9 @@ export function renderStatusBanner(
   );
   banner.append(actions);
 
-  const form = document.querySelector("form");
-  form?.parentElement?.insertBefore(banner, form);
+  // The school places hidden helper forms before the visible QR/password tabs.
+  const anchor = document.querySelector("#normalLoginForm")?.closest("nz-tabset") ?? document.querySelector("form");
+  anchor?.parentElement?.insertBefore(banner, anchor);
 }
 
 function secondaryAction(result: LoginRecoveryResult, primary: ProvidedAction): ActionSpec | undefined {

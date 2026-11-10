@@ -6,7 +6,7 @@ const browser = await chromium.launch({ executablePath: chromium.executablePath(
 try {
   const context = await browser.newContext();
   await context.route("**/*", route => route.request().url() === "https://sso.cqu.edu.cn/login"
-    ? route.fulfill({ contentType: "text/html; charset=utf-8", body: '<form><input type="text" aria-label="账号"><input type="password"><button>登录</button></form>' })
+    ? route.fulfill({ contentType: "text/html; charset=utf-8", body: '<div style="display:none"><form></form></div><nz-tabset><form id="normalLoginForm"><input type="text" aria-label="账号"><input type="password"><button>登录</button></form></nz-tabset>' })
     : route.abort());
   const page = await context.newPage();
   page.setDefaultTimeout(5_000);

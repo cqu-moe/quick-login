@@ -5,6 +5,32 @@ import { isDeepStrictEqual } from 'node:util';
 import { captureArtifacts, networkEvents } from './helpers.ts';
 import { connectSchool, controlSchool, localState, openSchoolForm, receiptProjection, relay, until, popupEnabled } from './school-helpers.ts';
 
+test('QUICKLOGIN-02 restores a deleted ticket once then automatically replaces the revoked school session', { timeout: 240_000, tags: ['school-revoked-ticket'] }, async ({ app }) => {
+  const { popup, context, cookies } = await connectSchool(app, 'school-revoked-ticket');
+  const initial = await localState(popup);
+  const originalTgc = cookies.find(cookie => cookie.name === 'SOURCEID_TGC')!.value;
+  await controlSchool({ expire: true, deleteRejectedTgc: true, holdLogin: true, clearEvents: true });
+  const page = await openSchoolForm(context, 'revoked-ticket');
+  await until(async () => ({ ...(await controlSchool()), local: await localState(popup) }), value => {
+    if (value.local.loginRecovery?.failed) throw new Error('Cached ticket rejection stopped automatic fresh-session recovery');
+    return value.events.some(event => event.kind === 'code_accepted');
+  });
+  const held = await localState(popup);
+  expect(held.loginRecovery?.stage).toBe('refreshing');
+  expect(held.loginRecovery?.appliedExportId).toBe(null);
+  expect(held.schoolAccess).toBe('login_form_seen');
+  const events = (await controlSchool()).events;
+  expect(events.filter(event => event.kind === 'rejected_tgc_deleted').length >= 2).toBe(true);
+  expect(events.filter(event => event.kind === 'password_submitted').length).toBe(1);
+  await controlSchool({ holdLogin: false });
+  await page.getByRole('heading', { name: '已进入学校合成业务', exact: true }).waitFor({ timeout: 120_000 });
+  const recovered = await until(() => localState(popup), state => state.localWriteState === 'ready' && !state.pendingAck);
+  expect(recovered.receipt!.sessionVersion > initial.receipt!.sessionVersion).toBe(true);
+  const currentTgc = await popup.evaluate(() => chrome.cookies.get({ url: 'https://sso.cqu.edu.cn/', name: 'SOURCEID_TGC' }));
+  expect(!!currentTgc && currentTgc.value !== originalTgc).toBe(true);
+  await captureArtifacts('revoked-ticket-auto-recovered', [page, popup]);
+});
+
 test('QUICKLOGIN-02 real binding/container cookies reach a school business page and server receipt', { timeout: 240_000, tags: ['school-cookie-ack'] }, async ({ app }) => {
   const { popup, context, settings, identity, cookies } = await connectSchool(app, 'school-success');
   const initial = await localState(popup);

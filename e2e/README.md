@@ -1,6 +1,6 @@
 # QUICKLOGIN-01 / 02：真实扩展授权、学校 Cookie 与恢复
 
-运行 `dist/` 中的真实 MV3 扩展、Chromium 持久上下文、真实 Auth Worker / D1 / DO 和 Auth 前端。授权为 authorization-code + S256 PKCE。QUICKLOGIN-01 保留六个授权/平台场景；QUICKLOGIN-02 增加十个真实学校绑定、原生容器、Cookie、回执与页面恢复场景。仅学校和邮件是外部合成替身；内部 Auth、D1/DO/Workflow、生产 Python 浏览器运行时和 Chrome Cookie API 均实际执行。
+运行 `dist/` 中的真实 MV3 扩展、Chromium 持久上下文、真实 Auth Worker / D1 / DO 和 Auth 前端。授权为 authorization-code + S256 PKCE。QUICKLOGIN-01 保留六个授权/平台场景；QUICKLOGIN-02 增加十一个真实学校绑定、原生容器、Cookie、回执与页面恢复场景。仅学校和邮件是外部合成替身；内部 Auth、D1/DO/Workflow、生产 Python 浏览器运行时和 Chrome Cookie API 均实际执行。
 
 ## 固定环境与入口
 
@@ -60,13 +60,14 @@ tester-army 负责 BrowserProvider 生命周期、popup 的确定性点击和可
 Chromium 桌面扩展 E2E 不代表手机真机、权限弹窗、完整后台生命周期 / 撤销（QUICKLOGIN-03）或真实学校验收（QUICKLOGIN-04）。本地 CI 模式与远端 GitHub Actions 分别记录；固定 Auth 提交可远端获取之前，不能声称远端 CI 已通过。
 
 
-## QUICKLOGIN-02 的十个行为边界
+## QUICKLOGIN-02 的十一个行为边界
 
-`run.mjs` 先通过固定框架的 JSON discovery 取得完整标题和 ID。六个授权场景共享原隔离 runtime；每个学校场景使用新的 Worker、D1/DO/Workflow、fixture 镜像、profile 和端口，防止批量合成注册消耗彼此的生产限频窗口。没有提高或清空限频。每组 exact title 选择与 selected/executed ID 集合一致；总报告再与发现集合核对。零选择仍实际经过单 runtime 的失败/清理路径。01/02 的两个完整调用各执行 16 项；包含03的全量发现24项。失败/跳过/中断或清理错误不能成为通过。
+`run.mjs` 先通过固定框架的 JSON discovery 取得完整标题和 ID。六个授权场景共享原隔离 runtime；每个学校场景使用新的 Worker、D1/DO/Workflow、fixture 镜像、profile 和端口，防止批量合成注册消耗彼此的生产限频窗口。没有提高或清空限频。每组 exact title 选择与 selected/executed ID 集合一致；总报告再与发现集合核对。零选择仍实际经过单 runtime 的失败/清理路径。01/02 的两个完整调用各执行 17 项；包含03的全量发现25项。失败/跳过/中断或清理错误不能成为通过。
 
 | 场景（学校用例按此契约归属） | 可信回归及真实断言 |
 | --- | --- |
 | `school.e2e.ts` 绑定→Cookie→业务→ACK | 学校仅续期辅助 Cookie 后下一轮同步仍沿用 receipt，关闭插件保留续期 Cookie；实际域、hostOnly、path、session、SameSite、有效期及过滤结果；真实新登录和导出后，延迟真实 ACK 响应期间不得导航，随后学校业务标题与独立 Auth overview 的 receipt 一致 |
+| revoked ticket | 外部学校撤销会话并以 HTTP 响应删除旧 TGC，扩展补回后再次被拒绝，自动申请一次新会话并进入业务页；不手动重试，不直接修改扩展恢复状态 |
 | foreign cookies | 原生 Cookie API 中 host/domain/path 三种同名外来 TGC；同步冲突及关闭后都保留外来值，不能取得本地成功回执 |
 | manual typing | 真实表单输入切换手动模式；迟到的真实容器登录不能导航或恢复 receipt，页面有手动/重试入口 |
 | sync off / late export | 持有已由真实 Auth 生成的 export 响应；真实 popup 关闭意图先提交，释放后不写 Cookie、不发成功回执，服务端设备关闭 |

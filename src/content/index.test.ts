@@ -73,6 +73,7 @@ it("stops automatic checks after manual_required until explicit retry",async()=>
 it.each(["QR","password"])("starts recovery from the current school page in %s mode",async mode=>{
  const qrSelected=mode==="QR";
  document.body.innerHTML=`
+  <div style="display:none"><form></form></div>
   <div class="ruleList"><div class="showName">微信扫码</div><div class="showName">用户名密码</div></div>
   <nz-tabset>
    <div role="tab" aria-selected="${qrSelected}">微信扫码</div>
@@ -97,6 +98,13 @@ it.each(["QR","password"])("starts recovery from the current school page in %s m
  await import("./index");
  await vi.advanceTimersByTimeAsync(6000);
  expect(send.mock.calls.map(args=>args[0].type)).toContain("LOGIN_FORM_VISIBLE");
+ const banner=document.getElementById("cqu-quicklogin-status")!;
+ expect(banner.textContent).toContain("正在恢复快捷登录");
+ for(let element:HTMLElement|null=banner;element;element=element.parentElement) {
+  expect(getComputedStyle(element).display).not.toBe("none");
+  expect(getComputedStyle(element).visibility).not.toBe("hidden");
+  expect(element.getAttribute("aria-hidden")).not.toBe("true");
+ }
 });
 it("bounds checks when the host page keeps mutating", async () => {
  const send=vi.fn(async()=>({kind:"idle"}));

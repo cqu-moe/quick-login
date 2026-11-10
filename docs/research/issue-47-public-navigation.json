@@ -1,0 +1,39 @@
+{
+  "kind": "anonymous-my-to-sso",
+  "documents": [
+    {
+      "url": {
+        "host": "my.cqu.edu.cn",
+        "path": "/workspace",
+        "queryKeys": []
+      },
+      "status": 200,
+      "cookies": []
+    },
+    {
+      "url": {
+        "host": "my.cqu.edu.cn",
+        "path": "/authserver/casLogin",
+        "queryKeys": [
+          "redirect_uri"
+        ]
+      },
+      "status": 302,
+      "redirect": true,
+      "cookies": []
+    },
+    {
+      "url": {
+        "host": "sso.cqu.edu.cn",
+        "path": "/login",
+        "queryKeys": [
+          "service"
+        ]
+      },
+      "status": 200,
+      "cookies": []
+    }
+  ],
+  "tgcResponses": [],
+  "assets": []
+}
