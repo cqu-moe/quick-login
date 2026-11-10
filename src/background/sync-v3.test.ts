@@ -70,7 +70,7 @@ it("finishes a real cookie write and its pending ACK before applying a downloade
   });
 });
 
-it.each(["new-session", "school-form"])("does not let a prior local rotation block %s", async transition => {
+it.each(["new-session", "school-form", "explicit-switch"])("does not let a prior local rotation block %s", async transition => {
   const first = envelope();
   first.cookies.push({ ...first.cookies[0], name: "SESSION", value: "initial-auxiliary" });
   vi.mocked(api.exportSession).mockResolvedValue(first);
@@ -82,8 +82,25 @@ it.each(["new-session", "school-form"])("does not let a prior local rotation blo
   await sync("popup");
   expect(fake.getCookie("SESSION")?.value).toBe("locally-rotated");
   expect((await readLocalState()).receipt?.result).not.toBe("applied");
+  expect.soft(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput).description)
+    .toContain("无需重复切换");
 
-  if (transition === "school-form") {
+  if (transition === "explicit-switch") {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.mocked(api.reconcile).mockImplementation(async () => {
+      await gate;
+      return { centralUserId: "central-user-a", snapshot: snapshot(), receiptAck: null };
+    });
+    try {
+      await handleMessage({ type: "SWITCH_TO_MANAGED" });
+      expect(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput))
+        .toMatchObject({ heading: "正在准备学校登录", tone: "busy", actions: [], switchEnabled: true });
+      expect(fake.getCookie("SESSION")?.value).toBe("locally-rotated");
+    } finally { release(); await sync("popup"); }
+    expect(fake.getCookie("SESSION")?.value).toBe("initial-auxiliary");
+    expect(await readLocalState()).toMatchObject({ localWriteState: "ready", managedSwitch: null, pendingAck: false });
+  } else if (transition === "school-form") {
     await observeSchoolLogin({ tabId: 7, documentId: "new-school-document" });
     await sync("login_form");
     expect(api.operate).toHaveBeenCalledWith("retry_session", expect.anything(), expect.any(String));

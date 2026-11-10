@@ -16,7 +16,7 @@ from aiohttp import web, ClientSession, TCPConnector
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
-state = {"mode": "success", "session": "202610", "pageSession": "202610", "hold": False, "holdLogin": False, "holdMail": False, "forceForm": False, "cookieVariant": "attributes"}
+state = {"mode": "success", "session": "202610", "pageSession": "202610", "hold": False, "holdLogin": False, "holdMail": False, "forceForm": False, "cookieVariant": "attributes", "deleteRejectedTgc": False}
 events = []
 mail = []
 sessions = set()
@@ -64,6 +64,9 @@ async def login(request):
                 response.headers["Location"] = request.query["service"] + "?ticket=ST-" + secrets.token_hex(12)
             return response
         response = form()
+        if state["deleteRejectedTgc"] and request.cookies.get("SOURCEID_TGC"):
+            response.del_cookie("SOURCEID_TGC", path="/", secure=True, httponly=True, samesite="Lax")
+            record("rejected_tgc_deleted")
         for name in ("CtLgrmkSWHBZO", "CtLgrmkSWHBZP"):
             response.set_cookie(name, "synthetic", secure=True)
         response.set_cookie("service", request.query.get("service", "https://my.cqu.edu.cn/authserver/authentication/cas"), secure=True)
@@ -176,7 +179,7 @@ async def control(request):
             record("sessions_expired")
         if updates.pop("clearEvents", False):
             events.clear()
-        allowed = {"mode","session","pageSession","hold","holdLogin","holdMail","forceForm","cookieVariant"}
+        allowed = {"mode","session","pageSession","hold","holdLogin","holdMail","forceForm","cookieVariant","deleteRejectedTgc"}
         if set(updates) - allowed:
             raise web.HTTPBadRequest()
         state.update(updates)

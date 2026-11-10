@@ -41,6 +41,9 @@ export function derivePopupView(input: PopupInput): PopupView {
       ? { ...state,title:"快捷登录未成功",detail:"请在学校页面手动登录，或重试快捷登录。",actionCode:"retry_session" }
       : { ...state,statusCode:"refreshing",title:"正在恢复学校登录",detail:"学校登录已失效，正在获取新的登录状态。",actionCode:"none" };
   }
+  if (state.statusCode === "foreign" && input.local.receipt?.result === "foreign") {
+    state = { ...state, detail: "学校登录状态在同步后发生了变化；如仍能正常访问学校网站，无需重复切换。" };
+  }
   const actions:Partial<Record<typeof state.actionCode,PopupAction>>={
     connect_auth:"login",update_extension:"update",open_auth:"open_settings",manage_devices:"open_settings",
     resume_automatic:"resume",switch_to_quicklogin:"switch_managed",reconcile:"retry",bind_school:"open_settings",

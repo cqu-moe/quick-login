@@ -1,14 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { installChromeFake } from "../test/chrome-fake";
 import { readySnapshot as snapshot, envelope } from "../test/protocol-fixtures";
-import { initialLocalState, LOCAL_STATE_KEY, readLocalState } from "./storage";
+import { initialLocalState, LOCAL_STATE_KEY, readLocalState, updateLocalState } from "./storage";
 import { handleContentMessage, handleMessage } from "./messages";
 import { sync, setEnvelopeWriter, retryAutomaticNow, setEnabled } from "./sync";
 import { applyEnvelope, clearOwnedCookies } from "./cookie-store";
+import * as cookieStore from "./cookie-store";
 import { derivePopupView, type PopupInput } from "../popup/view-model";
 import * as api from "./api-v3";
 import * as telemetry from "../shared/posthog";
-import { onSchoolTabUpdated } from "./school-recovery";
+import { observeSchoolLogin, onSchoolTabUpdated } from "./school-recovery";
 import type { DeviceSnapshot, ExportEnvelope, OperationResponse } from "../shared/protocol-v3.generated";
 
 function operationResponse(value: DeviceSnapshot): OperationResponse {
@@ -228,6 +229,101 @@ it("reapplies a missing browser Cookie without forcing another school login",asy
   expect(api.operate).not.toHaveBeenCalled();
   expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toEqual({kind:"navigating"});
   expect(fake.getCookie("SOURCEID_TGC")).not.toBeNull();
+});
+
+it.each(["removed", "retained", "removed-before-reconcile-failure"] as const)("refreshes once when the restored cloud ticket is rejected and %s by school", async rejection => {
+  await chrome.cookies.remove({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC"});
+  await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},sender);
+  await sync("alarm");
+  expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toEqual({kind:"navigating"});
+  expect(api.operate).not.toHaveBeenCalled();
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-session");
+  if (rejection !== "retained") await chrome.cookies.remove({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC"});
+  if (rejection === "removed-before-reconcile-failure") {
+    vi.mocked(api.reconcile).mockRejectedValueOnce(new api.ApiFailure("INTERNAL_STATE_UNAVAILABLE"));
+    await sync("popup");
+  }
+  vi.mocked(api.operate).mockImplementation(async () => {
+    publishNewSession();
+    const fresh = snapshot();
+    fresh.versions = {...fresh.versions,sessionVersion:8,deviceRevision:13};
+    fresh.reportedLocal = null;
+    return operationResponse(fresh);
+  });
+  const rejectedPage = {...sender,documentId:"restored-ticket-rejected"};
+  await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},rejectedPage);
+  await sync("alarm");
+  expect(api.operate).toHaveBeenCalledWith("retry_session",expect.anything(),expect.any(String));
+  expect(api.operate).toHaveBeenCalledTimes(1);
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-session-8");
+  expect(await handleContentMessage({type:"GET_UI_STATE"},rejectedPage)).toEqual({kind:"navigating"});
+  expect(fake.tabUpdates).toHaveLength(2);
+  await chrome.cookies.remove({url:"https://sso.cqu.edu.cn/",name:"SOURCEID_TGC"});
+  expect(await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},{...sender,documentId:"fresh-ticket-rejected"}))
+    .toMatchObject({kind:"manual_required"});
+  await sync("alarm");
+  expect(api.operate).toHaveBeenCalledTimes(1);
+  expect(fake.tabUpdates).toHaveLength(2);
+});
+
+it("keeps both cached-session waiters in the same fresh recovery when their rejected pages arrive separately", async () => {
+  fake.cookieStore.clear();
+  const second = {...sender,tab:{id:8},documentId:"second-cached-waiter"} as chrome.runtime.MessageSender;
+  let release!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>(resolve => {release = resolve;});
+  const started = new Promise<void>(resolve => {entered = resolve;});
+  vi.mocked(api.reconcile).mockImplementationOnce(async () => {
+    entered(); await gate;
+    return {centralUserId:"central-user-a",snapshot:snapshot(),receiptAck:null};
+  });
+  await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},sender);
+  try {
+    await started;
+    await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},second);
+  } finally {release(); await sync("alarm");}
+  expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toEqual({kind:"navigating"});
+  expect(await handleContentMessage({type:"GET_UI_STATE"},second)).toEqual({kind:"navigating"});
+  expect(api.operate).not.toHaveBeenCalled();
+  fake.cookieStore.clear();
+  const waiting = snapshot();
+  waiting.cloud = {...waiting.cloud,state:"refreshing",operationId:"operation-a"};
+  waiting.capabilities = {...waiting.capabilities,canRetry:false,canExport:false};
+  vi.mocked(api.operate).mockImplementation(async () => {
+    vi.mocked(api.reconcile).mockResolvedValue({centralUserId:"central-user-a",snapshot:waiting,receiptAck:null});
+    return operationResponse(waiting);
+  });
+  const rejectedFirst = {...sender,documentId:"first-cached-rejected"};
+  const rejectedSecond = {...second,documentId:"second-cached-rejected"};
+  await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},rejectedFirst);
+  await sync("alarm");
+  expect(await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},rejectedSecond)).toMatchObject({kind:"recovering"});
+  await sync("alarm");
+  expect((await readLocalState()).loginRecovery?.failed).toBe(false);
+  expect(api.operate).toHaveBeenCalledTimes(1);
+  publishNewSession();
+  await sync("alarm");
+  expect(await handleContentMessage({type:"GET_UI_STATE"},rejectedFirst)).toEqual({kind:"navigating"});
+  expect(await handleContentMessage({type:"GET_UI_STATE"},rejectedSecond)).toEqual({kind:"navigating"});
+  expect(fake.tabUpdates.map(update=>update.tabId)).toEqual([7,8,7,8]);
+});
+
+it("cancels a rejected-ticket refresh when manual input arrives during the final Cookie check", async () => {
+  fake.cookieStore.clear();
+  await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},sender);
+  await sync("alarm");
+  expect(await handleContentMessage({type:"GET_UI_STATE"},sender)).toEqual({kind:"navigating"});
+  fake.cookieStore.clear();
+  await observeSchoolLogin({tabId:7,documentId:"rejected-before-manual"});
+  await updateLocalState(state => ({...state,receipt:null,localWriteState:"idle"}));
+  vi.spyOn(cookieStore,"inspectLocalTgc").mockImplementationOnce(async () => {
+    await handleContentMessage({type:"ENTER_MANUAL"},sender);
+    return "missing";
+  });
+  await sync("login_form");
+  expect(api.operate).not.toHaveBeenCalled();
+  expect(await readLocalState()).toMatchObject({manualOverride:true,loginRecovery:null});
+  expect(fake.tabUpdates).toHaveLength(1);
 });
 
 it("lets an explicit popup retry recover the document where the last navigation failed",async()=>{

@@ -160,7 +160,9 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
               ? { ...state.receipt,result:"foreign",verifiedAt:null } : null,
             pendingAck:false,appliedVersion:null,localWriteState:"idle",
             loginRecovery: state.loginRecovery && sameTuple(state.loginRecovery.rejectedTuple, state.receipt)
-              ? { ...state.loginRecovery, rejectedTuple:tgcMissing ? null : state.loginRecovery.rejectedTuple, appliedExportId:null } : state.loginRecovery };
+              ? { ...state.loginRecovery, rejectedTuple:tgcMissing && state.loginRecovery.stage !== "refreshing" &&
+                !state.loginRecovery.pages.some(page => page.navigated)
+                ? null : state.loginRecovery.rejectedTuple, appliedExportId:null } : state.loginRecovery };
       });
     }
     const result = await api.reconcile();
@@ -211,19 +213,30 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     const rejectedCurrent = (currentCookiesVerified || (locallyOwnedTgc && local.receipt?.result === "foreign")) &&
       sameTuple(local.receipt, tupleForSnapshot(remote)) &&
       (!local.loginRecovery || sameTuple(local.loginRecovery.rejectedTuple, local.receipt));
-    const userRecovery = !hasManagedSwitch(local) && (((reason === "login_form" || rejectedHere) && rejectedCurrent) ||
+    const rejectedMissing = rejectedHere && local.loginRecovery?.stage === "refreshing" &&
+      sameTuple(local.loginRecovery.rejectedTuple, tupleForSnapshot(remote)) && await inspectLocalTgc() === "missing";
+    const userRecovery = !hasManagedSwitch(local) && ((rejectedHere && (rejectedCurrent || rejectedMissing)) ||
       (reason === "user_retry" && (remote.cloud.state !== "ready" || local.schoolAccess === "login_form_seen")));
     const waiting = remote.cloud.retryAt !== null && Date.now() < remote.cloud.retryAt;
     if ((userRecovery && remote.capabilities.canRetry && !waiting) ||
         (!remote.capabilities.canExport && remote.capabilities.canEnsure && !waiting &&
          (["absent","expired","blocked"].includes(remote.cloud.state) ||
           (remote.cloud.state === "queued" && remote.cloud.operationId === null)))) {
-      if (!local.recovery || local.recovery.generation !== remote.versions.generation) {
-        const versions = remote.versions;
-        local = await updateLocalState((state) => ({ ...state,recovery:{ id:crypto.randomUUID(),
-          generation:versions.generation,sessionVersion:versions.sessionVersion,phase:"downloading",
-          downloadRetries:0,writeRetries:0,nextAttemptAt:null,navigatedTabId:null } }));
-      }
+      const operationGeneration = local.localGeneration;
+      const loginRecoveryId = local.loginRecovery?.id;
+      const versions = remote.versions;
+      local = await updateLocalState(state => {
+        if (state.localGeneration !== operationGeneration || state.loginRecovery?.id !== loginRecoveryId ||
+            !state.enabledIntent || state.manualOverride) return state;
+        return { ...state,
+          recovery: state.recovery?.generation === versions.generation ? state.recovery : {
+            id:crypto.randomUUID(),generation:versions.generation,sessionVersion:versions.sessionVersion,
+            phase:"downloading",downloadRetries:0,writeRetries:0,nextAttemptAt:null,navigatedTabId:null },
+          loginRecovery: userRecovery && state.loginRecovery
+            ? { ...state.loginRecovery, stage: "refreshing" } : state.loginRecovery };
+      });
+      if (local.localGeneration !== operationGeneration || local.loginRecovery?.id !== loginRecoveryId ||
+          !local.enabledIntent || local.manualOverride) return { outcome: "canceled" };
       const response = await api.operate(userRecovery ? "retry_session" : "ensure_session",remote,
         `${remote.identity.deviceId}:${remote.versions.generation}:${remote.versions.bindingEpoch}:${local.loginRecovery?.id ?? local.recovery!.id}`);
       local = await adopt(response.snapshot,local.localGeneration);
@@ -297,13 +310,16 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     });
     local = await updateLocalState((state) => {
       if (state.localGeneration !== generationFence || !state.enabledIntent || state.manualOverride) return state;
-      const recovered = !state.loginRecovery || (!state.loginRecovery.failed && !sameTuple(state.loginRecovery.rejectedTuple, envelope));
+      const restoring = state.loginRecovery?.stage === "restoring" && state.loginRecovery.rejectedTuple === null;
+      const recovered = !state.loginRecovery || (!state.loginRecovery.failed && (restoring || !sameTuple(state.loginRecovery.rejectedTuple, envelope)));
       return { ...state,managedSwitch:null,receipt:{ deviceId:envelope.deviceId,generation:envelope.generation,
         bindingEpoch:envelope.bindingEpoch,credentialRevision:envelope.credentialRevision,
         sessionVersion:envelope.sessionVersion,exportId:envelope.exportId,result:"applied",verifiedAt:Date.now() },
         pendingAck:true,appliedVersion:envelope.sessionVersion,localWriteState:"ready",
         schoolAccess:recovered ? "unverified" : state.schoolAccess,
         loginRecovery:state.loginRecovery && recovered ? { ...state.loginRecovery,appliedExportId:envelope.exportId,
+          stage: restoring ? "restoring" : "refreshing",
+          rejectedTuple: restoring ? tupleForSnapshot(remote) : state.loginRecovery.rejectedTuple,
           acknowledgedExportId:null } : state.loginRecovery,
         recovery:{ ...round,phase:"finished" } };
     });

@@ -12,6 +12,7 @@ import { readLocalState } from "./storage";
 import { CONTENT_MESSAGE_TYPES, type ContentMessage, type ContentAction, type LoginRecoveryResult } from "../shared/messages";
 import { config } from "../shared/config";
 import { localCookieState } from "./api-v3";
+import { hasManagedSwitch } from "./cookie-store";
 import { recordFailure } from "./sync";
 import { derivePopupView, type PopupInput } from "../popup/view-model";
 import type { LocalState } from "../shared/contracts";
@@ -46,7 +47,7 @@ function popupInput(state: LocalState): PopupInput {
   return { deviceId:state.deviceId,snapshot:state.snapshot,
     local:{ authorization:state.authorization,observation:state.observation,protocolSupport:state.protocolSupport,
       ...(state.deviceId ? {enabledIntent:state.enabledIntent} : {}),mode:state.manualOverride ? "manual" : "automatic",
-      cookieState:localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
+      cookieState:hasManagedSwitch(state) ? "unknown" : localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
     recoveryFailed:state.loginRecovery?.failed ?? false,
     connecting:state.connectIntentId !== null,pendingEnabled:state.pendingCommand?.enabled,
     lastError:state.localError,lastConfirmedAt:state.lastConfirmedAt,nextAttemptAt:state.nextAttemptAt };

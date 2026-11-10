@@ -48,16 +48,20 @@ export async function observeSchoolLogin(page: SchoolPage): Promise<void> {
     const previous = round?.pages.find(item => item.tabId === page.tabId);
     if (previous?.documentId === page.documentId) return state;
     if (previous?.navigated) {
+      const retryRestored = round?.stage === "restoring";
       return { ...state, schoolAccess: "login_form_seen",
-        loginRecovery: { ...round!, failed: true, appliedExportId: null,
-          pages:round!.pages.map(item=>item === previous ? {...page,navigated:false} : item) } };
+        recovery: retryRestored ? null : state.recovery,
+        loginRecovery: { ...round!, stage: "refreshing", failed: !retryRestored, appliedExportId: null,
+          acknowledgedExportId: null,
+          pages:round!.pages.map(item=>item === previous ? {...page,navigated:false}
+            : retryRestored ? {...item,navigated:false} : item) } };
     }
     const pages = [...(round?.pages ?? []).filter(item => item.tabId !== page.tabId), { ...page, navigated: false }].slice(-32);
     if (round && !round.appliedExportId && !round.failed) {
       return { ...state, schoolAccess: "login_form_seen", loginRecovery: { ...round, pages } };
     }
     return { ...state, schoolAccess: "login_form_seen", recovery: null,
-      loginRecovery: { id: crypto.randomUUID(), rejectedTuple: state.receipt, appliedExportId: null,
+      loginRecovery: { id: crypto.randomUUID(), stage: "restoring", rejectedTuple: state.receipt, appliedExportId: null,
         failed: false, pages: [{ ...page, navigated: false }] } };
   });
 }
