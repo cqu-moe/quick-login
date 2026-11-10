@@ -1,3 +1,12 @@
+# 2026-11-10 0.5.7 Issue #47 PR 候选（未发布）
+
+- [Issue #47](https://github.com/cqu-moe/quick-login/issues/47) 与 [Jam](https://jam.dev/c/4e8c271c-3d77-4a65-b3db-65c0d3b765de)：已修复隐藏的学校页面提示、切换进度及误导说明，并补上缓存 TGC 再次被拒绝后的新会话恢复；先前 TGC 消失的具体原因仍未确认，不能称 Issue 已完整根治。证据见 [排障记录](../research/2026-11-09-issue-47.md)。
+- QuickLogin 分支 `codex/fix-issue-47-school-login`，修复源码提交 `da1095e2a6d4803b2061be8242e3abb6b1d65f0d`，用户授权先开 PR；09:20 的应用测试复跑为 28 个文件、276 项通过。Auth 调查工作树位于 `.worktrees/auth-issue47`，强制重新登录的候选已撤回，当前无 Auth 改动。
+- 0.5.7 为待发布版本；目标包 `cqu-quicklogin-0.5.7-canary.zip` 尚未生成。正式发布提交及 ZIP SHA-256 待合并发布时记录；本地 E2E 构建仍是提交前同一代码，不能复用为正式发行物。当前仅提交 PR，未合并、部署、升级浏览器或操作商店。
+- 最终本地 276 项应用测试、扩展/E2E 类型检查、构建及包/契约检查通过；此前界面候选的隔离 Chromium 服务进程与浅深主题原生弹窗检查通过。11 月 10 日使用干净的 CI 固定 Auth `41147c9` 后，定向完整恢复 E2E 1/1 通过且清理通过（`.e2e/issue47-revoked-ticket-3`）；旧版与最新 Auth 的失败尝试均保留，不混作通过。接手真实现场后重新请求同一 `casLogout` 地址返回 400、页面空白，直接访问 SSO 落地登录表单且 0.5.6 失败提示被隐藏；未取得学校 TGC 撤销原因，未执行新版本真实账号验收，未运行本次全套 25 项 E2E。
+
+---
+
 # 2026-11-06 0.5.6 单次切换授权绑定修复正式发布
 
 - [PR #44](https://github.com/cqu-moe/quick-login/pull/44) 在最新 main 基线上的 head `3750a8c4a6f78538898084507f9da8ca5cfcec23` 全部 16 项检查通过后 squash 合并。发布源码及标签 `v0.5.6`：`db69d5e8327d57ebab3d0a74e7956e8d432f965a`。授权绑定确认时完整 TGC 身份和摘要，并在首次写入尝试前消耗；等待期间会话变化需重新确认。
