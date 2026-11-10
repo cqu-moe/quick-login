@@ -81,11 +81,12 @@ it.each(["new-session", "school-form", "explicit-switch"])("does not let a prior
   await sync("popup");
   await sync("popup");
   expect(fake.getCookie("SESSION")?.value).toBe("locally-rotated");
-  expect((await readLocalState()).receipt?.result).not.toBe("applied");
-  expect.soft(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput).description)
-    .toContain("无需重复切换");
+  expect((await readLocalState()).receipt?.result).toBe("applied");
 
   if (transition === "explicit-switch") {
+    fake.getCookie("SOURCEID_TGC")!.value = "another-school-login";
+    await sync("popup");
+    expect((await readLocalState()).localWriteState).toBe("foreign_session");
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
     vi.mocked(api.reconcile).mockImplementation(async () => {
@@ -128,7 +129,8 @@ describe("routine cookie continuity", () => {
   beforeEach(() => {
     const exported = envelope();
     exported.cookies[0].expires = Date.now() / 1000 + 1800;
-    exported.cookies.push({ ...exported.cookies[0], name: "auxiliary", value: "same-school-session" });
+    exported.cookies.push({ ...exported.cookies[0], name: "auxiliary", value: "same-school-session", sameSite: "None" });
+    exported.cookies.push({ ...exported.cookies[0], name: "JSESSIONID", value: "initial-request-session", sameSite: "None", expires: -1 });
     vi.mocked(api.exportSession).mockResolvedValue(exported);
     vi.mocked(api.reconcile).mockResolvedValue({ centralUserId: "central-user-a", snapshot: readySnapshot(), receiptAck: null });
     vi.mocked(api.acknowledge).mockImplementation(async applied => {
@@ -139,8 +141,11 @@ describe("routine cookie continuity", () => {
     setEnvelopeWriter(applyEnvelope);
   });
 
-  it.each(["acknowledged", "pending-ack", "previously-misclassified"] as const)(
-    "keeps an auxiliary expiry renewal ready without rewriting cookies: %s", async previous => {
+  it.each([
+    ["acknowledged", "expiry"], ["pending-ack", "expiry"], ["previously-misclassified", "expiry"],
+    ["acknowledged", "rotation"], ["pending-ack", "rotation"], ["previously-misclassified", "rotation"],
+  ] as const)(
+    "keeps the managed login ready without rewriting school cookies: %s / %s", async (previous, change) => {
       if (previous === "pending-ack") vi.mocked(api.acknowledge).mockRejectedValueOnce(new TypeError("offline"));
       await sync("startup");
       const written = await readLocalState();
@@ -148,8 +153,15 @@ describe("routine cookie continuity", () => {
       expect(written.pendingAck).toBe(previous === "pending-ack");
       const auxiliary = fake.getCookie("auxiliary")!;
       auxiliary.expirationDate! += 60;
+      const requestSession = fake.getCookie("JSESSIONID")!;
+      if (change === "rotation") {
+        auxiliary.value = "rotated-school-cookie";
+        auxiliary.sameSite = "unspecified";
+        requestSession.value = "rotated-request-session";
+        requestSession.sameSite = "lax";
+      }
       if (previous === "previously-misclassified") {
-        // State persisted by 0.5.3 after the same harmless expiry renewal.
+        // Upgrade from a version that misclassified normal school Cookie changes.
         await updateLocalState(state => ({ ...state, receipt: { ...state.receipt!, result: "foreign", verifiedAt: null },
           pendingAck: false, appliedVersion: null, localWriteState: "idle" }));
       }
@@ -161,30 +173,31 @@ describe("routine cookie continuity", () => {
       expect(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput).heading).toBe("已就绪");
       expect(await readLocalState()).toMatchObject({ localWriteState: "ready", appliedVersion: 7, pendingAck: false,
         receipt: { ...written.receipt, result: "applied", verifiedAt: expect.any(Number) }, managed: written.managed });
+      expect(api.localCookieState(await readLocalState())).toBe("applied");
       expect(writes).not.toHaveBeenCalled();
       expect(api.exportSession).toHaveBeenCalledTimes(exports);
       expect(api.acknowledge).toHaveBeenCalledTimes(acknowledgments + (previous === "acknowledged" ? 0 : 1));
       // Read-only continuity must not make the renewed cookie deletable by the extension.
       await clearOwnedCookies();
       expect(fake.getCookie("auxiliary")).toEqual(auxiliary);
+      expect(fake.getCookie("JSESSIONID")).toEqual(change === "rotation" ? requestSession : null);
       expect(fake.getCookie("SOURCEID_TGC")).toBeNull();
     }
   );
 
-  it.each(["auxiliary-value", "shortened-expiry", "security", "session", "missing-proof", "primary-value",
+  it.each(["shortened-expiry", "security", "session", "missing-proof", "primary-value",
     "primary-expiry", "foreign-domain", "foreign-path", "foreign-domain-with-renewal", "foreign-path-with-renewal"] as const)(
     "preserves a genuinely changed or unproven login: %s", async change => {
       await sync("startup");
       const auxiliary = fake.getCookie("auxiliary")!;
-      if (change === "auxiliary-value") auxiliary.value = "another-session";
-      else if (change === "shortened-expiry") auxiliary.expirationDate! -= 60;
-      else if (change === "security") auxiliary.httpOnly = false;
-      else if (change === "session") auxiliary.session = true;
+      const tgc = fake.getCookie("SOURCEID_TGC")!;
+      if (change === "shortened-expiry") tgc.expirationDate! -= 60;
+      else if (change === "security") tgc.httpOnly = false;
+      else if (change === "session") tgc.session = true;
       else if (change === "missing-proof") {
-        auxiliary.expirationDate! += 60;
-        await updateLocalState(state => ({ ...state, managed: state.managed.map(entry => ({ ...entry, renewal: undefined })) }));
-      } else if (change === "primary-value") fake.getCookie("SOURCEID_TGC")!.value = "another-account";
-      else if (change === "primary-expiry") fake.getCookie("SOURCEID_TGC")!.expirationDate! += 60;
+        await updateLocalState(state => ({ ...state, managed: state.managed.filter(entry => entry.name !== "SOURCEID_TGC") }));
+      } else if (change === "primary-value") tgc.value = "another-account";
+      else if (change === "primary-expiry") tgc.expirationDate! += 60;
       else {
         if (change.endsWith("with-renewal")) auxiliary.expirationDate! += 60;
         await chrome.cookies.set({ url: "https://sso.cqu.edu.cn/authserver/login", name: "SOURCEID_TGC", value: "another-account",

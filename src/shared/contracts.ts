@@ -54,8 +54,6 @@ export interface ManagedCookie {
   path: string;
   storeId: string;
   digest: string;
-  // Read-only continuity proof; never grants ownership for deletion or rollback.
-  renewal?: { digest: string; expirationDate: number };
 }
 
 export interface RecoveryRound {

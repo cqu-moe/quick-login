@@ -1,3 +1,12 @@
+# 2026-11-10 0.5.8 正常 Cookie 轮换修复候选
+
+- 分支 `codex/fix-issue-50-cookie-continuity`，基线 `b6e00a9fe15cf8e99d3a01a33f81370cf1d1c1ba`；修复 issue #50 的辅助 Cookie 正常轮换误判，保持完整 TGC 集合和 Cookie 删除/回滚所有权保护。没有修改 Auth、协议字段或扩展权限。
+- 本地验证：279 项应用测试，扩展/E2E/官网类型检查，扩展构建/包检查及官网 7 页检查通过。修复前 3 个轮换用例为红，修复后通过；五个定向真实 Chromium 场景覆盖轮换、外来登录、手动取消、双标签恢复和撤销票据恢复。首轮容器启动异常及夹具 SameSite 断言失败均保留，相关重跑通过并完成清理。详见[诊断及修复记录](../research/2026-11-10-issue-50.md)。
+- 提交前本地候选 `releases/cqu-quicklogin-0.5.8-canary.zip`：154956 bytes，SHA-256 `354b8d8231bff7bf631462a9e4a86d901725a3f1bffe0720343e48bb2cc38a88`；14 个文件、CRC、manifest 版本及逐字节构建比对通过。该包来自未提交工作区，build-info 的 sourceCommit 仍为基线，不能作为正式发布来源；正式包由合并后的可信流水线重建并另行记录。
+- 用户已授权 PR、CI 全绿后合并及新版本发布。此条为提交前快照，不表示已推送、合并、部署或商店发布；真实学校账号尚未使用修复版验收。
+
+---
+
 # 2026-11-10 0.5.7 Canary 与官网已发布，商店待审核
 
 - [PR #48](https://github.com/cqu-moe/quick-login/pull/48) 在 head `aee2cd7b610f06933d8ede890b0db8933f8ce0bc` 的 [Checks](https://github.com/cqu-moe/quick-login/actions/runs/42735403973)、[12 个 MV3 E2E 分片及汇总](https://github.com/cqu-moe/quick-login/actions/runs/42735403969) 和官网预览构建全部通过后 squash 合并。独立代码规范审查无阻断项，独立需求审查无发现；GitHub 无未解决审查线程。这两项是本地代理审查，不是 GitHub 的 APPROVED 记录。

@@ -340,10 +340,6 @@ async function applyEnvelopeUnlocked(
       managed.push({
         name: entry.name, domain: entry.domain, path: entry.path,
         storeId: entry.storeId, digest: entry.expectedDigest,
-        ...(!current.session && current.expirationDate !== undefined ? { renewal: {
-          digest: await digestCookie({...current,expirationDate:undefined}),
-          expirationDate: current.expirationDate,
-        } } : {}),
       });
     }
     if (expectedTgc && !await matchesTgc(expectedTgc)) {
@@ -381,8 +377,8 @@ async function applyEnvelopeUnlocked(
   }
 }
 
-// Read-only continuity permits an auxiliary expiry extension without changing
-// the exact digests used to authorize deletion, replacement cleanup or rollback.
+// TGC identifies the applied SSO session; auxiliary cookies may rotate on use.
+// Keep the original exact digests for deletion, replacement cleanup and rollback.
 async function inspectCookieContinuity(managed: ManagedCookie[]): Promise<"verified" | "missing" | "changed"> {
   if (!managed.some(entry => entry.name === "SOURCEID_TGC")) return "missing";
   const tgcState = await inspectTgc(managed);
@@ -391,12 +387,7 @@ async function inspectCookieContinuity(managed: ManagedCookie[]): Promise<"verif
   for (const entry of managed) {
     const current = await getExact(entry);
     if (!current) { missing = true; continue; }
-    if (await digestCookie(current) === entry.digest) continue;
-    const baseline = entry.renewal;
-    if (entry.name === "SOURCEID_TGC" || !baseline || current.session ||
-        !Number.isFinite(baseline.expirationDate) || !Number.isFinite(current.expirationDate) ||
-        current.expirationDate! <= Date.now()/1000 || current.expirationDate! < baseline.expirationDate ||
-        await digestCookie({...current,expirationDate:undefined}) !== baseline.digest) return "changed";
+    if (entry.name === "SOURCEID_TGC" && await digestCookie(current) !== entry.digest) return "changed";
   }
   return missing ? "missing" : "verified";
 }
