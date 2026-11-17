@@ -56,21 +56,21 @@ PostHog 项目 token 是公开浏览器端标识，不是服务端 secret。Clou
 
 1. Cloudflare 已登录并连接本仓库的 main，根目录为仓库根目录；分支触发保持现状。
 2. Workers Builds 变量设置 `PNPM_VERSION=11.19.0`、`NODE_VERSION=22.22.3`、`SKIP_DEPENDENCY_INSTALL=1`。裸 `pnpm` 必须由 `PNPM_VERSION` 精确引导，依赖必须由下方 build command 统一安装。
-3. Build command 使用下方锁文件条件命令，不能用只构建官网的旧命令。
-4. Deploy command 使用下方锁文件条件命令。
+3. Build command 使用下方命令，不能用只构建官网的旧命令。
+4. Deploy command 使用下方命令。
 
 推荐 Build command：
 
 ```sh
-if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile && pnpm run typecheck && pnpm test && pnpm run test:release && pnpm run build && pnpm run check:package && pnpm run typecheck:website && pnpm run build:website && pnpm run check:website; else npm ci && npm run typecheck && npm test && npm run test:release && npm run build && npm run check:package && npm run typecheck:website && npm run build:website && npm run check:website; fi
+pnpm install --frozen-lockfile && pnpm run build:cloudflare
 ```
 
-该命令按标签内锁文件选择 pnpm 或 npm，再执行扩展类型检查、全部测试、发布脚本测试、扩展构建与包检查、官网类型检查、构建和结构检查。迁移后的提交含 `pnpm-lock.yaml`；历史 npm 标签保留 `package-lock.json`。任一环节失败时 Cloudflare Build 失败，不会执行部署命令。
+`build:cloudflare` 执行扩展类型检查、单元测试、发布脚本测试、扩展构建与包检查、官网类型检查、构建和结构检查。任一步失败都会停止，不执行部署。仅支持迁移后的 pnpm 提交；旧 npm 标签不再提供重建兼容。
 
 Deploy command：
 
 ```sh
-if [ -f pnpm-lock.yaml ]; then pnpm run deploy:website; else npm run deploy:website; fi
+pnpm run deploy:website
 ```
 
 2026-11-18：上述命令和变量已在 Cloudflare 控制台保存并重载验证。本次变更未触发构建或部署；控制台仍显示“GitHub 用户或组织信息获取失败”，且 Connector 可用性未通过真实云端构建确认。

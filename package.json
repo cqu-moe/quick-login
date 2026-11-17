@@ -23,7 +23,8 @@
     "test:e2e:zero": "node e2e/zero-check.mjs",
     "test:e2e:lifecycle": "node e2e/lifecycle-check.mjs",
     "test:e2e:device-controls": "node e2e/device-controls.mjs",
-    "prepare:e2e-artifacts": "node e2e/prepare-ci-artifacts.mjs"
+    "prepare:e2e-artifacts": "node e2e/prepare-ci-artifacts.mjs",
+    "build:cloudflare": "pnpm run typecheck && pnpm test && pnpm run test:release && pnpm run build && pnpm run check:package && pnpm run typecheck:website && pnpm run build:website && pnpm run check:website"
   },
   "devDependencies": {
     "@e2e-dev/web": "0.15.0",
