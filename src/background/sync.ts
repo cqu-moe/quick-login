@@ -206,8 +206,20 @@ async function runSyncInner(reason: SyncReason): Promise<SyncRunResult> {
     if (local.manualOverride || remote.observation !== "fresh" || remote.freshUntil <= Date.now()) {
       return { outcome: "success", noOp: true };
     }
-    if (local.localWriteState === "foreign_session" && !hasManagedSwitch(local)) {
-      return { outcome: "needs_input" };
+    if (!hasManagedSwitch(local)) {
+      const tgc = await inspectLocalTgc();
+      if (tgc === "foreign" || local.localWriteState === "foreign_session") {
+        const generation = local.localGeneration;
+        local = await updateLocalState(state => {
+          if (state.localGeneration !== generation || state.manualOverride || hasManagedSwitch(state)) return state;
+          return { ...state, localWriteState: tgc === "foreign" ? "foreign_session" : "idle",
+            receipt: null, pendingAck: false, appliedVersion: null };
+        });
+        if (local.localGeneration !== generation || local.manualOverride || hasManagedSwitch(local)) {
+          return { outcome: "canceled" };
+        }
+        if (tgc === "foreign") return { outcome: "needs_input" };
+      }
     }
     const rejectedHere = local.schoolAccess === "login_form_seen" && !!local.loginRecovery && !local.loginRecovery.failed;
     const rejectedCurrent = (currentCookiesVerified || (locallyOwnedTgc && local.receipt?.result === "foreign")) &&

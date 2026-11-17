@@ -48,7 +48,7 @@ function popupInput(state: LocalState): PopupInput {
     local:{ authorization:state.authorization,observation:state.observation,protocolSupport:state.protocolSupport,
       ...(state.deviceId ? {enabledIntent:state.enabledIntent} : {}),mode:state.manualOverride ? "manual" : "automatic",
       cookieState:hasManagedSwitch(state) ? "unknown" : localCookieState(state),receipt:state.receipt,pendingAck:state.pendingAck,schoolAccess:state.schoolAccess },
-    recoveryFailed:state.loginRecovery?.failed ?? false,
+    recoveryFailed:state.schoolAccess === "login_form_seen" && (!state.loginRecovery || state.loginRecovery.failed),
     connecting:state.connectIntentId !== null,pendingEnabled:state.pendingCommand?.enabled,
     lastError:state.localError,lastConfirmedAt:state.lastConfirmedAt,nextAttemptAt:state.nextAttemptAt };
 }

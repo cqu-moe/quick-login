@@ -224,6 +224,42 @@ it("does not restore ready or navigate when manual input cancels an outstanding 
   expect(derivePopupView(await handleMessage({type:"GET_UI_STATE"}) as PopupInput).heading).toBe("已切换为手动登录");
 });
 
+it.each(["retained", "missing"])("recognizes a QR login while cloud recovery is pending with a %s receipt", async previous => {
+  await startRecovery();
+  if (previous === "missing") {
+    await chrome.cookies.remove({ url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", storeId: "0" });
+    await sync("alarm");
+    expect((await readLocalState()).receipt).toBeNull();
+  }
+  // QR login writes a new school session without a trusted text-input event.
+  await chrome.cookies.set({ url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", path: "/",
+    value: "synthetic-qr-login", storeId: "0", secure: true, httpOnly: true, sameSite: "lax" });
+  const writes = vi.spyOn(chrome.cookies, "set");
+  await sync("alarm");
+  expect(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput))
+    .toMatchObject({ heading: "正在保留已有学校登录", tone: "neutral", actions: ["switch_managed"] });
+  expect(await handleContentMessage({ type: "GET_UI_STATE" }, sender))
+    .toMatchObject({ kind: "manual_required", action: null });
+  publishNewSession();
+  await sync("alarm");
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-qr-login");
+  expect(writes).not.toHaveBeenCalled();
+  expect(fake.tabUpdates).toHaveLength(0);
+});
+
+it("resumes recovery after a preserved QR login disappears", async () => {
+  await chrome.cookies.set({ url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", path: "/",
+    value: "synthetic-qr-login", storeId: "0", secure: true, httpOnly: true, sameSite: "lax" });
+  await sync("alarm");
+  expect(derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput).heading)
+    .toBe("正在保留已有学校登录");
+  await chrome.cookies.remove({ url: "https://sso.cqu.edu.cn/", name: "SOURCEID_TGC", storeId: "0" });
+  await handleContentMessage({ type: "LOGIN_FORM_VISIBLE" }, sender);
+  await sync("alarm");
+  expect(await handleContentMessage({ type: "GET_UI_STATE" }, sender)).toEqual({ kind: "navigating" });
+  expect(fake.getCookie("SOURCEID_TGC")?.value).toBe("synthetic-session");
+});
+
 it("reapplies a missing browser Cookie without forcing another school login",async()=>{
   fake.cookieStore.clear();
   await handleContentMessage({type:"LOGIN_FORM_VISIBLE"},sender);
@@ -362,6 +398,18 @@ it("starts a new recovery when the same tab returns after leaving the previous S
   await sync("alarm");
   expect(fake.tabUpdates).toHaveLength(1);
   expect(derivePopupView(await handleMessage({type:"GET_UI_STATE"}) as PopupInput).heading).not.toMatch(/已就绪|当前可用/);
+});
+
+it("offers a retry instead of endless progress after the last rejected login page leaves", async () => {
+  await observeSchoolLogin({ tabId: 7, documentId: sender.documentId! });
+  await onSchoolTabUpdated(7, { status: "complete" }, { id: 7 } as chrome.tabs.Tab);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await sync("popup");
+    const view = derivePopupView(await handleMessage({ type: "GET_UI_STATE" }) as PopupInput);
+    expect(view.heading).not.toBe("已就绪");
+    expect(view.tone).not.toBe("busy");
+    expect(view.actions).toContain("retry");
+  }
 });
 
 it("ignores a late recovery ACK after the extension is disabled",async()=>{
