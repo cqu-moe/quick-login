@@ -72,10 +72,12 @@ jobs:
           python3 -c 'import os,re; assert re.fullmatch(r"v(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})",os.environ["RELEASE_TAG"])'
           git merge-base --is-ancestor HEAD origin/main
           printf 'RELEASE_VERSION=%s\n' "${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22.22.3"
-          cache: npm
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"

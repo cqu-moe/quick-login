@@ -205,14 +205,17 @@ class RebuildCanaryTests(unittest.TestCase):
 
     def test_rebuilds_the_tag_in_a_clean_checkout(self):
         run = subprocess.run
+        commands = []
 
         def build(command, **kwargs):
-            if command[0] != "npm":
+            if command[0] not in {"npm", "pnpm"}:
                 return run(command, **kwargs)
             source = kwargs["cwd"]
             self.assertNotEqual(source, self.repo)
             self.assertEqual(git(source, "rev-parse", "HEAD"), self.commit)
-            if command == ["npm", "run", "build"]:
+            self.assertTrue((source / "pnpm-lock.yaml").is_file())
+            commands.append(tuple(command))
+            if command == ["pnpm", "run", "build"]:
                 (source / "dist").mkdir()
                 (source / "dist/background.js").write_bytes(b"/* trusted build */")
             return subprocess.CompletedProcess(command, 0)
@@ -222,6 +225,9 @@ class RebuildCanaryTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
             self.assertEqual(archive.namelist(), ["background.js"])
             self.assertEqual(archive.read("background.js"), b"/* trusted build */")
+        self.assertEqual(commands, [
+            ("pnpm", "install", "--frozen-lockfile", "--prefer-offline"),
+            ("pnpm", "run", "build"), ("pnpm", "run", "check:package")])
 
     def test_rejects_missing_tag_and_forged_commit_before_build(self):
         for record in ({**self.record, "version": "0.0.2"},

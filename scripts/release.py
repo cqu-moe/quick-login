@@ -100,10 +100,10 @@ def build_release(repo, tag, notes, output):
     version = tag[1:]
     version_tuple(version)
     read = lambda name: json.loads((repo / name).read_text())
-    package, lock = read('package.json'), read('package-lock.json')
+    package = read('package.json')
     info = read('dist/build-info.json')
-    versions = [package['version'], lock['version'], lock['packages']['']['version'],
-                read('public/manifest.json')['version'], read('dist/manifest.json')['version'], info['extensionVersion']]
+    versions = [package['version'], read('public/manifest.json')['version'],
+                read('dist/manifest.json')['version'], info['extensionVersion']]
     if any(v != version for v in versions):
         raise ValueError('Tag, source and built versions differ')
     if info['sourceCommit'] != git(repo, 'rev-parse', 'HEAD'):
@@ -249,7 +249,7 @@ def main():
     args = parser.parse_args()
     if args.command == 'build':
         root = Path(__file__).resolve().parent.parent
-        subprocess.run(['npm', 'run', 'check:package'], cwd=root, check=True)
+        subprocess.run(['pnpm', 'run', 'check:package'], cwd=root, check=True)
         notes = [line.removeprefix('- ').strip() for line in args.notes.read_text().splitlines() if line.startswith('- ')]
         result = build_release(root, args.tag, notes, args.output)
     else:

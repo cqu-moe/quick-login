@@ -25,7 +25,6 @@ class PackageTests(unittest.TestCase):
         (self.root / 'dist').mkdir()
         (self.root / 'public').mkdir()
         self.write('package.json', {'version': '0.4.0'})
-        self.write('package-lock.json', {'version': '0.4.0', 'packages': {'': {'version': '0.4.0'}}})
         self.write('public/manifest.json', {'version': '0.4.0'})
         self.write('dist/manifest.json', {'version': '0.4.0'})
         self.write('dist/build-info.json', {'extensionVersion': '0.4.0', 'sourceCommit': 'a' * 40,
@@ -62,10 +61,6 @@ class PackageTests(unittest.TestCase):
     def test_rejects_version_provenance_and_symlinks(self):
         with self.assertRaises(ValueError):
             self.build(tag='v0.4.1')
-        self.write('package-lock.json', {'version': '0.4.1', 'packages': {'': {'version': '0.4.0'}}})
-        with self.assertRaises(ValueError):
-            self.build()
-        self.write('package-lock.json', {'version': '0.4.0', 'packages': {'': {'version': '0.4.0'}}})
         info = json.loads((self.root / 'dist/build-info.json').read_text())
         info['sourceCommit'] = 'c' * 40
         self.write('dist/build-info.json', info)
@@ -121,9 +116,8 @@ class PublishTests(unittest.TestCase):
         return True
 
     def record(self, version):
-        for name in ['package.json', 'package-lock.json', 'public/manifest.json', 'dist/manifest.json']:
+        for name in ['package.json', 'public/manifest.json', 'dist/manifest.json']:
             item = json.loads((self.root / name).read_text()); item['version'] = version
-            if name == 'package-lock.json': item['packages']['']['version'] = version
             self.write(name, item)
         info = json.loads((self.root / 'dist/build-info.json').read_text()); info['extensionVersion'] = version
         self.write('dist/build-info.json', info)

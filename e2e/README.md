@@ -6,23 +6,23 @@
 
 - Node.js `22.22.3`；`e2e@0.21.0`、`@e2e-dev/web@0.15.0`、`playwright-core@1.64.0` 已锁定。
 - Auth 固定为 `41147c934c577f6a10f5bf3d9cb71597c362a07f`，且不得有 tracked 修改。默认只读使用本票独立副本 `QUICKLOGIN-03-deps/auth`；其他位置设置 `QUICKLOGIN_E2E_AUTH_PATH`。依赖负责人或 CI 需先完成该提交的根 `npm ci`、`frontend` 的 frozen pnpm install 和 build。runner 的 bundle、数据库和日志写入本票 `.e2e/`，不写依赖 checkout。
-- Chromium 通过 `npx --no-install e2e-web install chromium --with-deps` 预装；安装浏览器本身不会启动浏览器。
+- Chromium 通过 `pnpm exec e2e-web install chromium --with-deps` 预装；安装浏览器本身不会启动浏览器。
 - 学校旅程要求可用 Docker。先在固定 Auth checkout 运行 `node e2e/school/build.mjs` 构建生产浏览器基础镜像，再拉取 `cloudflare/proxy-everything:3cb1195@sha256:0ef6716c52430096900b150d84a3302057d6cd2319dae7987128c85d0733e3c8`。每个学校旅程基于该镜像构建独占 fixture 镜像，结束后删除自己的容器和镜像；缺少 Docker/镜像直接失败。
 - `openssl` 用于生成每轮独立的短期 TLS 证书。浏览器中的 `https://auth.cqu.moe` 保持原 origin，由本地代理送往本轮真实 Auth；`sso.cqu.edu.cn` 送到同一真实设备容器中的合成学校，不访问生产。SPKI 只放行本轮证书，不关闭全局 TLS 校验。
 - 扩展 ID 固定为 `igfidegfgfoofnoncpmbcokbffjmmook`。OAuth client 登记该扩展的 chromiumapp 回调，真实授权窗口完成返回；不模拟 callback，不预置 token，不注入 Chrome fake。
 
 ```sh
-VITE_POSTHOG_PROJECT_TOKEN='' VITE_POSTHOG_HOST='' npm run build
-npm run typecheck:e2e
+VITE_POSTHOG_PROJECT_TOKEN='' VITE_POSTHOG_HOST='' pnpm run build
+pnpm run typecheck:e2e
 QUICKLOGIN_E2E_OUTPUT=.e2e/my-run-1 node e2e/run.mjs
 QUICKLOGIN_E2E_OUTPUT=.e2e/my-run-2 node e2e/run.mjs
-npm run test:e2e:self-check
-npm run test:e2e:zero
-npm run test:e2e:lifecycle
+pnpm run test:e2e:self-check
+pnpm run test:e2e:zero
+pnpm run test:e2e:lifecycle
 QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-my-run node e2e/prepare-ci-artifacts.mjs my-run-1 my-run-2
 ```
 
-运行目录必须为本票 worktree，输出目录必须全新，不能复用已有运行。构建 provenance 的 sourceCommit 必须与 HEAD 一致。`npm run test:e2e` 是类型检查及 runner 的快捷入口，不隐式构建。
+运行目录必须为本票 worktree，输出目录必须全新，不能复用已有运行。构建 provenance 的 sourceCommit 必须与 HEAD 一致。`pnpm run test:e2e` 是类型检查及 runner 的快捷入口，不隐式构建。
 
 采集失败回归控制：构建后运行 `node --experimental-strip-types e2e/artifact-failure-check.ts .e2e/artifact-failure-control`。它在独占 headless Chromium 中关闭实际扩展 Page，验证业务原错与采集错误均保留、成功路径 viewport 错误仍致命；不启动 Auth/Docker，不计作业务旅程或两轮验收。CI 在 core 两种视口分片执行；失败调用点显式传入原错，采集失败时以 `AggregateError.errors` 和 `cause` 保留原对象，消息同时包含两个原因。
 
@@ -114,10 +114,10 @@ TLS proxy 对本地 workerd 每次建立独立 HTTP socket，不使用 Node 默�
 ```sh
 QUICKLOGIN_E2E_OUTPUT=.e2e/quick03-round1 node e2e/run.mjs --grep '^QUICKLOGIN-03'
 QUICKLOGIN_E2E_OUTPUT=.e2e/quick03-round2 node e2e/run.mjs --grep '^QUICKLOGIN-03'
-npm run test:e2e:self-check
-npm run test:e2e:zero
-npm run test:e2e:lifecycle
-npm run test:e2e:device-controls
+pnpm run test:e2e:self-check
+pnpm run test:e2e:zero
+pnpm run test:e2e:lifecycle
+pnpm run test:e2e:device-controls
 QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-quick03 node e2e/prepare-ci-artifacts.mjs quick03-round1 quick03-round2
 ```
 
@@ -129,7 +129,7 @@ QUICKLOGIN_E2E_PUBLISH_DIR=.e2e/published-quick03 node e2e/prepare-ci-artifacts.
 
 ## Desktop / mobile viewport gate
 
-`npm run build && npm run test:popup` 独立检查工具栏弹窗：通过 `chrome.action.openPopup()` 打开真实弹窗，再从同扩展标签页用 `chrome.extension.getViews({ type: "popup" })` 只读测量尺寸。浅色和深色均须保持 390×468、无水平或垂直滚动；不设置弹窗 viewport。0.5.1 的 `min(390px, 100vw)` 在该测试中实际得到 190px 宽并失败，恢复固定宽度后通过。官网响应式覆盖仅放在 `website/src/popup-preview.css`，不得为了官网改变扩展面板尺寸或布局。CI 在 core/desktop 分片执行并保存报告；这是无 Auth/Docker 的 UI 边界验证，不代表登录业务验收。
+`pnpm run build && pnpm run test:popup` 独立检查工具栏弹窗：通过 `chrome.action.openPopup()` 打开真实弹窗，再从同扩展标签页用 `chrome.extension.getViews({ type: "popup" })` 只读测量尺寸。浅色和深色均须保持 390×468、无水平或垂直滚动；不设置弹窗 viewport。0.5.1 的 `min(390px, 100vw)` 在该测试中实际得到 190px 宽并失败，恢复固定宽度后通过。官网响应式覆盖仅放在 `website/src/popup-preview.css`，不得为了官网改变扩展面板尺寸或布局。CI 在 core/desktop 分片执行并保存报告；这是无 Auth/Docker 的 UI 边界验证，不代表登录业务验收。
 
 `QUICKLOGIN_E2E_VIEWPORT=desktop`（默认）令实际 Auth / 学校页面为1440×900；`mobile` 为390×844。两者都加载同一个真实 Chromium MV3 扩展、复用全部业务断言。popup 保留产品390px宽度，测试页viewport为390×720；手机视口只表示窄屏布局，不代表手机Chrome扩展支持、触摸设备或真机验收。原生 OAuth 窗口和额外标签不继承框架当前页的viewport，因此共享页面入口在导航/输入前调用真实 Playwright viewport API，再独立读取页面 `innerWidth/innerHeight` 及 visualViewport。没有mock尺寸、修改学校响应或产品源码。
 

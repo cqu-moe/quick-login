@@ -8,27 +8,27 @@ inputs:
 runs:
   using: composite
   steps:
-    - run: npm ci --prefer-offline
+    - run: pnpm install --frozen-lockfile --prefer-offline
       shell: bash
-    - run: npm run typecheck
+    - run: pnpm run typecheck
       shell: bash
-    - run: npm test
+    - run: pnpm test
       shell: bash
-    - run: npm run test:release
+    - run: pnpm run test:release
       shell: bash
-    - run: npm run build
-      shell: bash
-      env:
-        VITE_POSTHOG_PROJECT_TOKEN: ${{ inputs.posthog-project-token }}
-        VITE_POSTHOG_HOST: https://p.cqu.moe
-    - run: npm run check:package
-      shell: bash
-    - run: npm run typecheck:website
-      shell: bash
-    - run: npm run build:website
+    - run: pnpm run build
       shell: bash
       env:
         VITE_POSTHOG_PROJECT_TOKEN: ${{ inputs.posthog-project-token }}
         VITE_POSTHOG_HOST: https://p.cqu.moe
-    - run: npm run check:website
+    - run: pnpm run check:package
+      shell: bash
+    - run: pnpm run typecheck:website
+      shell: bash
+    - run: pnpm run build:website
+      shell: bash
+      env:
+        VITE_POSTHOG_PROJECT_TOKEN: ${{ inputs.posthog-project-token }}
+        VITE_POSTHOG_HOST: https://p.cqu.moe
+    - run: pnpm run check:website
       shell: bash

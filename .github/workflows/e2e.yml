@@ -64,6 +64,8 @@ jobs:
           git -C .e2e-auth fetch --depth 1 origin "$QUICKLOGIN_E2E_AUTH_COMMIT"
           git -C .e2e-auth checkout --detach FETCH_HEAD
           test "$(git -C .e2e-auth rev-parse HEAD)" = "$QUICKLOGIN_E2E_AUTH_COMMIT"
+      # QuickLogin uses pnpm; the pinned Auth root remains npm-lock based.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
       - name: Restore pinned Auth frontend
         id: auth-frontend
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -79,16 +81,16 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: "22.22.3"
-          cache: npm
+          cache: pnpm
           cache-dependency-path: |
-            package-lock.json
+            pnpm-lock.yaml
             .e2e-auth/package-lock.json
-      - run: npm ci --prefer-offline
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Restore browser system-package downloads
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/quicklogin-apt/*.deb
-          key: apt-ubuntu-24.04-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          key: apt-ubuntu-24.04-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Chromium and all system dependencies
         env:
           APT_ARCHIVES: ${{ runner.temp }}/quicklogin-apt
@@ -97,17 +99,17 @@ jobs:
           printf 'Dir::Cache::archives "%s";\nBinary::apt-get::APT::Keep-Downloaded-Packages "true";\n' "$APT_ARCHIVES" | sudo tee /etc/apt/apt.conf.d/99-quicklogin-cache
           # The Azure mirror throttled font downloads to 41.5 kB/s in measured runs.
           sudo find /etc/apt -maxdepth 2 \( -name '*.list' -o -name '*.sources' \) -exec sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' {} +
-          npx --no-install e2e-web install chromium --with-deps
-      - run: npm run build
+          pnpm exec e2e-web install chromium --with-deps
+      - run: pnpm run build
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
           VITE_POSTHOG_HOST: ""
       - name: Verify native toolbar popup layout
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
-        run: npm run test:popup
+        run: pnpm run test:popup
       - name: Verify content event trust boundary
         if: matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop'
-        run: npm run test:content-events
+        run: pnpm run test:content-events
       - name: Keep native popup layout evidence
         if: ${{ !cancelled() && matrix.partition.suite == 'core' && matrix.partition.shard == '1/4' && matrix.viewport == 'desktop' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -141,6 +143,7 @@ jobs:
           retention-days: 14
       - run: npm ci --prefer-offline
         working-directory: .e2e-auth
+        # Keep pinned Auth 41147c9 on its original npm lock and installer.
       - if: steps.auth-frontend.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
         working-directory: .e2e-auth/frontend

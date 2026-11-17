@@ -9,15 +9,15 @@
 验证顺序：
 
 ```sh
-npm ci
-npm run typecheck
-npm test
-npm run test:release
-npm run build
-npm run check:package
-npm run typecheck:website
-npm run build:website
-npm run check:website
+pnpm install --frozen-lockfile
+pnpm run typecheck
+pnpm test
+pnpm run test:release
+pnpm run build
+pnpm run check:package
+pnpm run typecheck:website
+pnpm run build:website
+pnpm run check:website
 ```
 
 PR 也会在上述门禁全部通过后执行打包演练，但不上传构建包。main 的完整流程在同样门禁后执行：
@@ -35,7 +35,7 @@ unzip -t cqu-quicklogin-*.zip
 unzip -t quicklogin-website-*.zip
 ```
 
-`scripts/package_ci.py` 复用正式发布脚本的确定性 ZIP、CRC 与逐字节回读逻辑，并校验 `package.json`、lockfile、manifest、`build-info.json` 的版本和源码提交。它不需要发布说明，也不生成可传给 `release.py publish` 的 canary 记录；因此 PR 包不改变业务版本，也不能进入私有 R2 发布通道。
+`scripts/package_ci.py` 复用正式发布脚本的确定性 ZIP、CRC 与逐字节回读逻辑，并校验 `package.json`、manifest、`build-info.json` 的版本和源码提交；依赖一致性由 frozen install 在打包前保证。它不需要发布说明，也不生成可传给 `release.py publish` 的 canary 记录；因此 PR 包不改变业务版本，也不能进入私有 R2 发布通道。
 
 触发与并发规则：
 
@@ -46,7 +46,7 @@ unzip -t quicklogin-website-*.zip
 
 ## 构建输出安全
 
-扩展侧由 `npm run check:package` 检查：只允许批准的权限和 CSP，manifest 引用必须存在，并拒绝源码 map、`.env`、私钥、`client_secret`、token 导出和远程动态代码。官网侧由 `npm run check:website` 递归检查输出，同样拒绝 symlink、源码 map、`.env`、私钥和 `sourceMappingURL`。CI 打包前还会再次扫描两类输出。
+扩展侧由 `pnpm run check:package` 检查：只允许批准的权限和 CSP，manifest 引用必须存在，并拒绝源码 map、`.env`、私钥、`client_secret`、token 导出和远程动态代码。官网侧由 `pnpm run check:website` 递归检查输出，同样拒绝 symlink、源码 map、`.env`、私钥和 `sourceMappingURL`。CI 打包前还会再次扫描两类输出。
 
 PostHog 项目 token 是公开浏览器端标识，不是服务端 secret。Cloudflare 官网构建命令不传入 R2 或发布凭据。
 
@@ -54,18 +54,26 @@ PostHog 项目 token 是公开浏览器端标识，不是服务端 secret。Clou
 
 官网继续由 Cloudflare Workers Builds 从 main 构建部署；GitHub Actions 不部署官网。配置就绪条件：
 
-1. Cloudflare 已登录并连接本私有仓库的 main，根目录为仓库根目录。
-2. 构建环境使用 Node 22；`.nvmrc` 的 `22.22.3` 是本地与 GitHub Actions 的稳定精确 pin，Cloudflare 可使用其支持的 22.x 补丁版本。
-3. Build command 使用下方完整命令，不能用只构建官网的旧命令。
-4. Deploy command 保持 `npm run deploy:website`；Preview command 保持 `npx wrangler preview`。
+1. Cloudflare 已登录并连接本仓库的 main，根目录为仓库根目录；分支触发保持现状。
+2. Workers Builds 变量设置 `PNPM_VERSION=11.19.0`、`NODE_VERSION=22.22.3`、`SKIP_DEPENDENCY_INSTALL=1`。裸 `pnpm` 必须由 `PNPM_VERSION` 精确引导，依赖必须由下方 build command 统一安装。
+3. Build command 使用下方命令，不能用只构建官网的旧命令。
+4. Deploy command 使用下方命令。
 
 推荐 Build command：
 
 ```sh
-node -e "if (!process.version.startsWith('v22.')) throw new Error('QuickLogin requires Node 22')" && npm ci && npm run typecheck && npm test && npm run test:release && npm run build && npm run check:package && npm run typecheck:website && npm run build:website && npm run check:website
+pnpm install --frozen-lockfile && pnpm run build:cloudflare
 ```
 
-该命令先拒绝非 Node 22 环境，再执行扩展类型检查、全部测试、发布脚本测试、扩展构建与包检查、官网类型检查、构建和结构检查。任一环节失败时 Cloudflare Build 失败，不会执行部署命令。
+`build:cloudflare` 执行扩展类型检查、单元测试、发布脚本测试、扩展构建与包检查、官网类型检查、构建和结构检查。任一步失败都会停止，不执行部署。仅支持迁移后的 pnpm 提交；旧 npm 标签不再提供重建兼容。
+
+Deploy command：
+
+```sh
+pnpm run deploy:website
+```
+
+2026-11-18：上述命令和变量已在 Cloudflare 控制台保存并重载验证。本次变更未触发构建或部署；控制台仍显示“GitHub 用户或组织信息获取失败”，且 Connector 可用性未通过真实云端构建确认。
 
 ## 发布与回滚边界
 

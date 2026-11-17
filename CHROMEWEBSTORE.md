@@ -144,7 +144,7 @@ Chrome Web Store 拒绝 ZIP 中的 manifest.key；源清单与 canary 保留原�
 ## 打包与提交流程
 
 1. 补图标、manifest 文案及隐私政策；涉及用户可见的扩展或服务变更时按项目规则升版本。仅本上架文档不升版本。
-2. 在提交对应源码运行 `npm run typecheck`、`npm test`、`npm run build`、`npm run check:package`；官网变更也运行官网门禁。构建诊断配置必须与实际申报一致，无 token 的本地构建不会代表 CI 启用诊断的包。
+2. 在提交对应源码运行 `pnpm run typecheck`、`pnpm test`、`pnpm run build`、`pnpm run check:package`；官网变更也运行官网门禁。构建诊断配置必须与实际申报一致，无 token 的本地构建不会代表 CI 启用诊断的包。
 3. 版本变更检查通过并合入 main 后，让现有发布工作流完成官网 canary；构建 `releases/cqu-quicklogin-<version>-canary.zip`，仅含 dist 的内容，根目录直接放 manifest.json，禁止覆盖旧包。
 4. 核验 ZIP 清单、CRC、manifest 版本、build-info 和 SHA-256；记录扩展提交、包名、摘要和必要的 Auth 提交/Worker 版本。正式商店最终 ZIP 若不同，单独记录摘要，不能套用 canary 摘要。
 5. 获得明确商店上传授权后，Dashboard → Add new item → 上传 ZIP。填 Store Listing、Privacy practices、Distribution、Test instructions；核对商店 ID 后完成上面的 Auth 与 Chrome 验收。

@@ -18,6 +18,7 @@ class ChangeRoutingTests(unittest.TestCase):
             (['README.md', 'src/background/index.ts'], True),
             (['.github/workflows/check.yml'], True),
             (['package-lock.json'], True),
+            (['pnpm-lock.yaml'], True),
             (['website/header.html'], True),
         ]:
             with self.subTest(paths=paths):

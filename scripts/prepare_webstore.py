@@ -32,8 +32,9 @@ def rebuild_canary(repo, record, directory):
     source = directory / "source"
     git(repo, "clone", "--quiet", "--shared", "--no-checkout", "--", str(repo), str(source))
     git(source, "checkout", "--quiet", "--detach", commit)
-    for command in (["npm", "ci", "--prefer-offline"], ["npm", "run", "build"],
-                    ["npm", "run", "check:package"]):
+    commands = [["pnpm", "install", "--frozen-lockfile", "--prefer-offline"],
+                ["pnpm", "run", "build"], ["pnpm", "run", "check:package"]]
+    for command in commands:
         subprocess.run(command, cwd=source, check=True)
     return archive_directory(source / "dist")
 

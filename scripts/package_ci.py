@@ -46,10 +46,7 @@ def package_output(repo, source, filename, *, version, source_commit, kind):
 
 def build_ci_artifacts(repo, output):
     package = json.loads((repo / 'package.json').read_text())
-    lock = json.loads((repo / 'package-lock.json').read_text())
     version = release.version_tuple(package.get('version'))
-    if package['version'] != lock.get('version') or package['version'] != lock.get('packages', {}).get('', {}).get('version'):
-        raise ValueError('Package and lockfile versions differ')
     source_manifest = json.loads((repo / 'public/manifest.json').read_text())
     manifest = json.loads((repo / 'dist/manifest.json').read_text())
     info = json.loads((repo / 'dist/build-info.json').read_text())
