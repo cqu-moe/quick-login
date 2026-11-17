@@ -99,7 +99,7 @@ jobs:
           printf 'Dir::Cache::archives "%s";\nBinary::apt-get::APT::Keep-Downloaded-Packages "true";\n' "$APT_ARCHIVES" | sudo tee /etc/apt/apt.conf.d/99-quicklogin-cache
           # The Azure mirror throttled font downloads to 41.5 kB/s in measured runs.
           sudo find /etc/apt -maxdepth 2 \( -name '*.list' -o -name '*.sources' \) -exec sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' {} +
-          npx --no-install e2e-web install chromium --with-deps
+          pnpm exec e2e-web install chromium --with-deps
       - run: pnpm run build
         env:
           VITE_POSTHOG_PROJECT_TOKEN: ""
