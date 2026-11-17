@@ -1,8 +1,17 @@
-# 2026-11-18 0.5.10 登录恢复修复，接续 pnpm 0.5.9
+# 2026-11-18 0.5.10 已发布 Canary 与官网，商店等待 0.5.9 审核
 
-- 用户已授权协调、PR、CI 通过后合并及发布。pnpm 迁移会话先负责 0.5.9，本分支 `codex/diagnose-local-sync-20261118` 随后以 0.5.10 交付扫码登录识别、过期保护标记清除及结束任务的重试入口。
-- 修复基于 0.5.8 的先红后绿验证为 283 项应用测试和 35 项发布工具测试；接入 pnpm 后的最终检查、提交和发行物摘要另行记录。详见[排障记录](../research/2026-11-18-qr-login-recovery.md)。
-- 排障初期的本地 0.5.9 候选已废弃，不得上传或与 pnpm 迁移的正式 0.5.9 混淆。0.5.10 的 Canary、官网、商店及真实账号验收分别记录。
+- [PR #53](https://github.com/cqu-moe/quick-login/pull/53) 的 16 项检查和独立审查通过后，接续 pnpm 0.5.9 合并发布。正式源码/标签 `v0.5.10` 为 `48908236be934783a4ddca9541ad1f463504b697`；修复扫码期间的持续等待、外来登录消失后的残留保护及结束任务缺少重试入口，保留 Cookie 所有权与手动模式边界。
+- 正式包 `cqu-quicklogin-0.5.10-canary.zip`：155805 bytes，SHA-256 `9335b39c8912990bba7ec714903fd24e50a1a41806d7d423983bef5ca0ba6161`。R2 晋级读回、主线 CI 包及干净 Chromium 消费者加载验证通过；官网 version `6f10c6c7-9f19-4508-b450-bb0f07030b4b` 回读 100% 流量。详细证据见[发布记录](quicklogin-release.md)。
+- 合并后的 [Checks](https://github.com/cqu-moe/quick-login/actions/runs/44145042271)、[完整 E2E](https://github.com/cqu-moe/quick-login/actions/runs/44145041950) 和 [Canary](https://github.com/cqu-moe/quick-login/actions/runs/44145042009)均成功；主线 E2E 的 12 个分片与汇总一次通过。
+- 商店 02:12:59 回读 `WAITING_REVIEW`：0.5.9 仍在审核，0.5.10 尚未上传送审或上架。既有自动流程待前版审核结束后再提交最新 Canary；没有撤审或手动覆盖。真实学校扫码、用户商店安装升级及认证下载未验收，公开请求被 challenge，Chrome 自动化受另一个扩展界面阻塞。
+
+---
+
+# 2026-11-18 0.5.9 pnpm 迁移已发布
+
+- [PR #52](https://github.com/cqu-moe/quick-login/pull/52) 的 16 项检查通过后合并，正式源码/标签 `v0.5.9` 为 `b47e0feecd151960bf1bad26dffd6ce605de3419`。Canary 与官网已发布，生产 version `74715db8-39a4-4ce8-8fb5-92715dc062b2` 回读 100% 流量。
+- 正式包 `cqu-quicklogin-0.5.9-canary.zip`：155735 bytes，SHA-256 `9a92d3fb4ad11aec43afec38fd8631a7fa943690dbfecee585ff80a99194298a`；R2 读回、主线 CI artifact 摘要和 ZIP 内版本/来源核验通过。请勿复用排障早期未发布的 npm 0.5.9 候选。
+- 主线 E2E 首次出现 OAuth token 请求 `ERR_NETWORK_CHANGED`；原失败保留，同一提交的新[完整运行](https://github.com/cqu-moe/quick-login/actions/runs/44143559455)已通过全部分片和汇总。商店 01:57:22 回读 `PENDING_REVIEW`，不等于已上架。公开请求被 challenge，浏览器受扩展界面阻塞，实际认证下载与真实学校账号未验收。详见[发布记录](quicklogin-release.md)。
 
 ---
 
