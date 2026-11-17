@@ -1,8 +1,23 @@
-# 2026-11-18 0.5.10 登录恢复修复，接续 pnpm 0.5.9
+# 2026-11-18 0.5.10 Canary 与官网已发布，商店等待前版审核
 
-- 用户已授权协调、PR、CI 通过后合并及发布。pnpm 迁移会话先负责 0.5.9，本分支 `codex/diagnose-local-sync-20261118` 随后以 0.5.10 交付扫码登录识别、过期保护标记清除及结束任务的重试入口。
-- 修复基于 0.5.8 的先红后绿验证为 283 项应用测试和 35 项发布工具测试；接入 pnpm 后的最终检查、提交和发行物摘要另行记录。详见[排障记录](../research/2026-11-18-qr-login-recovery.md)。
-- 排障初期的本地 0.5.9 候选已废弃，不得上传或与 pnpm 迁移的正式 0.5.9 混淆。0.5.10 的 Canary、官网、商店及真实账号验收分别记录。
+- 按用户指定顺序，pnpm 0.5.9 先合并发布，登录恢复修复随后进入 [PR #53](https://github.com/cqu-moe/quick-login/pull/53)。head `1582439ab0d9e6a632fbe3978925550155708f05` 的 16 项检查全部通过，包含 [Checks](https://github.com/cqu-moe/quick-login/actions/runs/44141779960)、[完整桌面/手机 MV3 E2E](https://github.com/cqu-moe/quick-login/actions/runs/44141779873) 与官网预览；独立规范和需求审查无遗留问题，GitHub 无未解决审查线程。
+- 正式源码及不可变标签 `v0.5.10`：`48908236be934783a4ddca9541ad1f463504b697`。[主线 Checks](https://github.com/cqu-moe/quick-login/actions/runs/44145042271)和 [Canary 发布](https://github.com/cqu-moe/quick-login/actions/runs/44145042009)成功。283 项应用测试、35 项发布工具测试、pnpm 冻结安装和扩展/官网/E2E 类型、构建及包检查通过；复现和修复边界见[排障记录](../research/2026-11-18-qr-login-recovery.md)。
+- 同一合并提交的[完整主线 E2E](https://github.com/cqu-moe/quick-login/actions/runs/44145041950)通过全部 12 个桌面/手机分片和最终汇总，未重跑、未豁免失败；与 PR E2E 分开核验。
+- 正式 `cqu-quicklogin-0.5.10-canary.zip`：155805 bytes，SHA-256 `9335b39c8912990bba7ec714903fd24e50a1a41806d7d423983bef5ca0ba6161`。R2 包、元数据和频道晋级读回通过；与实际下载的主线 CI artifact 摘要相同，CRC、manifest 和 build-info 来源核验通过。将该 ZIP 解压到全新消费者目录后，真实 Chromium 的后台与原生弹窗检查一次启动通过，清理后无剩余进程。
+- 官网[生产构建](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/135e9620-9fbc-480b-9215-8d0ecb7a2545)在该提交上回读 version `6f10c6c7-9f19-4508-b450-bb0f07030b4b`。控制平面确认 deployment `51500466-422c-4fd7-a74b-6083cc25b8ae` 将 100% 流量交给该 version。
+- [商店 CD](https://github.com/cqu-moe/quick-login/actions/runs/44145280579)成功完成可信源码重建、包比对及签名校验，2026-11-18 02:12:59（Asia/Shanghai）回读 `WAITING_REVIEW`，活动审核版本为 0.5.9，因此没有上传或提交 0.5.10。既有串行流程在前版审核结束后重新选择最新 Canary；没有撤销前版审核或进行并行人工上传。0.5.10 商店 ZIP：155436 bytes，SHA-256 `a3daa085c49997af3b53f10a9cc3fdebd189db99d6360ce374d7409fd80fbd62`；准备的 CRX：157802 bytes，SHA-256 `8a178b2a22a78dc43ab7ad4cc88f0b03a40e6528b74f7af79b99301ef00fc024`。
+- 公开 HTTP 请求仍遇到 Cloudflare challenge，Chrome 因另一个扩展界面打开而阻止自动化。认证下载、匿名 401、线上资产字节和修复版真实学校扫码账号未验收，用户当前商店安装尚未升级到 0.5.10。最初学校票据失效原因仍未知。Auth 源码和 Worker 未在本次登录修复中修改。
+
+---
+
+# 2026-11-18 0.5.9 pnpm Canary 与官网已发布，商店待审核
+
+- [PR #52](https://github.com/cqu-moe/quick-login/pull/52) 在 head `3c79bd3d867f1db4227b088fa900d4ed9c60323b` 的 16 项检查全部通过后合并，包含 [Checks](https://github.com/cqu-moe/quick-login/actions/runs/44137923428)、[完整 MV3 E2E](https://github.com/cqu-moe/quick-login/actions/runs/44137923466) 和官网预览。正式源码及不可变标签 `v0.5.9` 为 `b47e0feecd151960bf1bad26dffd6ce605de3419`。
+- [Canary 发布](https://github.com/cqu-moe/quick-login/actions/runs/44141572681)成功，R2 不可变包、版本记录和频道指针读回通过。`cqu-quicklogin-0.5.9-canary.zip` 为 155735 bytes，SHA-256 `9a92d3fb4ad11aec43afec38fd8631a7fa943690dbfecee585ff80a99194298a`；与下载的[主线 Checks](https://github.com/cqu-moe/quick-login/actions/runs/44141572701) artifact 摘要相同，ZIP CRC、manifest 与 build-info 来源核验通过。它与本次排障最初未发布的 npm 0.5.9 候选不是同一个包。
+- 官网[生产构建](https://dash.cloudflare.com/a666c560407022706a52a703923548d5/workers/services/view/quick-login-website/production/builds/48497074-1c20-4dcf-aa80-b6555b76be6d)在该合并提交上回报成功及 version `74715db8-39a4-4ce8-8fb5-92715dc062b2`；控制平面回读 deployment `ea23b4ca-62ed-4f57-ab8f-3cb7d5fc2105`，该 version 承接 100% 流量。
+- 首次[主线 E2E](https://github.com/cqu-moe/quick-login/actions/runs/44141572685)的 core/mobile/3/4 第一轮在 OAuth token POST 报 `net::ERR_NETWORK_CHANGED`，尚未取得 deviceId 或进入学校恢复断言；第二轮与其余 11 个分片通过。失败的脱敏 trace 已保存。为避免同次重跑的同名 artifact 混淆，在同一提交启动[新运行](https://github.com/cqu-moe/quick-login/actions/runs/44143559455)，12 个分片及最终汇总全部通过；没有修改源码、放宽断言或删除原失败。
+- [商店 CD](https://github.com/cqu-moe/quick-login/actions/runs/44141816693)完成可信源码重建比对、签名、上传和送审，2026-11-18 01:57:22（Asia/Shanghai）回读 `PENDING_REVIEW`，保持 Unlisted。商店 ZIP：155366 bytes，SHA-256 `449ff923d9e07e51e723238072bed1b8e613f65a57695b0733b89b1bbe55d78e`；CRX：157730 bytes，SHA-256 `0ef14637a9a1cc706aeac29d85d013b385bffb366153bf1c846221fefec6d96d`。摘要属于上传前校验值；送审不等于已上架。
+- 公开元数据、匿名下载和官网 HTTP 请求均遇到 Cloudflare challenge 403；Chrome 自动化因另一个扩展界面打开而受阻，未关闭未知界面。认证下载、匿名 401、线上资产字节与真实学校账号未验收；控制平面部署成功不替代这些验收。
 
 ---
 

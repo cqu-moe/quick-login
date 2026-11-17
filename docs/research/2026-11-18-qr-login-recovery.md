@@ -61,3 +61,5 @@ PostHog 只读查询以本次 `switch_managed success` 为锚点，主时间窗�
 用户随后指定 pnpm 迁移先合并发布 0.5.9，本修复改为 0.5.10，并授权完成 PR、CI、合并与上线。上述 npm 构建的 0.5.9 仅是早期本地试验，不是 pnpm 迁移发行物，不得上传。接入迁移后的锁文件、脚本和 CI，重新验证 0.5.10，再记录正式提交与包摘要。
 
 0.5.10 已接入 pnpm 迁移提交 `679d204aecfa404c3978632b77a06d4e751c0513`。`pnpm install --frozen-lockfile` 与 `pnpm run build:cloudflare` 通过（283 项应用测试、35 项发布工具测试及扩展/官网全部构建检查）；额外 E2E 类型与分片准入、内容事件安全和原生弹窗检查通过，Chromium 进程清理完成。依赖版本和锁文件没有因登录修复再次变动。
+
+0.5.9 正式迁移经 PR #52 合并到 `b47e0feecd151960bf1bad26dffd6ce605de3419` 后，本修复再次变基到该主线。`src`、pnpm 锁文件和 manifest 的 Git 对象与已验证版本相同。PR #53 的 16 项检查（含完整桌面/手机 E2E）通过后，发布源码与 `v0.5.10` 为 `48908236be934783a4ddca9541ad1f463504b697`。Canary 与官网已发布，正式 ZIP SHA-256 为 `9335b39c8912990bba7ec714903fd24e50a1a41806d7d423983bef5ca0ba6161`，实际主线 CI 包的干净 Chromium 加载通过。商店因 0.5.9 正在审核而等待，真实扫码账号和用户安装升级尚未验收；后续状态以[发布记录](../operations/quicklogin-release.md)为准。
