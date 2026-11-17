@@ -17,11 +17,11 @@ Chrome MV3 扩展，为每个安装实例维护独立的重庆大学统一认证
 ## 本地构建
 
 ```sh
-npm ci
-npm run typecheck
-npm test
-npm run build
-npm run check:package
+pnpm install --frozen-lockfile
+pnpm run typecheck
+pnpm test
+pnpm run build
+pnpm run check:package
 ```
 
 在 `chrome://extensions` 开启开发者模式，选择“加载已解压的扩展程序”，目录必须是本仓库生成的 `dist/`。不要选择仓库根目录或 `experiment/extension/`。
@@ -53,7 +53,7 @@ npm run check:package
 
 ## 官网与版本发布
 
-官网源码位于 `website/`，使用 `npm run dev:website` 预览；生产构建为 `npm run build:website`，检查为 `npm run typecheck:website` 和 `npm run check:website`。输出 `website/dist/` 不进入扩展 ZIP。
+官网源码位于 `website/`，使用 `pnpm run dev:website` 预览；生产构建为 `pnpm run build:website`，检查为 `pnpm run typecheck:website` 和 `pnpm run check:website`。输出 `website/dist/` 不进入扩展 ZIP。
 
 发布入口及版本门禁见 [发布约定](docs/agents/release.md) 和仓库 release 工作流。Auth 每次下载校验会话和内测资格；初次配置见 [官网验收记录](docs/acceptance/quicklogin-website.md)。
 

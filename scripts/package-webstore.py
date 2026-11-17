@@ -67,7 +67,7 @@ def write_webstore(canary_payload, output, expected_commit):
 def build_webstore(repo, output):
     if git(repo, "status", "--porcelain"):
         raise ValueError("Commit source changes before packaging")
-    subprocess.run(["npm", "run", "check:package"], cwd=repo, check=True)
+    subprocess.run(["pnpm", "run", "check:package"], cwd=repo, check=True)
     dist = repo / "dist"
     payload = archive_directory(dist)
     verify_directory_archive(payload, dist)

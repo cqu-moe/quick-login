@@ -47,7 +47,7 @@ try {
   evidence.extensionCommit = (await execute("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
   evidence.sourceDirty = Boolean((await execute("git", ["status", "--porcelain"], { cwd: root })).stdout.trim());
   evidence.build = JSON.parse(await readFile(join(root, "dist/build-info.json"), "utf8"));
-  if (evidence.build.sourceCommit !== evidence.extensionCommit) throw new Error("Extension build does not match HEAD; run npm run build");
+  if (evidence.build.sourceCommit !== evidence.extensionCommit) throw new Error("Extension build does not match HEAD; run pnpm run build");
   evidence.backgroundSha256 = createHash("sha256").update(await readFile(join(root, "dist/background.js"))).digest("hex");
   runtime = await startPinnedAuth({ authPath, outputDir: output, expectedCommit });
   tls = await createAuthTls({ outputDir: output, workerPort: runtime.workerPort, schoolRequest: runtime.schoolRequest, responseGate: runtime.responseGate, protect: runtime.protect, tokenUnavailable: runtime.tokenUnavailable });

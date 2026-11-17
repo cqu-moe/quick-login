@@ -1,0 +1,12 @@
+packages:
+  - .
+
+allowBuilds:
+  core-js: true
+  esbuild: true
+  workerd: true
+
+overrides:
+  '@bramus/specificity@>=2.4 <3': 2.4.2
+  '@jridgewell/resolve-uri@>=3.1 <4': 3.1.2
+  source-map-js@>=1.2 <2: 1.2.1

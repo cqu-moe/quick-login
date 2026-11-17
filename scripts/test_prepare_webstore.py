@@ -205,14 +205,21 @@ class RebuildCanaryTests(unittest.TestCase):
 
     def test_rebuilds_the_tag_in_a_clean_checkout(self):
         run = subprocess.run
+        original = Path(__file__).resolve().parent.parent
+        tracked_files = git(original, "ls-tree", "--name-only", "HEAD").splitlines()
+        expected_manager = "pnpm" if "pnpm-lock.yaml" in tracked_files else "npm"
+        observed_managers = []
 
         def build(command, **kwargs):
-            if command[0] != "npm":
+            if command[0] not in {"npm", "pnpm"}:
                 return run(command, **kwargs)
             source = kwargs["cwd"]
             self.assertNotEqual(source, self.repo)
             self.assertEqual(git(source, "rev-parse", "HEAD"), self.commit)
-            if command == ["npm", "run", "build"]:
+            observed_managers.append((
+                command[0], (source / "package-lock.json").is_file(),
+                (source / "pnpm-lock.yaml").is_file()))
+            if command == [expected_manager, "run", "build"]:
                 (source / "dist").mkdir()
                 (source / "dist/background.js").write_bytes(b"/* trusted build */")
             return subprocess.CompletedProcess(command, 0)
@@ -222,6 +229,54 @@ class RebuildCanaryTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(payload)) as archive:
             self.assertEqual(archive.namelist(), ["background.js"])
             self.assertEqual(archive.read("background.js"), b"/* trusted build */")
+        expected_locks = ((expected_manager, False, True) if expected_manager == "pnpm"
+                          else (expected_manager, True, False))
+        self.assertEqual(observed_managers, [expected_locks] * 3)
+
+    def test_selects_manager_from_checked_out_lockfile(self):
+        run = subprocess.run
+        expected_commands = {
+            "npm": [("npm", "ci", "--prefer-offline"),
+                    ("npm", "run", "build"), ("npm", "run", "check:package")],
+            "pnpm": [("pnpm", "install", "--frozen-lockfile", "--prefer-offline"),
+                     ("pnpm", "run", "build"), ("pnpm", "run", "check:package")],
+        }
+        for manager in ("npm", "pnpm"):
+            with self.subTest(manager=manager):
+                directory = self.root / manager
+                commands = []
+                real_git = prepare_webstore.git
+
+                def checkout_lockfile(root, *args):
+                    result = real_git(root, *args)
+                    if args[:2] == ("checkout", "--quiet"):
+                        lock = "pnpm-lock.yaml" if manager == "pnpm" else "package-lock.json"
+                        other = "package-lock.json" if manager == "pnpm" else "pnpm-lock.yaml"
+                        if manager == "pnpm":
+                            (root / lock).write_text("lockfileVersion: '9.0'\n")
+                        else:
+                            (root / lock).write_text('{"lockfileVersion": 3}\n')
+                        (root / other).unlink(missing_ok=True)
+                    return result
+
+                def build(command, **kwargs):
+                    if command[0] not in {"npm", "pnpm"}:
+                        return run(command, **kwargs)
+                    if command == [manager, "run", "build"]:
+                        source = kwargs["cwd"]
+                        (source / "dist").mkdir()
+                        (source / "dist/background.js").write_bytes(b"/* trusted build */")
+                    commands.append(tuple(command))
+                    return subprocess.CompletedProcess(command, 0)
+
+                with patch.object(prepare_webstore, "git", side_effect=checkout_lockfile), \
+                        patch.object(prepare_webstore.subprocess, "run", side_effect=build):
+                    payload = prepare_webstore.rebuild_canary(
+                        self.repo, self.record, directory)
+                self.assertEqual(commands, expected_commands[manager])
+                with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                    self.assertEqual(archive.namelist(), ["background.js"])
+                    self.assertEqual(archive.read("background.js"), b"/* trusted build */")
 
     def test_rejects_missing_tag_and_forged_commit_before_build(self):
         for record in ({**self.record, "version": "0.0.2"},

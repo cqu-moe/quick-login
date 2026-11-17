@@ -5,9 +5,9 @@
 
 - Treat user-visible extension changes and QuickLogin service behavior changes as releases. Bump the patch version for fixes, UI copy or motion changes, and retry-policy changes; bump the minor version for backward-compatible features; reserve major versions for incompatible protocol or storage changes.
 - When commit and deployment are already authorized, apply the necessary version bump without asking again.
-- Keep the root versions in `package.json`, `package-lock.json`, and `public/manifest.json` identical.
+- Keep the root versions in `package.json` and `public/manifest.json` identical; dependency drift is blocked by frozen pnpm install.
 - Build versioned canary archives as `releases/cqu-quicklogin-<version>-canary.zip`. Package only the contents of `dist/`, and never overwrite an older versioned archive.
-- Before release, run `npm run typecheck`, `npm test`, `npm run build`, and `npm run check:package`. Verify the ZIP contents, embedded manifest version, archive integrity, and SHA-256.
+- Before release, run `pnpm run typecheck`, `pnpm test`, `pnpm run build`, and `pnpm run check:package`. Verify the ZIP contents, embedded manifest version, archive integrity, and SHA-256.
 - Update `docs/operations/quicklogin-release.md` and `docs/operations/quicklogin-handoff.md` with the extension commit, package name and SHA-256. For Auth changes, also record the Auth commit and deployed Worker version.
 - Keep release evidence separate: a Git push, local canary ZIP, unpacked-extension reload, Cloudflare Worker deployment, store upload, review submission, and store publication are different states.
 - Chrome Web Store CD is authorized to upload the latest verified Canary, submit for review, and publish on approval while preserving Unlisted visibility. PRs still set versions and release notes. An active review waits; only the newest candidate is submitted afterward. Rejection or policy warnings require operator attention. Manual store changes outside this flow need explicit authorization.

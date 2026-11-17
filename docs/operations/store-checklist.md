@@ -21,7 +21,7 @@ Auth 处理学校绑定凭据及云端学校会话，并保存必要的设备名
 
 ## 打包复核
 
-- [ ] `npm run typecheck && npm test && npm run build && npm run check:package` 全部通过。
+- [ ] `pnpm run typecheck && pnpm test && pnpm run build && pnpm run check:package` 全部通过。
 - [ ] zip 只含 `dist/` 文件；无 `.env`、实验目录、源码 map、私钥、`client_secret` 或 token 导出。
 - [ ] manifest 权限、host permissions、content script 和 popup 引用与构建产物一致。
 - [ ] 正式 `clientId`、扩展 ID、固定回调和精确 Origin 已通过 Better Auth 管理模型读回。
